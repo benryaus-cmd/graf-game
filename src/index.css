@@ -1158,6 +1158,18 @@ button:active { transform: scale(0.97); }
   background: #354b3e; font-size: 9px; }
 .game-shell:has(.paint-dock-expanded) .paint-workspace-controls { display: none; }
 
+/* Give useful controls the space previously occupied by district branding. */
+.game-shell .top-actions { width: 100%; justify-content: space-between; }
+.game-shell .game-actions { top: 64px; left: 12px; right: 60px; justify-content: flex-start; gap: 6px; }
+.game-shell .game-actions .view-switch,
+.game-shell .game-actions .avatar-open { min-height: 36px; font-size: 8px; padding: 0 9px; }
+.game-shell .paint-color-trigger span { display: inline; }
+.game-shell .paint-workspace-controls,
+.game-shell:has(.paint-dock-expanded) .paint-workspace-controls {
+  display: flex; top: 108px; bottom: auto; left: 12px; transform: none;
+  width: auto; max-width: calc(100% - 144px); justify-content: flex-start;
+}
+
 @media (orientation: landscape) {
   .game-portrait .graffiti-pieces section { width: min(360px, calc(100dvh - 24px)) !important; }
 }

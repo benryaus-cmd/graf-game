@@ -198,7 +198,7 @@ const App = () => {
             movement={movement} lookInput={lookInput} brushSize={brushSize} opacity={opacity} moveSpeed={moveSpeed}
             jumpPower={jumpPower} lookSensitivity={lookSensitivity} fogDensity={fogDensity}
             jumpSignal={jumpSignal} layerIndex={selectedLayer} layerVisibility={layerVisibility}
-            viewMode={viewMode} mapZoom={mapZoom} botsEnabled={botsEnabled} avatar={appearance}
+            viewMode={viewMode} mapZoom={mapZoom} botsEnabled={botsEnabled && multiplayerStatus.phase === 'solo'} avatar={appearance}
             emoteSignal={emoteSignal}
             posterPlacement={poster.placement} posterSize={poster.size}
             posterCommitSignal={poster.commitSignal} onPosterValidity={poster.setValid}
@@ -230,7 +230,7 @@ const App = () => {
             onClick={() => { setMovement({ x: 0, y: 0 }); setLookInput({ x: 0, y: 0 }); setPortrait(value => !value); }}>
             {portrait ? '↻ LANDSCAPE' : '↻ PORTRAIT'}
           </button>
-          {!workspaceView.active && <LookJoystick onLook={setLookInput} />}
+          <LookJoystick onLook={setLookInput} />
           <PaintWorkspaceHud view={workspaceView} painting={paintMode} onAction={requestWorkspace} />
           {multiplayerStatus.phase !== 'solo' && <GraffitiPieces pieces={multiplayerView.pieces ?? []} connected={multiplayerStatus.phase === 'connected'} onLike={pieceId => { if (multiplayerStatus.phase !== 'connected') return false; requestMultiplayer('like', pieceId); return true; }} onResync={() => requestMultiplayer('resync')} onView={pieceId => requestMultiplayer('inspect', pieceId)} />}
           <MultiplayerControls

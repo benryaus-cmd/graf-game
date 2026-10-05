@@ -8,6 +8,7 @@ import {
   isPaintWorkspaceHitAllowed,
   PAINT_WORKSPACE_LAYER,
   selectPaintWorkspaceFace,
+  updatePaintWorkspaceCamera,
 } from '../src/game/paintWorkspace';
 import type { PaintWall, PaintWorkspaceSelection, WorldEngine } from '../src/game/worldTypes';
 
@@ -73,6 +74,10 @@ test('workspace camera sees only the selected wall subtree and lights without ch
   assert.equal(light.layers.isEnabled(PAINT_WORKSPACE_LAYER), true);
   assert.equal(unrelated.layers.isEnabled(PAINT_WORKSPACE_LAYER), false);
   assert.equal(unrelated.visible, beforeUnrelatedVisibility);
+  const cameraBeforePan = workspace.camera.position.clone();
+  (workspace as typeof workspace & { pan: THREE.Vector2 }).pan = new THREE.Vector2(0.5, 0.25);
+  updatePaintWorkspaceCamera(workspace, 800, 600);
+  assert.ok(workspace.camera.position.distanceTo(cameraBeforePan) > 0.1, 'right look input must be able to pan the live canvas');
   exitPaintWorkspace(world);
   assert.equal(mesh.layers.isEnabled(PAINT_WORKSPACE_LAYER), false);
   assert.equal(light.layers.isEnabled(PAINT_WORKSPACE_LAYER), false);

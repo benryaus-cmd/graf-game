@@ -1,4 +1,3 @@
-import BotControls from '@/components/BotControls';
 import MovementJoystick from '@/components/MovementJoystick';
 import PaintDock from '@/components/PaintDock';
 import PosterPlacementHud from '@/components/PosterPlacementHud';
@@ -47,10 +46,6 @@ const GameHud = (props: GameHudProps) => (
       </div>
     )}
     <header className="top-hud">
-      <div className="brand-lockup">
-        <span className="brand-mark">S</span>
-        <div><p>OPEN CANVAS <span>·</span> 04</p><h1>SIDESTREET</h1></div>
-      </div>
       <div className="top-actions">
         <div className="paint-quick-controls" aria-label="Paint mode and color">
           <button
@@ -64,7 +59,7 @@ const GameHud = (props: GameHudProps) => (
             onClick={() => props.onMenuToggle('paint')}
             aria-label={`Open paint selector, current color ${props.color}`}
             aria-expanded={props.activeMenu === 'paint'}
-          ><i style={{ backgroundColor: props.color }} /><span>COLOR</span></button>
+          ><i style={{ backgroundColor: props.color }} /><span>PAINT TOOLS</span></button>
         </div>
         <span className={`sound-status ${props.musicReady ? 'sound-playing' : ''}`}><i /> LO-FI</span>
         <SkyMenu
@@ -74,8 +69,6 @@ const GameHud = (props: GameHudProps) => (
         />
       </div>
     </header>
-    <div className="scene-note"><span className="note-dot" /> DISTRICT 04 <span className="note-divider">/</span> FREE ROAM</div>
-    <div className="gesture-hint">DRAG TO LOOK <span>·</span> W A S D TO WALK</div>
     <div className="game-actions">
       <button
         type="button" className="view-switch" onClick={props.onViewChange}
@@ -83,13 +76,6 @@ const GameHud = (props: GameHudProps) => (
       >
         <span>◉</span> {props.cameraLabel}
       </button>
-      <BotControls
-        enabled={props.botsEnabled} panelColor={props.panelColor}
-        drawingDisabled={props.purchasesDisabled}
-        nearbyBotIndex={props.nearbyBotIndex} open={props.activeMenu === 'bots'}
-        onToggle={() => props.onMenuToggle('bots')} onClose={props.onMenuClose}
-        onBotsToggle={props.onBotsToggle}
-      />
       <button
         type="button" className="avatar-open" onClick={() => props.onMenuToggle('avatar')}
         aria-expanded={props.activeMenu === 'avatar'}

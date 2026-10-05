@@ -183,6 +183,12 @@ export function attachWorldControls(
         world.renderer.render(world.scene, world.cameraMode === 'map' ? world.mapCamera : world.camera);
         return;
       }
+      const look = settings.current.lookInput;
+      if (look && workspace.selection) {
+        workspace.pan ??= new THREE.Vector2();
+        workspace.pan.x = THREE.MathUtils.clamp(workspace.pan.x + look.x * delta, -workspace.selection.width / 2, workspace.selection.width / 2);
+        workspace.pan.y = THREE.MathUtils.clamp(workspace.pan.y + look.y * delta, -workspace.selection.height / 2, workspace.selection.height / 2);
+      }
       updatePaintWorkspaceCamera(workspace, canvas.clientWidth, canvas.clientHeight);
       world.renderer.render(world.scene, workspace.camera);
     } else {

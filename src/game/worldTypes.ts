@@ -51,6 +51,7 @@ export interface PaintWorkspaceSelection {
 
 export interface PaintWorkspaceState {
   active: boolean;
+  pan?: THREE.Vector2;
   camera: THREE.OrthographicCamera;
   selection: PaintWorkspaceSelection | null;
   savedLayers: Map<THREE.Object3D, boolean> | null;

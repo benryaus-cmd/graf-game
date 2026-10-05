@@ -12,6 +12,8 @@ const WORLD_POINTS = Array.from({ length: 4 }, () => new THREE.Vector3());
 const LOCAL_NORMAL = new THREE.Vector3();
 const EDGE_RIGHT = new THREE.Vector3();
 const EDGE_UP = new THREE.Vector3();
+const CAMERA_TARGET = new THREE.Vector3();
+const CAMERA_RIGHT = new THREE.Vector3();
 
 export const PAINT_WORKSPACE_LAYER = 31;
 export const PAINT_WORKSPACE_MAX_METRES = 2;
@@ -44,6 +46,7 @@ export function selectPaintWorkspaceFace(
   const selection = createSelection(wall, face, normalized);
   if (!selection) throw new Error('Unable to create a workspace for this paint face.');
   state.selection = selection;
+  state.pan = new THREE.Vector2();
   world.paintWorkspace = state;
   world.onPaintWorkspaceChange?.(state);
   return state;
@@ -138,8 +141,12 @@ export function updatePaintWorkspaceCamera(state: PaintWorkspaceState, width: nu
   camera.top = spanY / 2;
   camera.bottom = -spanY / 2;
   camera.up.copy(selection.up);
-  camera.position.copy(selection.center).addScaledVector(selection.normal, Math.max(selection.width, selection.height) * 1.5 + 2);
-  camera.lookAt(selection.center);
+  CAMERA_RIGHT.crossVectors(selection.up, selection.normal).normalize();
+  CAMERA_TARGET.copy(selection.center)
+    .addScaledVector(CAMERA_RIGHT, state.pan?.x ?? 0)
+    .addScaledVector(selection.up, state.pan?.y ?? 0);
+  camera.position.copy(CAMERA_TARGET).addScaledVector(selection.normal, Math.max(selection.width, selection.height) * 1.5 + 2);
+  camera.lookAt(CAMERA_TARGET);
   camera.updateProjectionMatrix();
   camera.updateMatrixWorld();
 }

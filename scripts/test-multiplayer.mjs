@@ -10,7 +10,7 @@ try {
   const outfile = path.join(directory, 'tests.mjs');
   await build({
     stdin: { contents: (process.argv.includes('--live') ? ['multiplayer-live.ts'] : (await readdir('tests')).filter(name => name.endsWith('.test.ts'))).map(name => `import './tests/${name}';`).join('\n'), resolveDir: process.cwd(), loader: 'ts' }, outfile, bundle: true,
-    platform: 'node', format: 'esm', alias: { '@': path.resolve('src') },
+    platform: 'node', format: 'esm', jsx: 'automatic', alias: { '@': path.resolve('src') },
     define: { 'import.meta.env': JSON.stringify({ VITE_MULTIPLAYER_URL: process.env.VITE_MULTIPLAYER_URL }) },
   });
   const result = spawnSync(process.execPath, ['--test', outfile], { stdio: 'inherit' });
