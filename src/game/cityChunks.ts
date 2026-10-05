@@ -3,7 +3,7 @@ import type { PaintWall, Collider, Staircase, WalkSurface } from '@/game/worldTy
 import { CITY_CHUNK_SIZE, createCityChunk } from '@/game/cityChunkContent';
 import type { CityMaterials } from '@/game/cityStructures';
 import type { CityChunk, PaintCache } from '@/game/cityChunkTypes';
-import { restoreChunkPaint, saveChunkPaint, syncPaintVisibility } from '@/game/cityChunkPaint';
+import { clearChunkPaint, restoreChunkPaint, saveChunkPaint, syncPaintVisibility } from '@/game/cityChunkPaint';
 import { disposeChunk } from '@/game/cityChunkResources';
 import { savePersistentChunkPaint, savePersistentChunkPosters } from '@/game/paintPersistence';
 
@@ -21,15 +21,31 @@ export function createCityChunkStream(scene: THREE.Scene, cityMaterials: CityMat
   const staircases: Staircase[] = [];
   const active = new Map<string, CityChunk>();
   const paintCache: PaintCache = new Map();
+  const failedPaintSaves = new Map<string, string>();
   const sharedMaterials = new Set<THREE.Material>(Object.values(cityMaterials));
   let layerVisibility = [true];
   let centerX: number | null = null;
   let centerZ: number | null = null;
+  let paintSession: 'solo' | 'multiplayer' = 'solo';
+  let paintGeneration = 0;
 
   const saveOneChunk = (key: string, chunk: CityChunk): void => {
+    if (paintSession !== 'solo') return;
     saveChunkPaint(paintCache, key, chunk);
-    savePersistentChunkPaint(paintCache, key);
+    savePersistentChunkPaint(paintCache, key, chunk, failedPaintSaves);
+    // An unfinished decode needs its encoded base plus current overlay, not a partial ImageData cache.
+    chunk.walls.forEach((wall, index) => {
+      if (wall.pendingPaintImages?.size) paintCache.delete(`${key}:${index}`);
+    });
     savePersistentChunkPosters(key, chunk);
+  };
+
+  const restoreOneChunk = (key: string, chunk: CityChunk): void => {
+    const generation = paintGeneration;
+    restoreChunkPaint(paintCache, key, chunk, layerVisibility, () =>
+      generation === paintGeneration && paintSession === 'solo' && active.get(key) === chunk,
+      failedPaintSaves,
+    );
   };
 
   const updateAt = (x: number, z: number): void => {
@@ -59,7 +75,7 @@ export function createCityChunkStream(scene: THREE.Scene, cityMaterials: CityMat
       if (active.has(key)) return;
       const [chunkX, chunkZ] = key.split(':').map(Number);
       const chunk = createCityChunk(chunkX, chunkZ, cityMaterials);
-      restoreChunkPaint(paintCache, key, chunk, layerVisibility);
+      if (paintSession === 'solo') restoreOneChunk(key, chunk);
       scene.add(chunk.group);
       active.set(key, chunk);
       walls.push(...chunk.walls);
@@ -78,6 +94,17 @@ export function createCityChunkStream(scene: THREE.Scene, cityMaterials: CityMat
     active.forEach((chunk, key) => saveOneChunk(key, chunk));
   };
 
+  const setPaintSession = (session: 'solo' | 'multiplayer'): void => {
+    if (session === paintSession) return;
+    savePaint();
+    paintGeneration++;
+    paintSession = session;
+    active.forEach((chunk, key) => {
+      clearChunkPaint(chunk);
+      if (session === 'solo') restoreOneChunk(key, chunk);
+    });
+  };
+
   return {
     walls,
     colliders,
@@ -86,6 +113,7 @@ export function createCityChunkStream(scene: THREE.Scene, cityMaterials: CityMat
     updateAt,
     setLayerVisibility,
     savePaint,
-    clearPaintCache: () => paintCache.clear(),
+    clearPaintCache: () => { paintCache.clear(); failedPaintSaves.clear(); },
+    setPaintSession,
   };
 }

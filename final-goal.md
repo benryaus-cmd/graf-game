@@ -7,6 +7,8 @@ Live reference: https://aippy.ai/@PinkYyyy/street-art-canvas-aV7b
 
 This is the working destination for future development. It describes intended behaviour, not completed features. Later instructions from the owner take precedence. Keep the GitHub-to-Aippy importer working as the game evolves.
 
+**Owner's latest implementation instruction:** The multiplayer backend is already built, deployed and tested. Integrate the existing game with it. Preserve the current world and functioning painting system for this integration. Do not create another backend, VM service, Docker container, WebSocket server or multiplayer architecture. The broader overhaul below remains the long-term destination, not permission to replace the game during this initial integration.
+
 ## Direction: keep the world and spraying foundation; rebuild the experience
 
 Keep the existing Three.js world, useful geometry/chunks and basic wall-painting foundation. Rebuild the controls, HUD, painting workflow and supporting systems as needed. The owner has authorised a substantial overhaul; retaining existing menus, bots, primitive avatars or poster features is not a goal. Preserve existing saved artwork during migration where practical, without letting old saves overwrite the shared world.
@@ -141,6 +143,8 @@ Keep solo saves and shared state separate. Offer an explicit future publish/impo
 
 ## Visible people, conversation and convincing characters
 
+Use Aippy's existing account profile through useUserInfo from @aippy/runtime/user. Default the display name to nickName, then @username, then PLAYER; show avatar with a normal visual fallback. Respect isLoading and do not ask players to invent a name. No custom accounts, login flow, user/profile database, token fetching for display or invented profile-write APIs. The server-issued connection playerId is the multiplayer authority; Aippy profile fields are display information, not proof of identity to this server. Do not display uid.
+
 Nearby online players appear as animated 3D humans with names, facing direction and idle/movement/painting state. Add compact presence and easy friend meetups. Bots are not a substitute for real multiplayer; remove confusing bot features from the default experience.
 
 Provide nearby text chat, a compact chat button and clear speaker identification. Selecting a player can open conversation/actions. Support mute/block/report, bounded message sizes and server rate limits. Handle the mobile keyboard without hiding the composer or causing accidental paint. Optional voice can follow later.
@@ -159,9 +163,13 @@ Mirror only chosen licensed files into the project for reliable Aippy imports. K
 
 ## DigitalOcean backend and smooth multiplayer
 
-Run a separate lightweight game service on the owner's Ubuntu VM alongside existing Studio services. Use HTTPS/WSS, authenticated persistent player identity and separate game data/credentials. Postgres holds durable artwork, claims, assets, comments, engagement and a credit ledger. Redis is optional for transient coordination, not the only copy of art.
+Use the existing secure endpoint: wss://24.144.88.205/multiplayer. Health: https://24.144.88.205/health. The owner reports the service is separate from Studio, already deployed and persistent, with publicly trusted TLS. No infrastructure or database changes are part of this work.
 
-Start with WebSockets and a small explicit protocol. A room framework is optional, not a reason to replace the client. Server capacity must be configured and measured on the actual VM; no guaranteed player count or price is assumed.
+The deployed protocol is version 1. Wait for hello with its server-generated playerId, then send join with roomId public and the Aippy display name. world_snapshot contains stored strokes and current players. Handle player_state, player_joined, player_left, stroke_begin, stroke_points and stroke_end. Keep the room selection modular without adding private-room UI yet.
+
+Initial scope is connection/public join, visible/interpolated players, shared strokes, persisted replay and reconnect. Do not add accounts, matchmaking, chat, clans, moderation, claims or credit endpoints now. Existing protocol support must be established before later features use it. There is no capacity metadata in the supplied protocol; show actual observed occupancy rather than invented free-slot numbers.
+
+Configure the URL once through VITE_MULTIPLAYER_URL with a production fallback in src/multiplayer/config.ts. Do not scatter endpoint literals in game modules. Stay below 64 KB/messages, 128 points/batch, 20,000 points/stroke, 10,000 persisted strokes/room and approximately 120 messages/second. The thin client uses 96-point batches around 100 ms, splits long gestures at 16,000 points and sends changed player state around 100 ms. Saved stroke objects use id; normalise it to client strokeId. Send the game's brush slider units, since the server clamps brushSize to at least 1; divide by 50 only when reproducing the existing local world-radius renderer.
 
 - Movement/look and paint render locally first, including with 500 ms round-trip latency. Do not smooth the local player's input through the server.
 - Send movement snapshots; interpolate remote avatars with bounded extrapolation.
@@ -172,7 +180,7 @@ Start with WebSockets and a small explicit protocol. A room framework is optiona
 - Persist ordered history plus periodic snapshots. Reconnects and late joins rebuild the same accepted composition.
 - Keep queues bounded. If a claim expired or a pending action is rejected, preserve the local draft and explain the conflict; never silently overwrite protected shared work.
 
-Run the service with automatic restart and health visibility. Keep durable backups and verify recovery after a process/VM restart. Empty-world lifetime and process uptime are separate from database persistence: all three must work. Preserve existing VM workloads. Document actual deployment/configuration when implemented, rather than pretending a backend is already live.
+Reconnect explicitly and rejoin for a fresh snapshot without creating reconnect loops. Preserve offline paint locally and never silently upload it under a new connection identity. Keep solo PNG/poster saves separate from the shared stroke world. Local echo IDs and offscreen incremental replay must preserve current brush work without double deposition. The client cannot promise restart/backup behaviour beyond the existing backend's implementation; do not modify the VM to address this during game integration.
 
 ## Credits and discovery
 
@@ -217,7 +225,7 @@ Do not add forced police chases, consumable-can scarcity, compulsory multiplayer
 1. Rebuild the HUD and input ownership: direct Paint/Explore, top tools, left move/right look, jump and portrait. Verify simultaneous touch use, stop/cancel behaviour and menu hit testing.
 2. Fix targeting and paint quality: box preview, reach/occlusion, normal clipping, drizzle exception, stroke sampling and detail. Compare repeatable lettering/fills at multiple distances on a phone.
 3. Add the shared drawing core, live canvas mode, heads/roller, layers and handmade library. Verify switching modes/orientation preserves the same art; resized signatures stay clean.
-4. Deploy the persistent VM service, add deliberate solo-to-server joining, real capacity handling, coherent characters and nearby chat. Check two real clients, full admission, empty-server persistence and restart recovery.
+4. Integrate the existing persistent service with deliberate solo-to-server joining, shared spray and the current character models. Check two real clients, late joins, disconnect/rejoin and no solo-save contamination. Upgrade models and chat later using supported protocol features; do not deploy a replacement service.
 5. Connect server claims, four-hour expiry, engagement credits, reuse/signature rules, paid expansions and protected tag-over. Check competing claims, insufficient funds, retry deduplication and protected drizzle overlap.
 6. Exercise late joins, reconnects, chunk changes, snapshots and 500 ms simulated latency. Local input must remain immediate; accepted shared paint must eventually converge without losing drafts.
 

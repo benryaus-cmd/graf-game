@@ -4,6 +4,10 @@ import { aippyTweaks } from '@aippy/runtime/tweaks';
 import { useSound } from '@aippy/runtime/audio';
 import GameHud, { type HudMenu } from '@/components/GameHud';
 import WorldScene from '@/components/WorldScene';
+import MultiplayerControls from '@/components/MultiplayerControls';
+import { useUserInfo } from '@aippy/runtime/user';
+import { aippyDisplayName } from '@/multiplayer/profile';
+import type { MultiplayerStatus } from '@/multiplayer/protocol';
 import SettingsModal from '@/components/SettingsModal';
 import { useSprayAudio } from '@/components/useSprayAudio';
 import { useBotArtwork } from '@/game/useBotArtwork';
@@ -27,6 +31,14 @@ interface EmoteSignal { emote: AvatarEmote; sequence: number }
 type PaintTool = 'paint' | 'eraser' | 'off';
 
 const App = () => {
+  const aippyUser = useUserInfo();
+  const displayName = aippyDisplayName(aippyUser);
+  const [multiplayerStatus, setMultiplayerStatus] = useState<MultiplayerStatus>({ phase: 'solo', playerCount: 0 });
+  const [multiplayerRequest, setMultiplayerRequest] = useState<{ action: 'join' | 'leave'; sequence: number } | null>(null);
+  const requestMultiplayer = (action: 'join' | 'leave') => {
+    poster.cancel();
+    setMultiplayerRequest(previous => ({ action, sequence: (previous?.sequence ?? 0) + 1 }));
+  };
   const accentColor = tweaks.accentColor.useState();
   const panelColor = tweaks.panelColor.useState();
   const initialBrushSize = tweaks.brushSize.useState();
@@ -164,6 +176,7 @@ const App = () => {
       ) : (
         <>
           <WorldScene
+            multiplayerRequest={multiplayerRequest} displayName={displayName} onMultiplayerStatus={setMultiplayerStatus}
             sky={sky} paintMode={paintMode} eraseMode={eraseMode} color={color}
             movement={movement} brushSize={brushSize} opacity={opacity} moveSpeed={moveSpeed}
             jumpPower={jumpPower} lookSensitivity={lookSensitivity} fogDensity={fogDensity}
@@ -194,6 +207,10 @@ const App = () => {
             onPurchase={purchaseItem} onEquip={equipItem} onEmote={playEmote}
             onMovement={setMovement} onJump={() => setJumpSignal(signal => signal + 1)}
             onBotsToggle={() => setBotsEnabled(enabled => !enabled)} onDrawRequest={requestArtwork}
+          />
+          <MultiplayerControls
+            status={multiplayerStatus} displayName={displayName} avatar={aippyUser.avatar} profileLoading={aippyUser.isLoading}
+            onJoin={() => requestMultiplayer('join')} onLeave={() => requestMultiplayer('leave')}
           />
           <button
             type="button"

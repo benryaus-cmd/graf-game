@@ -90,6 +90,8 @@ export function createWorld(container: HTMLElement, fogDensity: number): WorldEn
     setPaintVisibility: architecture.setLayerVisibility,
     savePaint: architecture.savePaint,
     clearPaintCache: architecture.clearPaintCache,
+    setPaintSession: architecture.setPaintSession,
+    paintRevision: 0,
     groundLevel: 0,
     velocityY: 0,
     jumpSignal: 0,

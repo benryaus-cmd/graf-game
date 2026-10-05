@@ -34,6 +34,8 @@ export function attachWorldControls(
   let startY = 0;
   let startYaw = 0;
   let startPitch = 0;
+  let paintRevision = world.paintRevision;
+  const endStroke = () => { stroke.current = null; world.onPaintEnd?.(); };
 
   const refreshWalls = () => {
     const unchanged = cachedWalls.length === world.walls.length &&
@@ -48,11 +50,13 @@ export function attachWorldControls(
     });
   };
   const paint = (event: PointerEvent) => {
+    if (paintRevision !== world.paintRevision) { endStroke(); paintRevision = world.paintRevision; }
     refreshWalls();
     sprayOnWall(
       world, event, settings.current, raycaster, pointer, wallMeshes, wallLookup,
       onSpray, onPaint, lastBuzz, stroke,
     );
+    if (!stroke.current) world.onPaintEnd?.();
   };
   const onPointerDown = (event: PointerEvent) => {
     pointerId = event.pointerId;
@@ -60,7 +64,7 @@ export function attachWorldControls(
     startY = event.clientY;
     startYaw = world.playerYaw;
     startPitch = world.playerPitch;
-    stroke.current = null;
+    endStroke();
     canvas.setPointerCapture(event.pointerId);
     if (settings.current.paintMode && !posterState.current) paint(event);
   };
@@ -70,7 +74,7 @@ export function attachWorldControls(
       paint(event);
       return;
     }
-    stroke.current = null;
+    endStroke();
     if (world.cameraMode === 'map') return;
     const sensitivity = settings.current.lookSensitivity;
     world.playerYaw = startYaw - (event.clientX - startX) * sensitivity;
@@ -83,7 +87,7 @@ export function attachWorldControls(
   const onPointerUp = (event: PointerEvent) => {
     if (pointerId !== event.pointerId) return;
     pointerId = null;
-    stroke.current = null;
+    endStroke();
     if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
   };
 
@@ -92,6 +96,8 @@ export function attachWorldControls(
     timer.update(time);
     const delta = Math.min(timer.getDelta(), 0.045);
     advanceWorld(world, delta, settings.current, keys);
+    if (!settings.current.paintMode || posterState.current) endStroke();
+    world.onMultiplayerFrame?.(delta, settings.current);
     advanceWeather(world, delta);
     const poster = posterState.current;
     if (poster) {
@@ -110,13 +116,19 @@ export function attachWorldControls(
   canvas.addEventListener('pointermove', onPointerMove);
   canvas.addEventListener('pointerup', onPointerUp);
   canvas.addEventListener('pointercancel', onPointerUp);
+  const onBlur = () => { pointerId = null; keys.clear(); endStroke(); };
+  canvas.addEventListener('lostpointercapture', onPointerUp);
+  window.addEventListener('blur', onBlur);
 
   return () => {
+    endStroke();
     world.renderer.setAnimationLoop(null);
     stopKeyboardControls();
     canvas.removeEventListener('pointerdown', onPointerDown);
     canvas.removeEventListener('pointermove', onPointerMove);
     canvas.removeEventListener('pointerup', onPointerUp);
     canvas.removeEventListener('pointercancel', onPointerUp);
+    canvas.removeEventListener('lostpointercapture', onPointerUp);
+    window.removeEventListener('blur', onBlur);
   };
 }

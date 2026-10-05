@@ -17,6 +17,8 @@ export interface SurfaceUvScale {
 }
 
 export interface PaintWall {
+  surfaceId?: string;
+  pendingPaintImages?: Map<string, string[]>;
   mesh: THREE.Mesh;
   uvScales: SurfaceUvScale[];
   faceDimensions: Array<{ width: number; height: number }>;
@@ -110,6 +112,11 @@ export interface WorldEngine {
   setPaintVisibility: (visibility: boolean[]) => void;
   savePaint: () => void;
   clearPaintCache: () => void;
+  setPaintSession: (session: 'solo' | 'multiplayer') => void;
+  paintRevision: number;
+  onPaintSample?: (wall: PaintWall, hit: THREE.Intersection, settings: LiveSettings, continues: boolean) => void;
+  onPaintEnd?: () => void;
+  onMultiplayerFrame?: (delta: number, settings: LiveSettings) => void;
   groundLevel: number;
   velocityY: number;
   jumpSignal: number;

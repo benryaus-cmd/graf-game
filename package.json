@@ -8,6 +8,7 @@
     "node": ">=22.13.0"
   },
   "scripts": {
+    "test": "node scripts/test-multiplayer.mjs",
     "dev": "vite",
     "build": "vite build",
     "build:dev": "vite build --mode development",

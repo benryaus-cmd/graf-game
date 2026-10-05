@@ -1,4 +1,5 @@
 import type { PaintWall } from '@/game/worldTypes';
+import * as THREE from 'three';
 import type { CityChunk, PaintCache } from '@/game/cityChunkTypes';
 import { restorePersistentChunkPaint, restorePersistentChunkPosters } from '@/game/paintPersistence';
 
@@ -19,9 +20,7 @@ export function saveChunkPaint(cache: PaintCache, key: string, chunk: CityChunk)
       }
       return null;
     }));
-    if (images.some((layer) => layer.some((image) => image !== null))) {
-      cache.set(`${key}:${wallIndex}`, images);
-    }
+    cache.set(`${key}:${wallIndex}`, images);
   });
 }
 
@@ -30,9 +29,11 @@ export function restoreChunkPaint(
   key: string,
   chunk: CityChunk,
   visibility: boolean[],
+  shouldRestore: () => boolean = () => true,
+  failedSaves?: Map<string, string>,
 ): void {
-  restorePersistentChunkPaint(key, chunk, (wallIndex) => cache.has(`${key}:${wallIndex}`));
-  restorePersistentChunkPosters(key, chunk);
+  restorePersistentChunkPaint(key, chunk, (wallIndex) => cache.has(`${key}:${wallIndex}`), shouldRestore, failedSaves);
+  restorePersistentChunkPosters(key, chunk, shouldRestore);
   chunk.walls.forEach((wall, wallIndex) => {
     const savedLayers = cache.get(`${key}:${wallIndex}`);
     if (savedLayers) {
@@ -50,5 +51,30 @@ export function restoreChunkPaint(
       });
     }
     syncPaintVisibility(wall, visibility);
+  });
+}
+
+export function clearChunkPaint(chunk: CityChunk): void {
+  chunk.walls.forEach(wall => {
+    wall.pendingPaintImages?.clear();
+    wall.layers.forEach(layer => layer.contexts.forEach((context, face) => {
+      if (!context) return;
+      context.save(); context.setTransform(1, 0, 0, 1, 0, 0);
+      context.clearRect(0, 0, context.canvas.width, context.canvas.height);
+      context.restore(); layer.textures[face].needsUpdate = true;
+    }));
+    const posters: THREE.Mesh[] = [];
+    wall.mesh.traverse(object => {
+      if (object instanceof THREE.Mesh && object.userData.posterArtwork) posters.push(object);
+    });
+    posters.forEach(mesh => {
+      mesh.removeFromParent(); mesh.geometry.dispose();
+      const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+      materials.forEach(material => {
+        if ('map' in material && material.map instanceof THREE.Texture) material.map.dispose();
+        material.dispose();
+      });
+    });
+    wall.posters = []; wall.dirty = false;
   });
 }

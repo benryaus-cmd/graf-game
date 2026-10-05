@@ -5,7 +5,7 @@ import { addPosterOverlay } from '@/game/posterOverlay';
 const STORAGE_PREFIX = 'sidestreet_world_paint_v1:';
 const POSTER_STORAGE_PREFIX = 'sidestreet_world_posters_v1:';
 
-type EncodedLayer = Array<string | null>;
+type EncodedLayer = Array<string | string[] | null>;
 type EncodedChunk = Record<string, EncodedLayer[]>;
 type EncodedPosters = Record<string, PosterArtwork[]>;
 
@@ -19,12 +19,12 @@ function encodeImage(image: ImageData): string | null {
   return canvas.toDataURL('image/png');
 }
 
-export function savePersistentChunkPaint(cache: PaintCache, key: string): void {
+export function savePersistentChunkPaint(cache: PaintCache, key: string, chunk?: CityChunk, failedSaves?: Map<string, string>): void {
   const prefix = `${key}:`;
   const storageKey = `${STORAGE_PREFIX}${key}`;
   const encoded: EncodedChunk = {};
   try {
-    const raw = window.localStorage.getItem(storageKey);
+    const raw = failedSaves?.get(storageKey) ?? window.localStorage.getItem(storageKey);
     if (raw) {
       const previous = JSON.parse(raw) as EncodedChunk;
       if (typeof previous === 'object' && previous !== null && !Array.isArray(previous)) {
@@ -37,12 +37,21 @@ export function savePersistentChunkPaint(cache: PaintCache, key: string): void {
   cache.forEach((layers, cacheKey) => {
     if (!cacheKey.startsWith(prefix)) return;
     const wallIndex = cacheKey.slice(prefix.length);
-    encoded[wallIndex] = layers.map((faces) => faces.map((image) => image ? encodeImage(image) : null));
+    encoded[wallIndex] = layers.map((faces, layerIndex) => faces.map((image, face) => {
+      const overlay = image ? encodeImage(image) : null;
+      const pending = chunk?.walls[Number(wallIndex)]?.pendingPaintImages?.get(`${layerIndex}:${face}`);
+      if (pending?.length) return overlay ? [...pending, overlay] : pending.length === 1 ? pending[0] : pending;
+      return overlay;
+    }));
   });
   if (Object.keys(encoded).length === 0) return;
+  const serialized = JSON.stringify(encoded);
   try {
-    window.localStorage.setItem(storageKey, JSON.stringify(encoded));
+    window.localStorage.setItem(storageKey, serialized);
+    failedSaves?.delete(storageKey);
   } catch (error) {
+    // Preserve the complete base and overlay for this running game even if storage is full.
+    failedSaves?.set(storageKey, serialized);
     console.warn('[Aippy] Painted world could not be fully saved on this device.', error);
   }
 }
@@ -68,10 +77,13 @@ export function restorePersistentChunkPaint(
   key: string,
   chunk: CityChunk,
   isCached: (wallIndex: number) => boolean,
+  shouldRestore: () => boolean = () => true,
+  failedSaves?: Map<string, string>,
 ): void {
   let encoded: EncodedChunk;
   try {
-    const raw = window.localStorage.getItem(`${STORAGE_PREFIX}${key}`);
+    const storageKey = `${STORAGE_PREFIX}${key}`;
+    const raw = failedSaves?.get(storageKey) ?? window.localStorage.getItem(storageKey);
     if (!raw) return;
     encoded = JSON.parse(raw) as EncodedChunk;
   } catch (error) {
@@ -90,18 +102,39 @@ export function restorePersistentChunkPaint(
       const layer = wall.layers[layerIndex];
       if (!layer) return;
       rawFaces.forEach((rawImage, faceIndex) => {
-        if (typeof rawImage !== 'string') return;
-        const image = new Image();
-        image.onload = () => {
-          if (!chunk.group.parent) return;
+        const sources = typeof rawImage === 'string' ? [rawImage] :
+          Array.isArray(rawImage) ? rawImage.filter((source): source is string => typeof source === 'string') : [];
+        if (!sources.length) return;
+        const faceKey = `${layerIndex}:${faceIndex}`;
+        wall.pendingPaintImages ??= new Map();
+        wall.pendingPaintImages.set(faceKey, sources);
+        const decoded: Array<HTMLImageElement | null> = Array(sources.length).fill(null);
+        let remaining = sources.length;
+        const finish = () => {
+          remaining--;
+          if (remaining > 0 || wall.pendingPaintImages?.get(faceKey) !== sources) return;
+          if (!chunk.group.parent || !shouldRestore()) return;
           const context = layer.ensureFace(faceIndex);
           if (!context) return;
-          context.drawImage(image, 0, 0, context.canvas.width, context.canvas.height);
-          layer.textures[faceIndex].needsUpdate = true;
-          wall.dirty = true;
+          // Paint made during image decoding remains above the saved background.
+          const overlay = document.createElement('canvas');
+          overlay.width = context.canvas.width; overlay.height = context.canvas.height;
+          overlay.getContext('2d')?.drawImage(context.canvas, 0, 0);
+          context.save(); context.setTransform(1, 0, 0, 1, 0, 0);
+          context.globalAlpha = 1; context.globalCompositeOperation = 'source-over';
+          context.clearRect(0, 0, context.canvas.width, context.canvas.height);
+          decoded.forEach(image => { if (image) context.drawImage(image, 0, 0, context.canvas.width, context.canvas.height); });
+          context.drawImage(overlay, 0, 0);
+          context.restore();
+          wall.pendingPaintImages.delete(faceKey);
+          layer.textures[faceIndex].needsUpdate = true; wall.dirty = true;
         };
-        image.onerror = (error) => console.warn('[Aippy] A saved paint image could not be restored.', error);
-        image.src = rawImage;
+        sources.forEach((source, index) => {
+          const image = new Image();
+          image.onload = () => { decoded[index] = image; finish(); };
+          image.onerror = error => { console.warn('[Aippy] A saved paint image could not be restored.', error); finish(); };
+          image.src = source;
+        });
       });
     });
   });
@@ -120,7 +153,7 @@ function isPosterArtwork(value: unknown): value is PosterArtwork {
     typeof record.height === 'number' && Number.isFinite(record.height) && record.height > 0;
 }
 
-export function restorePersistentChunkPosters(key: string, chunk: CityChunk): void {
+export function restorePersistentChunkPosters(key: string, chunk: CityChunk, shouldRestore: () => boolean = () => true): void {
   let encoded: EncodedPosters;
   try {
     const raw = window.localStorage.getItem(`${POSTER_STORAGE_PREFIX}${key}`);
@@ -139,7 +172,7 @@ export function restorePersistentChunkPosters(key: string, chunk: CityChunk): vo
     posters.forEach((artwork) => {
       const image = new Image();
       image.onload = () => {
-        if (!chunk.group.parent) return;
+        if (!chunk.group.parent || !shouldRestore()) return;
         addPosterOverlay(wall, artwork, image);
       };
       image.onerror = (error) => console.warn('[Aippy] A saved poster image could not be restored.', error);

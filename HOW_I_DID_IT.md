@@ -30,3 +30,35 @@ When I say **"Import latest GitHub"**:
 3. Run the existing build command.
 
 The import must finish **before** Vite generates the project-file manifest or compiles the game.
+## Existing-server multiplayer integration
+
+The game now has a thin browser client for the owner's already deployed protocol-1 service. No backend, container, WebSocket service or VM configuration was created or changed.
+
+- Endpoint configuration: `src/multiplayer/config.ts`, using `VITE_MULTIPLAYER_URL` with the production WSS fallback. Existing `.env` is preserved by the importer.
+- UI: `MultiplayerControls.tsx`. Entering the world remains solo. JOIN MULTIPLAYER explicitly connects; CANCEL/SOLO leaves, and RECONNECT explicitly rejoins after a disconnect.
+- Profile: App reads `useUserInfo()` from `@aippy/runtime/user`. Nickname, then @username, then PLAYER supplies the default name; avatar has a fallback. Loading is respected. No token, account database, profile writes or manual username lookup. Aippy uid is neither displayed nor sent as multiplayer identity.
+- Lifecycle: `WorldScene` owns `WorldMultiplayerSession`; controls invoke its frame hook after local movement. Local controls/paint continue when offline.
+- Protocol: `connection.ts` waits for server hello, uses the assigned playerId, joins public, and reports connected only after its matching snapshot. Room selection is an argument for later extension. Messages from obsolete sockets are ignored.
+- Players: `playerSync.ts` sends changed transforms/action state at roughly 10 Hz, with a low-frequency idle heartbeat. `remotePlayers.ts` uses existing game avatars, interpolates position/rotation, adds display-name labels, and disposes departed avatars.
+- Painting: `worldPainting.ts` calls its network hook after `stampPaintHit`. `paintSync.ts` records immediate local paint, batches up to 96 points about every 100 ms, splits long gestures at 16,000 samples, and emits stroke_end on release/cancel/tool-off. Colour/head-size changes preserve continuous paths across segments.
+- Point format: real world x/y/z; pressure carries the current opacity for this painting engine. Brush size uses existing slider units; replay converts to the same radius with size/50 and the existing minimum radius. The live server clamps brushSize below 1, so world-radius fractions must not be sent as brushSize.
+- IDs: deterministic chunk coordinates plus geometry signature form a versioned ss1 wall ID, independent of load order/Three UUIDs. `/fN/lN` identifies the face and layer. Layout changes need an explicit world-version migration rather than changing persisted addresses silently.
+- Replay: `surfaces.ts` reconstructs tiled UVs using triangle barycentrics. `paintReplay.ts` invokes the existing stamp renderer, stages snapshots offscreen, and limits work to 256 samples/roughly 3 ms per frame. New local paint is also added to an active staging job before commit. Loading old artwork does not clear the visible canvas early.
+- Echo handling: locally rendered stroke IDs suppress incoming live echoes. On a new snapshot, persisted strokes and retained local tails/drafts are composed once; a reconnect can receive a new connection playerId without double-painting old local IDs.
+- Saves: `cityChunks` saves solo paint before changing sessions, preserves geometry/controller/camera, and keeps multiplayer paint out of solo PNG/poster storage. It restores solo paint on leaving. Delayed solo image decodes have session guards; unfinished saved images and new local overlays are retained together, including an in-memory fallback if browser storage fails. Fully erased cached layers are retained as blank so they do not resurrect on return.
+- Resilience: capped transport buffers/message rate; failed sends cannot throw back into brush input. A disconnect during a held stroke preserves its connecting segment in offline replay. No aggressive automatic retry. Offline shared-session paint stays local, and reconnection reloads accepted server state while retaining local draft overlays. Offline drafts are not automatically published. Draft overlays last for the current running game; they are not a new durable offline-upload service.
+
+This first integration shares spray/eraser strokes and player movement. Existing posters, generated bot art, avatar cosmetics, progression and other game settings remain game/local features; the server protocol has no events for synchronising them. Aippy profile images appear locally; only the display name is included in the supplied join protocol. Remote characters use current game models, not downloaded replacements. Claim protection, credits, chat and premium painting tools remain later goals.
+
+### Verification
+
+- `npm test`: automated connection, replay, ID, interpolation, session/save-isolation, profile-default and input-order checks. Uses the existing esbuild dependency plus Node's test runner; no added runtime dependencies.
+- `npm run build`: production Vite build checked.
+- `node scripts/test-multiplayer.mjs --live`: explicit opt-in smoke check against the existing server. It joins public with temporary test display names and writes a tiny, faint floor stroke; it is not run by npm test.
+- Live checks confirmed hello/join, two simultaneous clients, remote state, matching stroke messages, saved stroke IDs/points/brush size on a third late join, and player_left. The server's saved player/stroke objects use id; the client normalises those fields.
+- Full TypeScript check still reports the same six pre-existing errors as the unchanged baseline: two in PosterStudio.tsx, three BlobPart errors in dev/zip.ts, and generateBotArtwork.ts's unsupported quality option. There are no added multiplayer TypeScript errors. These unrelated existing features were not rewritten for networking.
+- No WebGL-capable local browser was available for visual/phone verification of this new build. The live protocol and renderer-call checks are not a claim of measured mobile FPS or a completed end-to-end visual playtest.
+
+### Import and play
+
+Run the existing `pnpm run import:github`, then the normal build. No new package dependency or server deployment is needed. Open the game in Aippy, enter the world, then choose JOIN MULTIPLAYER. Open another client to see shared strokes and player movement. SOLO returns to local paint saves.

@@ -5,6 +5,7 @@ import { createChunkGround, addHouse, addConcreteBillboard } from '@/game/citySt
 import type { CityMaterials, StructureLists } from '@/game/cityStructures';
 import { addConcreteStreetLamp } from '@/game/cityStreetLamps';
 import type { Collider, PaintWall, Staircase, WalkSurface } from '@/game/worldTypes';
+import { assignSurfaceIds } from '@/multiplayer/surfaces';
 
 export const CITY_CHUNK_SIZE = 48;
 
@@ -115,5 +116,6 @@ export function createCityChunk(
     colliders,
   );
 
+  assignSurfaceIds(chunkX, chunkZ, walls);
   return { group, walls, colliders, walkSurfaces, staircases };
 }

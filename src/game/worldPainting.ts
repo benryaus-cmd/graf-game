@@ -103,6 +103,7 @@ export function sprayOnWall(
   );
   if (!point) { stroke.current = null; return; }
   stroke.current = point;
+  world.onPaintSample?.(wall, hit, settings, !!previous);
   const now = performance.now();
   if (now - lastBuzz.current > 220 && navigator.vibrate) {
     navigator.vibrate(14);
