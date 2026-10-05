@@ -1,0 +1,9 @@
+{
+  "baseUrl": "https://raw.githubusercontent.com/benryaus-cmd/graf-game/main/",
+  "files": [
+    {
+      "source": "src/components/SkyMenu.tsx",
+      "target": "src/games/importedGame/upstream/src/components/SkyMenu.tsx"
+    }
+  ]
+}
