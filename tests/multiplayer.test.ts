@@ -73,6 +73,35 @@ test('solo creates no socket; explicit connect joins after server hello, not bef
   assert.equal(states.at(-1).phase, 'solo');
 });
 
+test('upgraded protocol 2 joins using the existing messages and accepts its expanded snapshot', () => {
+  const socket = new Socket();
+  const states: any[] = []; const messages: any[] = [];
+  const connection = new MultiplayerConnection('wss://example.test', s => states.push(s), m => messages.push(m), () => socket);
+  connection.connect('Aippy nickname', 'public'); socket.readyState = 1;
+  socket.receive({ type: 'hello', playerId: 'server-v2-id', protocol: 2, serverTime: 123,
+    capabilities: ['presence', 'movement', 'paint', 'eraser', 'chat', 'artwork', 'world_items', 'inventory', 'trading', 'reports', 'resync'] });
+  assert.deepEqual(socket.sent[0], { type: 'join', roomId: 'public', displayName: 'Aippy nickname' });
+  socket.receive({ type: 'world_snapshot', protocol: 2, roomId: 'public', playerId: 'server-v2-id',
+    revision: 5, sequence: 10, serverTime: 124, playerCount: 1, strokes: [], players: [],
+    artworks: [], worldItems: [], graffitiPieces: [], chatHistory: [] });
+  assert.equal(connection.connected, true);
+  assert.equal(connection.playerId, 'server-v2-id');
+  assert.equal(states.at(-1).phase, 'connected');
+  assert.equal(messages[0].type, 'world_snapshot');
+  connection.disconnect();
+});
+
+test('unknown protocol versions are rejected before joining', () => {
+  const socket = new Socket(); const states: any[] = [];
+  const connection = new MultiplayerConnection('wss://example.test', s => states.push(s), () => {}, () => socket);
+  connection.connect('Player', 'public'); socket.readyState = 1;
+  socket.receive({ type: 'hello', playerId: 'server-id', protocol: 999 });
+  assert.equal(socket.sent.length, 0);
+  assert.equal(connection.connected, false);
+  assert.equal(states.at(-1).phase, 'disconnected');
+  assert.match(states.at(-1).notice, /Unsupported multiplayer protocol/);
+});
+
 test('old socket messages cannot change a reconnected session; send backpressure disconnects safely', () => {
   const sockets: Socket[] = [];
   const connection = new MultiplayerConnection('wss://example.test', () => {}, () => {}, () => {

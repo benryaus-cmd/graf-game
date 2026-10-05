@@ -1,0 +1,9 @@
+{
+  "baseUrl": "https://raw.githubusercontent.com/benryaus-cmd/graf-game/main/",
+  "files": [
+    {
+      "source": "src/multiplayer/connection.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/connection.ts"
+    }
+  ]
+}

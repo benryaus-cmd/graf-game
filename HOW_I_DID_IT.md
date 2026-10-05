@@ -32,7 +32,7 @@ When I say **"Import latest GitHub"**:
 The import must finish **before** Vite generates the project-file manifest or compiles the game.
 ## Existing-server multiplayer integration
 
-The game now has a thin browser client for the owner's already deployed protocol-1 service. No backend, container, WebSocket service or VM configuration was created or changed.
+The game now has a thin browser client for the owner's already deployed service, with protocol-1 and protocol-2 compatibility. No backend, container, WebSocket service or VM configuration was created or changed.
 
 - Endpoint configuration: `src/multiplayer/config.ts`, using `VITE_MULTIPLAYER_URL` with the production WSS fallback. Existing `.env` is preserved by the importer.
 - UI: `MultiplayerControls.tsx`. Entering the world remains solo. JOIN MULTIPLAYER explicitly connects; CANCEL/SOLO leaves, and RECONNECT explicitly rejoins after a disconnect.
@@ -48,7 +48,7 @@ The game now has a thin browser client for the owner's already deployed protocol
 - Saves: `cityChunks` saves solo paint before changing sessions, preserves geometry/controller/camera, and keeps multiplayer paint out of solo PNG/poster storage. It restores solo paint on leaving. Delayed solo image decodes have session guards; unfinished saved images and new local overlays are retained together, including an in-memory fallback if browser storage fails. Fully erased cached layers are retained as blank so they do not resurrect on return.
 - Resilience: capped transport buffers/message rate; failed sends cannot throw back into brush input. A disconnect during a held stroke preserves its connecting segment in offline replay. No aggressive automatic retry. Offline shared-session paint stays local, and reconnection reloads accepted server state while retaining local draft overlays. Offline drafts are not automatically published. Draft overlays last for the current running game; they are not a new durable offline-upload service.
 
-This first integration shares spray/eraser strokes and player movement. Existing posters, generated bot art, avatar cosmetics, progression and other game settings remain game/local features; the server protocol has no events for synchronising them. Aippy profile images appear locally; only the display name is included in the supplied join protocol. Remote characters use current game models, not downloaded replacements. Claim protection, credits, chat and premium painting tools remain later goals.
+This first integration shares spray/eraser strokes and player movement. Existing posters, generated bot art, avatar cosmetics, progression and other game settings remain game/local features; this client does not yet synchronise them through the expanded server capabilities. Aippy profile images appear locally; only the display name is included in the supplied join protocol. Remote characters use current game models, not downloaded replacements. Claim protection, credits, chat and premium painting tools remain later goals.
 
 ### Verification
 
@@ -62,3 +62,9 @@ This first integration shares spray/eraser strokes and player movement. Existing
 ### Import and play
 
 Run the existing `pnpm run import:github`, then the normal build. No new package dependency or server deployment is needed. Open the game in Aippy, enter the world, then choose JOIN MULTIPLAYER. Open another client to see shared strokes and player movement. SOLO returns to local paint saves.
+
+### Protocol 2 compatibility fix
+
+The upgraded live server now reports protocol 2 in hello. The client accepts verified versions 1 and 2, continues using the existing join/player/stroke messages, and rejects unknown versions with the received version in the notice. The expanded protocol-2 snapshot retains the existing strokes and players fields. Additional server capabilities are not automatically implemented by this handshake fix. The one-file Aippy update is updates/multiplayer-protocol-2.json.
+
+Verification of this fix: 22 automated tests, the Vite production build, changed-file lint and a live protocol-2 check passed. The live check covered two players, movement, shared paint, persistence on a later join and departure. No server infrastructure was changed.

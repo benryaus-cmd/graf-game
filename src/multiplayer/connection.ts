@@ -40,8 +40,8 @@ export class MultiplayerConnection {
       try { message = JSON.parse(event.data); } catch { return; }
       if (!message || typeof message.type !== 'string') return;
       if (message.type === 'hello') {
-        if (message.protocol !== 1 || typeof message.playerId !== 'string') {
-          this.fail('Unsupported multiplayer protocol.'); return;
+        if ((message.protocol !== 1 && message.protocol !== 2) || typeof message.playerId !== 'string') {
+          this.fail(`Unsupported multiplayer protocol (${String(message.protocol)}).`); return;
         }
         this.playerId = message.playerId;
         this.sendRaw({ type: 'join', roomId, displayName: displayName.trim().slice(0, 40) || 'PLAYER' });
