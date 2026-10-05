@@ -1,0 +1,29 @@
+{
+  "imageModel": {
+    "index": 0,
+    "name": "Image Model",
+    "description": "Model used to create bot wall art",
+    "group": "image",
+    "type": "enum",
+    "options": ["gpt-image-1-mini"],
+    "value": "gpt-image-1-mini"
+  },
+  "imageSize": {
+    "index": 1,
+    "name": "Image Size",
+    "description": "Dimensions of bot-generated wall art",
+    "group": "image",
+    "type": "enum",
+    "options": ["1024x1024", "1024x1536", "1536x1024"],
+    "value": "1024x1024"
+  },
+  "imageQuality": {
+    "index": 2,
+    "name": "Image Quality",
+    "description": "Quality setting for bot-generated wall art",
+    "group": "image",
+    "type": "enum",
+    "options": ["standard", "high", "low"],
+    "value": "standard"
+  }
+}
