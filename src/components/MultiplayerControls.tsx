@@ -20,7 +20,7 @@ export default function MultiplayerControls({ status, displayName, avatar, profi
           <span>{profileLoading ? 'Loading profile…' : displayName}</span>
           <small role="status" aria-live="polite">
             {solo ? 'SOLO' : joining ? 'CONNECTING…' :
-              status.phase === 'connected' ? 'ONLINE · ' + status.playerCount + (status.playerCount === 1 ? ' PLAYER' : ' PLAYERS') : 'DISCONNECTED'}
+              status.phase === 'connected' ? 'ONLINE · ' + status.playerCount : 'DISCONNECTED'}
           </small>
         </div>
         {solo ? (

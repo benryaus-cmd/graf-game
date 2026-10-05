@@ -2,6 +2,10 @@
   "baseUrl": "https://raw.githubusercontent.com/benryaus-cmd/graf-game/main/",
   "files": [
     {
+      "source": "index.html",
+      "target": "src/games/importedGame/upstream/index.html"
+    },
+    {
       "source": "package.json",
       "target": "src/games/importedGame/upstream/package.json"
     },
@@ -74,6 +78,10 @@
       "target": "src/games/importedGame/upstream/src/components/ProjectFileViewer.tsx"
     },
     {
+      "source": "src/components/RadioControl.tsx",
+      "target": "src/games/importedGame/upstream/src/components/RadioControl.tsx"
+    },
+    {
       "source": "src/components/SettingsModal.tsx",
       "target": "src/games/importedGame/upstream/src/components/SettingsModal.tsx"
     },
@@ -100,6 +108,10 @@
     {
       "source": "src/config/assets.ts",
       "target": "src/games/importedGame/upstream/src/config/assets.ts"
+    },
+    {
+      "source": "src/config/radio.ts",
+      "target": "src/games/importedGame/upstream/src/config/radio.ts"
     },
     {
       "source": "src/config/tweaksConfig.json",
@@ -206,8 +218,20 @@
       "target": "src/games/importedGame/upstream/src/game/generateBotArtwork.ts"
     },
     {
+      "source": "src/game/liveRadio.ts",
+      "target": "src/games/importedGame/upstream/src/game/liveRadio.ts"
+    },
+    {
       "source": "src/game/paintColor.ts",
       "target": "src/games/importedGame/upstream/src/game/paintColor.ts"
+    },
+    {
+      "source": "src/game/paintEyedropper.ts",
+      "target": "src/games/importedGame/upstream/src/game/paintEyedropper.ts"
+    },
+    {
+      "source": "src/game/paintPalettes.ts",
+      "target": "src/games/importedGame/upstream/src/game/paintPalettes.ts"
     },
     {
       "source": "src/game/paintPersistence.ts",

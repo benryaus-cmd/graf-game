@@ -1,4 +1,4 @@
-# Final goal: SIDESTREET — a premium graffiti world
+# Final goal: GraffCiti — a premium graffiti world
 
 Updated: 6 October 2026 (Australia/Sydney).
 

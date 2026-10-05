@@ -19,10 +19,9 @@ interface SkyMenuProps {
 
 const SkyMenu = ({ sky, open, panelColor, onToggle, onClose, onSelect }: SkyMenuProps) => (
   <>
-    <button className="sky-trigger" type="button" aria-expanded={open} onClick={onToggle}>
-      <span className="sky-symbol">{sky === 'night' ? '☾' : '☼'}</span>
-      <span>{SKY_OPTIONS.find((option) => option.id === sky)?.label}</span>
-      <span className="chevron">⌄</span>
+    <button className="sky-trigger" type="button" aria-expanded={open} onClick={onToggle}
+      title={SKY_OPTIONS.find(option => option.id === sky)?.label} aria-label={`Weather: ${SKY_OPTIONS.find(option => option.id === sky)?.label}`}>
+      <span className="sky-symbol">{sky === 'night' ? '☾' : sky === 'rain' ? '☂' : sky === 'sunset' ? '◒' : sky === 'pastel' ? '☁' : '☼'}</span>
     </button>
     {open && (
       <section className="sky-menu" style={{ backgroundColor: panelColor }} aria-label="Choose the sky">

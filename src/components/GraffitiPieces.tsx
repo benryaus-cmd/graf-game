@@ -76,7 +76,7 @@ const GraffitiPieces = ({ pieces, connected, onLike, onResync, onView, role, can
   };
 
   return (
-    <div className="graffiti-pieces" style={{ position: 'absolute', zIndex: 10, top: 150, left: 12, pointerEvents: 'auto', fontFamily: 'inherit' }}>
+    <div className="graffiti-pieces" style={{ pointerEvents: 'auto', fontFamily: 'inherit' }}>
       <button
         type="button" aria-expanded={open} aria-controls="graffiti-pieces-panel"
         onClick={() => setOpen((value) => !value)}
@@ -85,7 +85,7 @@ const GraffitiPieces = ({ pieces, connected, onLike, onResync, onView, role, can
       {open && (
         <section
           id="graffiti-pieces-panel" aria-label="Nearby graffiti pieces"
-          style={{ position: 'absolute', top: 48, left: 0, width: 'min(360px, calc(100vw - 24px))', maxHeight: 'min(70dvh, 520px)', overflowY: 'auto', padding: 12, border: '1px solid rgba(245,241,229,.2)', borderRadius: 5, background: 'rgba(23,24,22,.96)', color: '#f3f1e9', boxShadow: '0 18px 50px rgba(0,0,0,.48)', backdropFilter: 'blur(18px)' }}
+          style={{ position: 'absolute', top: '100%', left: 0, width: 'min(360px, 100%)', maxHeight: 'min(70dvh, 520px)', overflowY: 'auto', padding: 12, border: '1px solid rgba(245,241,229,.2)', borderRadius: 5, background: 'rgba(23,24,22,.96)', color: '#f3f1e9', boxShadow: '0 18px 50px rgba(0,0,0,.48)', backdropFilter: 'blur(18px)' }}
         >
           <header style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
             <div style={{ display: 'grid', flex: 1, gap: 3 }}>

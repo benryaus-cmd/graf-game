@@ -1,7 +1,6 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import assetsData from '@/config/assets';
 import { aippyTweaks } from '@aippy/runtime/tweaks';
-import { useSound } from '@aippy/runtime/audio';
 import GameHud, { type HudMenu } from '@/components/GameHud';
 import WorldScene from '@/components/WorldScene';
 import LookJoystick from '@/components/LookJoystick';
@@ -20,6 +19,8 @@ import { getAvatarAppearance, loadGameProgress, saveGameProgress, type GameProgr
 import tweaksConfig from '@/config/tweaksConfig.json';
 import type { AvatarEmote, CameraMode, MovementInput, SkyMode } from '@/game/worldTypes';
 import type { BrushHead } from '@/game/sprayHeads';
+import { LiveRadioController } from '@/game/liveRadio';
+import { RADIO_STREAM_URL } from '@/config/radio';
 
 const ProjectFileViewer = lazy(() => import('@/components/ProjectFileViewer'));
 
@@ -29,7 +30,7 @@ const COLORS = ['#ff4d43', '#ff65a5', '#45d7df', '#ffd34e', '#b9e84e', '#f7f2dc'
 const CAMERA_LABELS: Record<CameraMode, string> = {
   first: 'FIRST PERSON', third: 'THIRD PERSON', map: 'MAP VIEW',
 };
-const MAX_LAYERS = 8;
+const MAX_LAYERS = 5;
 interface PaintLayerState { name: string; visible: boolean }
 interface EmoteSignal { emote: AvatarEmote; sequence: number }
 type PaintTool = 'paint' | 'eraser' | 'off';
@@ -52,6 +53,8 @@ const App = () => {
   const jumpPower = tweaks.jumpPower.useState();
   const lookSensitivity = tweaks.lookSensitivity.useState();
   const musicVolume = tweaks.musicVolume.useState();
+  const [radioController, setRadioController] = useState<LiveRadioController | null>(null);
+  const initialRadioVolume = useRef(musicVolume);
   const fogDensity = tweaks.fogDensity.useState();
   const showCrosshair = tweaks.showCrosshair.useState();
   const [hasJoined, setHasJoined] = useState(false);
@@ -59,23 +62,23 @@ const App = () => {
   const brushSize = brushSelection?.source === initialBrushSize ? brushSelection.value : Math.max(.1, Math.min(10, initialBrushSize / 3));
   const [opacity, setOpacity] = useState(0.88);
   const [brushHead, setBrushHead] = useState<BrushHead>('soft');
-  const { play, stopAll } = useSound({ ambient: assetsData.AUDIO_AZQA }, { preload: true });
   const { warmAudio, playSpray, playChime } = useSprayAudio();
   const [sky, setSky] = useState<SkyMode>('day');
   const [paintMode, setPaintMode] = useState(false);
   const [portrait, setPortrait] = useState(false);
   const [workspaceView, setWorkspaceView] = useState<PaintWorkspaceView>({ selected: false, active: false, width: 0, height: 0 });
-  const [workspaceRequest, setWorkspaceRequest] = useState<{ action: PaintWorkspaceAction; size?: number; sequence: number } | null>(null);
-  const requestWorkspace = (action: PaintWorkspaceAction, size?: number) => {
+  const [workspaceRequest, setWorkspaceRequest] = useState<{ action: PaintWorkspaceAction; size?: number; height?: number; sequence: number } | null>(null);
+  const requestWorkspace = (action: PaintWorkspaceAction, size?: number, height?: number) => {
     setMovement({ x: 0, y: 0 }); setLookInput({ x: 0, y: 0 });
     if (action === 'enter') { setPaintMode(true); closeMenu(); }
     if (action === 'finish' || action === 'clear') setPaintMode(false);
-    setWorkspaceRequest(previous => ({ action, size, sequence: (previous?.sequence ?? 0) + 1 }));
+    setWorkspaceRequest(previous => ({ action, size, height, sequence: (previous?.sequence ?? 0) + 1 }));
   };
   const [eraseMode, setEraseMode] = useState(false);
   const [color, setColor] = useState(COLORS[0]);
+  const [eyedropperActive, setEyedropperActive] = useState(false);
+  const [eyedropperNotice, setEyedropperNotice] = useState('');
   const [activeMenu, setActiveMenu] = useState<HudMenu>(null);
-  const [musicReady, setMusicReady] = useState(false);
   const [movement, setMovement] = useState<MovementInput>({ x: 0, y: 0 });
   const [lookInput, setLookInput] = useState<MovementInput>({ x: 0, y: 0 });
   const [jumpSignal, setJumpSignal] = useState(0);
@@ -84,24 +87,36 @@ const App = () => {
   const [botsEnabled, setBotsEnabled] = useState(false);
   const [nearbyBotIndex, setNearbyBotIndex] = useState<number | null>(null);
   const poster = usePosterPlacement();
-  const [layers, setLayers] = useState<PaintLayerState[]>([{ name: 'Layer 1', visible: true }]);
-  const [selectedLayer, setSelectedLayer] = useState(0);
+  const [layers, setLayers] = useState<PaintLayerState[]>(Array.from({ length: MAX_LAYERS }, (_, index) => ({ name: `Layer ${index + 1}`, visible: true })));
+  const [selectedLayer, setSelectedLayer] = useState(2);
   const [progress, setProgress] = useState<GameProgress>(loadGameProgress);
   const [emoteSignal, setEmoteSignal] = useState<EmoteSignal | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [devViewerOpen, setDevViewerOpen] = useState(false);
   const audioStartedRef = useRef(false);
   const lastCoinAtRef = useRef(0);
-  useEffect(() => () => stopAll(), [stopAll]);
+  const shellRef = useRef<HTMLElement>(null);
   useEffect(() => saveGameProgress(progress), [progress]);
+  useEffect(() => {
+    const radio = new LiveRadioController(RADIO_STREAM_URL, initialRadioVolume.current);
+    setRadioController(radio);
+    radio.prepare();
+    return () => radio.dispose();
+  }, []);
+  useEffect(() => {
+    const shell = shellRef.current;
+    const header = shell?.querySelector<HTMLElement>('.top-hud');
+    if (!shell || !header) return;
+    const update = () => shell.style.setProperty('--hud-height', `${header.offsetTop + header.offsetHeight + 8}px`);
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(header);
+    return () => observer.disconnect();
+  }, [hasJoined, portrait]);
 
   const startAudioOnFirstClick = () => {
     if (audioStartedRef.current) return;
     audioStartedRef.current = true;
-    setMusicReady(true);
-    void play('ambient', { loop: true, volume: musicVolume }).catch(error => {
-      console.warn('[Aippy] Ambient music could not be played.', error);
-    });
     void warmAudio();
   };
   const toggleMenu = (menu: Exclude<HudMenu, null>) => setActiveMenu(current => current === menu ? null : menu);
@@ -109,6 +124,7 @@ const App = () => {
   const updateBrushSize = (value: number) => setBrushSelection({ value: Math.max(.1, Math.min(10, value / 3)), source: initialBrushSize });
   const selectColor = (nextColor: string) => { setColor(nextColor); playChime(); };
   const selectPaintTool = (tool: PaintTool) => {
+    setEyedropperActive(false);
     if (tool !== 'off' && workspaceView.editableUntil) requestWorkspace('enter');
     if (tool === 'off' && workspaceView.active) requestWorkspace('exit');
     setPaintMode(tool !== 'off');
@@ -169,6 +185,10 @@ const App = () => {
     setEmoteSignal(current => ({ emote, sequence: (current?.sequence ?? 0) + 1 }));
   };
   const appearance = useMemo(() => getAvatarAppearance(progress), [progress]);
+  const pickColour = (next: string | null) => {
+    if (!next) { setEyedropperNotice('No readable paint here. Tap a painted spot.'); return; }
+    selectColor(next); setEyedropperActive(false); setEyedropperNotice('');
+  };
   const cosmetics = useMemo(() => ({ outfit: progress.outfit, top: progress.top, bottom: progress.bottom, accessory: progress.accessory }), [progress.outfit, progress.top, progress.bottom, progress.accessory]);
   const layerVisibility = useMemo(() => layers.map(layer => layer.visible), [layers]);
   const jumpLabel = progress.outfit === 'jax' ? 'FLY' : progress.outfit === 'ringmaster' ? 'LEVITATE'
@@ -176,17 +196,18 @@ const App = () => {
 
   return (
     <main
+      ref={shellRef}
       className={`game-shell ${portrait ? 'game-portrait' : ''} ${workspaceView.active ? 'canvas-mode' : ''}`}
       style={{ '--accent': accentColor, '--panel': panelColor } as CSSProperties}
       onClickCapture={startAudioOnFirstClick}
     >
       {!hasJoined ? (
-        <section className="cover-screen" aria-label="Welcome to Sidestreet">
+        <section className="cover-screen" aria-label="Welcome to GraffCiti">
           <img className="cover-art" src={COVER_IMAGE_URL} alt="A sunlit blocky landscape with a winding stream and blossoms" />
           <div className="cover-shade" />
           <div className="cover-content">
             <span className="cover-kicker">AN OPEN CREATIVE WORLD</span>
-            <h1>SIDESTREET</h1>
+            <h1>GraffCiti</h1>
             <p>Find your corner. Make it yours.</p>
             <button type="button" className="cover-enter" onClick={() => setHasJoined(true)}>
               ENTER THE WORLD <span aria-hidden="true">↗</span>
@@ -197,6 +218,7 @@ const App = () => {
       ) : (
         <>
           <WorldScene
+            eyedropperActive={eyedropperActive} onColorPick={pickColour}
             brushHead={brushHead}
             workspaceRequest={workspaceRequest} onWorkspaceChange={setWorkspaceView}
             multiplayerRequest={multiplayerRequest} displayName={displayName} username={aippyUser.username} nickName={aippyUser.nickName} onMultiplayerStatus={setMultiplayerStatus}
@@ -214,10 +236,11 @@ const App = () => {
             onSpray={playSpray} onPaint={earnPaintCoin}
           />
           <GameHud
+            eyedropperActive={eyedropperActive} onEyedropper={() => { setMovement({ x: 0, y: 0 }); setLookInput({ x: 0, y: 0 }); setEyedropperNotice('Tap existing paint to pick its colour.'); setEyedropperActive(true); }}
             brushHead={brushHead} onBrushHeadChange={setBrushHead}
-            hideTouchControls={workspaceView.active || activeMenu === 'paint'}
+            hideTouchControls={workspaceView.active || activeMenu === 'paint' || eyedropperActive}
             panelColor={panelColor} accentColor={accentColor} sky={sky} activeMenu={activeMenu}
-            musicReady={musicReady} paintMode={paintMode} eraseMode={eraseMode}
+            musicReady={false} radioController={radioController} radioUrl={radioController ? RADIO_STREAM_URL : undefined} radioVolume={musicVolume} paintMode={paintMode} eraseMode={eraseMode}
             showCrosshair={showCrosshair} color={color} brushSize={brushSize * 3} opacity={opacity}
             layers={layers} selectedLayer={selectedLayer} cameraLabel={CAMERA_LABELS[viewMode]}
             viewMode={viewMode} mapZoom={mapZoom} progress={progress}
@@ -234,20 +257,23 @@ const App = () => {
             onPurchase={purchaseItem} onEquip={equipItem} onEmote={playEmote}
             onMovement={setMovement} onJump={() => setJumpSignal(signal => signal + 1)}
             onBotsToggle={() => setBotsEnabled(enabled => !enabled)}
+            topControls={<>
+              <button type="button" className="portrait-toggle" aria-pressed={portrait} title={portrait ? 'Switch to landscape' : 'Switch to portrait'}
+                aria-label={portrait ? 'Switch to landscape' : 'Switch to portrait'}
+                onClick={() => { setMovement({ x: 0, y: 0 }); setLookInput({ x: 0, y: 0 }); setPortrait(value => !value); }}>↻ <span>{portrait ? 'LANDSCAPE' : 'PORTRAIT'}</span></button>
+              <button type="button" className="settings-trigger" aria-label="Settings" onClick={() => setSettingsOpen(true)}>⚙</button>
+              <div className="top-network-controls" hidden={activeMenu === 'paint'}>
+                {multiplayerStatus.phase !== 'solo' && <GraffitiPieces pieces={multiplayerView.pieces ?? []} connected={multiplayerStatus.phase === 'connected'} role={multiplayerStatus.role} canDeletePieces={multiplayerStatus.canDeletePieces} onDelete={pieceId => { if (multiplayerStatus.phase !== 'connected' || !multiplayerStatus.canDeletePieces) return false; requestMultiplayer('delete-piece', pieceId); return true; }} onLike={pieceId => { if (multiplayerStatus.phase !== 'connected') return false; requestMultiplayer('like', pieceId); return true; }} onResync={() => requestMultiplayer('resync')} onView={pieceId => requestMultiplayer('inspect', pieceId)} />}
+                <MultiplayerControls status={multiplayerStatus} displayName={displayName} avatar={aippyUser.avatar} profileLoading={aippyUser.isLoading}
+                  onJoin={() => requestMultiplayer('join')} onLeave={() => requestMultiplayer('leave')}
+                  messages={multiplayerView.chat} onChat={text => requestMultiplayer('chat', text)} onResync={() => requestMultiplayer('resync')} />
+              </div>
+            </>}
           />
-          <button type="button" className="portrait-toggle" aria-pressed={portrait}
-            onClick={() => { setMovement({ x: 0, y: 0 }); setLookInput({ x: 0, y: 0 }); setPortrait(value => !value); }}>
-            {portrait ? '↻ LANDSCAPE' : '↻ PORTRAIT'}
-          </button>
           {activeMenu !== 'paint' && <LookJoystick onLook={setLookInput} canvasMode={workspaceView.active} />}
           {activeMenu !== 'paint' && <PaintWorkspaceHud view={workspaceView} painting={paintMode} onAction={requestWorkspace} />}
+          {eyedropperActive && <aside className="eyedropper-hint" role="status"><span>{eyedropperNotice}</span><button type="button" onClick={() => setEyedropperActive(false)}>CANCEL</button></aside>}
           <div hidden={activeMenu === 'paint'}>
-          {multiplayerStatus.phase !== 'solo' && <GraffitiPieces pieces={multiplayerView.pieces ?? []} connected={multiplayerStatus.phase === 'connected'} role={multiplayerStatus.role} canDeletePieces={multiplayerStatus.canDeletePieces} onDelete={pieceId => { if (multiplayerStatus.phase !== 'connected' || !multiplayerStatus.canDeletePieces) return false; requestMultiplayer('delete-piece', pieceId); return true; }} onLike={pieceId => { if (multiplayerStatus.phase !== 'connected') return false; requestMultiplayer('like', pieceId); return true; }} onResync={() => requestMultiplayer('resync')} onView={pieceId => requestMultiplayer('inspect', pieceId)} />}
-          <MultiplayerControls
-            status={multiplayerStatus} displayName={displayName} avatar={aippyUser.avatar} profileLoading={aippyUser.isLoading}
-            onJoin={() => requestMultiplayer('join')} onLeave={() => requestMultiplayer('leave')}
-            messages={multiplayerView.chat} onChat={text => requestMultiplayer('chat', text)} onResync={() => requestMultiplayer('resync')}
-          />
           <PlayerInteractionCard selected={multiplayerView.selectedPlayer} ownRole={multiplayerStatus.role} connected={multiplayerStatus.phase === 'connected'} notice={multiplayerStatus.notice} roleChange={multiplayerView.roleChange}
             onSetRole={(username, role) => {
               const ownRole = multiplayerStatus.role;
@@ -255,14 +281,6 @@ const App = () => {
               requestMultiplayer('set-role', username, role); return true;
             }} />
           </div>
-          <button
-            type="button"
-            className="absolute right-3 top-16 z-40 flex h-9 w-9 items-center justify-center rounded-full bg-black/30 text-sm text-white/40"
-            aria-label="Settings"
-            onClick={() => setSettingsOpen(true)}
-          >
-            ⚙
-          </button>
           {settingsOpen && !devViewerOpen && (
             <SettingsModal
               onClose={() => setSettingsOpen(false)}

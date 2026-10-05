@@ -11,6 +11,7 @@ try {
   await build({
     stdin: { contents: (process.argv.includes('--live') ? ['multiplayer-live.ts'] : (await readdir('tests')).filter(name => name.endsWith('.test.ts'))).map(name => `import './tests/${name}';`).join('\n'), resolveDir: process.cwd(), loader: 'ts' }, outfile, bundle: true,
     platform: 'node', format: 'esm', jsx: 'automatic', alias: { '@': path.resolve('src') },
+    banner: { js: 'import { createRequire as testCreateRequire } from "node:module"; const require = testCreateRequire(import.meta.url);' },
     define: { 'import.meta.env': JSON.stringify({ VITE_MULTIPLAYER_URL: process.env.VITE_MULTIPLAYER_URL }) },
   });
   const result = spawnSync(process.execPath, ['--test', outfile], { stdio: 'inherit' });

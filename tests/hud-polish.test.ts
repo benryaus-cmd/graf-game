@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { isValidElement, type ReactNode } from 'react';
+import { createElement, isValidElement, type ReactNode } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 
 test('normal HUD prioritises paint controls rather than branding and bot spawning', async () => {
   const oldWindow = globalThis.window;
@@ -30,4 +31,20 @@ test('normal HUD prioritises paint controls rather than branding and bot spawnin
   assert.ok(html.includes('PAINT'));
   assert.ok(html.includes('TOOLS'));
   assert.ok(!collect(GameHud({ ...props, hideTouchControls: true } as Parameters<typeof GameHud>[0])).includes('MovementJoystick'));
+});
+
+test('paint tools show every default colour and five layers without MORE; closed tools render no bottom station', async () => {
+  const { default: PaintDock } = await import('../src/components/PaintDock');
+  const props = {
+    open: true, color: '#ff0000', brushSize: 3, opacity: 1, selectedLayer: 2,
+    layers: Array.from({ length: 5 }, (_, index) => ({ name: `Layer ${index + 1}`, visible: true })),
+    onEyedropper: () => {},
+  } as unknown as Parameters<typeof PaintDock>[0];
+  const html = renderToStaticMarkup(createElement(PaintDock, props));
+  assert.equal((html.match(/aria-label="Select paint colour/g) ?? []).length, 16);
+  assert.equal((html.match(/class="layer-select"/g) ?? []).length, 5);
+  assert.ok(html.includes('LAYER 3'));
+  assert.ok(html.includes('PICK COLOUR'));
+  assert.ok(html.includes('Load saved palette'));
+  assert.equal(renderToStaticMarkup(createElement(PaintDock, { ...props, open: false })), '');
 });

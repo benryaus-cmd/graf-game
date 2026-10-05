@@ -40,6 +40,7 @@ export interface PaintWorkspaceBounds {
 
 export interface PaintWorkspaceSelection {
   hasPaint?: boolean;
+  sizeLinked: boolean;
   wall: PaintWall;
   face: number;
   bounds: PaintWorkspaceBounds;
@@ -148,6 +149,7 @@ export interface WorldEngine {
   onPaintWorkspaceChange?: (workspace: PaintWorkspaceState | undefined) => void;
   onPaintSample?: (wall: PaintWall, hit: THREE.Intersection, settings: LiveSettings, continues: boolean) => void;
   onPlayerPick?: (event: PointerEvent) => boolean;
+  onColorPick?: (colour: string | null) => void;
   onPaintEnd?: () => void;
   onMultiplayerFrame?: (delta: number, settings: LiveSettings) => void;
   multiplayerActive?: boolean;
@@ -169,6 +171,7 @@ export interface LookInput {
 
 export interface LiveSettings {
   brushHead?: BrushHead;
+  eyedropperActive?: boolean;
   paintMode: boolean;
   eraseMode: boolean;
   color: string;

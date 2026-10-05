@@ -1194,3 +1194,92 @@ button:active { transform: scale(0.97); }
 @media (orientation: landscape) {
   .game-portrait .graffiti-pieces section { width: min(360px, calc(100dvh - 24px)) !important; }
 }
+
+/* One wrapping toolbar; popovers use its measured height instead of overlapping it. */
+.game-shell .game-hud { z-index: 6; }
+.game-shell .top-hud { top: max(8px, env(safe-area-inset-top)); left: 8px; right: 8px; }
+.game-shell .top-hud .top-actions { display: flex; flex-wrap: wrap; justify-content: flex-start; gap: 5px; width: 100%; min-width: 0; align-items: center; }
+.game-shell .top-hud .game-actions { display: contents; }
+.game-shell .top-hud .paint-quick-controls { gap: 4px; }
+.game-shell .top-hud .paint-mode-switch,
+.game-shell .top-hud .paint-color-trigger,
+.game-shell .top-hud .view-switch,
+.game-shell .top-hud .avatar-open,
+.game-shell .top-hud .portrait-toggle,
+.game-shell .top-hud .settings-trigger,
+.game-shell .top-hud .sky-trigger {
+  position: static; min-width: 0; min-height: 36px; padding: 0 7px; border: 1px solid #ffffff40; border-radius: 5px;
+  background: #171816b8; color: #f3f1e9; font-size: 8px; letter-spacing: .04em; pointer-events: auto; white-space: nowrap;
+}
+.game-shell .top-hud .settings-trigger { width: 36px; padding: 0; font-size: 18px; }
+.game-shell .top-hud .sound-status { display: flex; order: -2; height: 36px; padding: 0 7px; font-size: 17px; }
+.game-shell .top-hud .sky-trigger { order: -1; width: 36px; justify-content: center; }
+.game-shell .top-hud .sky-symbol { font-size: 22px; }
+.game-shell .top-hud .avatar-open { gap: 4px; }
+.game-shell .top-hud .portrait-toggle { display: flex; align-items: center; gap: 4px; }
+.game-shell .top-hud .top-network-controls { display: contents; }
+.game-shell .top-hud .top-network-controls[hidden] { display: none; }
+.game-shell .top-hud .multiplayer-controls { position: static; padding: 3px 5px; max-width: 100%; min-width: 0; border-radius: 6px; }
+.game-shell .top-hud .multiplayer-main { flex-wrap: wrap; gap: 4px; }
+.game-shell .top-hud .multiplayer-profile-image,
+.game-shell .top-hud .multiplayer-profile-fallback { display: grid; width: 24px; height: 24px; flex-basis: 24px; }
+.game-shell .top-hud .multiplayer-identity { max-width: 84px; gap: 2px; }
+.game-shell .top-hud .multiplayer-identity span { display: block; font-size: 9px; }
+.game-shell .top-hud .multiplayer-identity small { font-size: 7px; }
+.game-shell .top-hud .multiplayer-controls button { min-height: 30px; font-size: 8px; padding: 3px 6px; }
+.game-shell .top-hud .multiplayer-chat,
+.game-shell .top-hud .multiplayer-notice { position: absolute; z-index: 10; top: 100%; right: 0; width: min(360px, 100%); max-width: 100%; margin: 6px 0 0; padding: 10px; background: #17231cf5; border-radius: 6px; }
+.game-shell .top-hud .multiplayer-notice:has(+ .multiplayer-chat) { display: none; }
+.game-shell .top-hud .graffiti-pieces { position: static; min-width: 0; }
+.game-shell .top-hud .graffiti-pieces > button { min-height: 36px !important; padding: 0 9px !important; }
+.game-shell .top-hud .graffiti-pieces section { z-index: 10; }
+.game-shell .paint-workspace-controls,
+.game-shell:has(.paint-dock-expanded) .paint-workspace-controls { top: var(--hud-height, 105px); left: 8px; right: 8px; max-width: none; width: fit-content; flex-wrap: wrap; }
+.paint-workspace-size-controls { display: flex; width: 100%; align-items: center; gap: 8px; }
+.paint-workspace-size-controls .workspace-size { flex: 1; min-width: 0; }
+.paint-workspace-size-controls > button { flex: 0 0 auto; }
+.paint-workspace-zoom-controls { position: absolute; z-index: 7; left: max(12px, env(safe-area-inset-left)); bottom: max(16px, env(safe-area-inset-bottom)); display: flex; align-items: center; gap: 5px; padding: 5px; border-radius: 7px; background: #141a17d9; color: #f5f3eb; font-size: 10px; pointer-events: auto; }
+.paint-workspace-zoom-controls button { min-height: 40px; min-width: 40px; padding: 0 8px; background: #354b3e; border: 1px solid #718f7e; border-radius: 5px; font-size: 15px; }
+.paint-workspace-zoom-controls button:last-child { font-size: 9px; }
+.paint-workspace-zoom-controls span { min-width: 40px; text-align: center; }
+.game-shell .joystick:not(.look-joystick) { bottom: max(22px, env(safe-area-inset-bottom)); }
+.game-shell .look-joystick { bottom: max(22px, env(safe-area-inset-bottom)); }
+.game-shell .jump-button { bottom: 144px; }
+.eyedropper-hint { position: absolute; z-index: 8; bottom: max(104px, env(safe-area-inset-bottom)); left: 12px; right: 12px; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px; background: #141a17e8; color: white; border-radius: 6px; font-size: 11px; }
+.eyedropper-hint button { min-height: 36px; padding: 0 10px; border: 1px solid #718f7e; border-radius: 5px; background: #354b3e; font-size: 9px; }
+
+/* The wall remains visible outside the drawing panel. */
+.game-menu-paint .hud-menu-scrim { background: transparent; backdrop-filter: none; }
+.game-shell.game-portrait .game-menu-paint .paint-dock-expanded,
+.game-shell .game-menu-paint .paint-dock-expanded { width: min(640px, calc(100% - 16px)); max-height: calc(100% - 20px); background: var(--panel); border-radius: 7px; overflow-y: auto; overscroll-behavior: contain; }
+.game-shell .paint-dock-expanded .dock-topline { position: static; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.game-shell .paint-dock-expanded .dock-tools { flex-wrap: wrap; gap: 5px; min-width: 0; }
+.game-shell .paint-dock-expanded .color-readout { margin-right: auto; }
+.game-shell .paint-dock-expanded .dock-tool-buttons { justify-content: flex-start; }
+.game-shell .paint-dock-expanded .swatches { overflow: visible; }
+.game-shell .paint-dock-expanded .swatch { border-radius: 5px; }
+.game-shell .paint-dock-expanded .layer-list { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 5px; overflow: visible; }
+.game-shell .paint-dock-expanded .layer-chip { min-width: 0; display: flex; }
+.game-shell .paint-dock-expanded .layer-select { min-width: 0; flex: 1; padding: 0 3px; font-size: 8px; }
+.game-shell .paint-dock-expanded .layer-visibility { min-width: 22px; width: 22px; padding: 0; }
+.game-shell .paint-dock-expanded .paint-color-details { flex-wrap: wrap; }
+.game-shell .paint-dock-expanded .paint-color-details div { flex-wrap: wrap; }
+.game-shell .paint-dock-expanded input:not([type='range']):not([type='color']),
+.game-shell .paint-dock-expanded select { font-size: 16px !important; }
+@media (max-width: 370px) {
+  .game-shell .top-hud .paint-color-trigger span { display: inline; }
+  .game-shell .top-hud .paint-color-trigger { width: auto; }
+  .game-shell .top-hud .portrait-toggle span { display: none; }
+}
+
+.radio-control { position: relative; display: flex; align-items: center; gap: 2px; order: -2; pointer-events: auto; }
+.radio-button, .radio-volume-button { display: flex; align-items: center; justify-content: center; gap: 5px; min-height: 36px; padding: 0 7px; border: 1px solid #ffffff40; border-radius: 5px; background: #171816b8; color: #f3f1e9; font-size: 8px; font-weight: 800; }
+.radio-button[aria-pressed='true'] { color: #9ee5ba; border-color: #7ee1aa; }
+.radio-status-dot { width: 6px; height: 6px; border-radius: 50%; background: #a8ada6; }
+.radio-status-dot.is-playing { background: #7ee1aa; }
+.radio-status-dot.is-buffering { background: #ffd166; animation: pulse 1s infinite; }
+.radio-volume-popover { position: absolute; z-index: 30; top: calc(100% + 5px); left: 0; width: 150px; padding: 10px; border: 1px solid #718f7e; border-radius: 6px; background: #17231cf5; color: white; }
+.radio-volume-popover label { display: grid; gap: 6px; font-size: 10px; }
+.radio-volume-popover input { width: 100%; accent-color: var(--accent); touch-action: pan-x; }
+.radio-sr-status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.cover-content h1 { font-size: clamp(36px, 12vw, 82px); letter-spacing: -.03em; text-transform: none; }

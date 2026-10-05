@@ -10,6 +10,8 @@ import {
   selectPaintWorkspaceFace,
   updatePaintWorkspaceCamera,
   setPaintWorkspaceSize,
+  setPaintWorkspaceZoom,
+  setPaintWorkspaceLinked,
 } from '../src/game/paintWorkspace';
 import type { PaintWall, PaintWorkspaceSelection, WorldEngine } from '../src/game/worldTypes';
 
@@ -29,6 +31,46 @@ test('painting area can grow to eight metres before drawing and then locks its b
   (state.selection as PaintWorkspaceSelection & { hasPaint: boolean }).hasPaint = true;
   setPaintWorkspaceSize(world, 1);
   assert.ok(Math.abs(state.selection!.width - 8) < 1e-8, 'painting bounds must remain stable once a piece has started');
+});
+
+test('workspace zoom changes orthographic span and clamps from .5x through 8x', () => {
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(20, 20, 0.1));
+  const paintWall = { ...wall, mesh, uvScales: Array(6).fill({ u: 1, v: 1 }), faceDimensions: Array(6).fill({ width: 20, height: 20 }) } as PaintWall;
+  const world = { scene: new THREE.Scene(), renderer: { domElement: { clientWidth: 800, clientHeight: 600 } } } as unknown as WorldEngine;
+  world.scene.add(mesh);
+  const state = selectPaintWorkspaceFace(world, paintWall, 4, { minU: .45, minV: .45, maxU: .55, maxV: .55 });
+  enterPaintWorkspace(world);
+  const before = state.camera.projectionMatrix.elements[0];
+  setPaintWorkspaceZoom(world, 2);
+  assert.equal(state.camera.zoom, 2);
+  assert.ok(Math.abs(state.camera.projectionMatrix.elements[0] - before * 2) < 1e-8);
+  setPaintWorkspaceZoom(world, 99);
+  assert.equal(state.camera.zoom, 8);
+  setPaintWorkspaceZoom(world, .1);
+  assert.equal(state.camera.zoom, .5);
+});
+
+test('box dimensions link as a square by default, unlock for independent width and height, and lock after paint', () => {
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(20, 20, 0.1));
+  const paintWall = { ...wall, mesh, uvScales: Array(6).fill({ u: 1, v: 1 }), faceDimensions: Array(6).fill({ width: 20, height: 20 }) } as PaintWall;
+  const world = { scene: new THREE.Scene(), renderer: { domElement: { clientWidth: 800, clientHeight: 600 } } } as unknown as WorldEngine;
+  world.scene.add(mesh);
+  const state = selectPaintWorkspaceFace(world, paintWall, 4, { minU: .45, minV: .45, maxU: .55, maxV: .55 });
+  assert.equal(state.selection!.sizeLinked, true);
+  setPaintWorkspaceSize(world, 6);
+  assert.equal(state.selection!.width, 6);
+  assert.equal(state.selection!.height, 6);
+  setPaintWorkspaceLinked(world, false);
+  setPaintWorkspaceSize(world, 7, 3);
+  assert.ok(Math.abs(state.selection!.width - 7) < 1e-8);
+  assert.ok(Math.abs(state.selection!.height - 3) < 1e-8);
+  setPaintWorkspaceSize(world, 99, 0.1);
+  assert.ok(Math.abs(state.selection!.width - 8) < 1e-8);
+  assert.ok(Math.abs(state.selection!.height - .5) < 1e-8);
+  state.selection!.hasPaint = true;
+  setPaintWorkspaceSize(world, 2, 2);
+  assert.ok(Math.abs(state.selection!.width - 8) < 1e-8);
+  assert.ok(Math.abs(state.selection!.height - .5) < 1e-8);
 });
 
 test('paint workspace selection stays within a two metre rectangle on large faces', () => {

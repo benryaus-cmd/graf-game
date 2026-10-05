@@ -13,7 +13,7 @@ import type { PosterPlacementRequest } from '@/game/usePosterPlacement';
 import { applyAvatarAppearance, triggerAvatarEmote } from '@/game/playerAvatarAppearance';
 import type { AvatarAppearance } from '@/game/progression';
 import type { AvatarEmote, CameraMode, LiveSettings, MovementInput, SkyMode, WorldEngine } from '@/game/worldTypes';
-import { enterPaintWorkspace, exitPaintWorkspace, clearPaintWorkspace, setPaintWorkspaceSize } from '@/game/paintWorkspace';
+import { enterPaintWorkspace, exitPaintWorkspace, clearPaintWorkspace, setPaintWorkspaceSize, setPaintWorkspaceZoom, setPaintWorkspaceLinked } from '@/game/paintWorkspace';
 import type { PaintWorkspaceView, PaintWorkspaceAction } from '@/components/PaintWorkspaceHud';
 import { WorldMultiplayerSession } from '@/multiplayer/worldSession';
 import type { MultiplayerStatus, MultiplayerView, PlayerCosmetics } from '@/multiplayer/protocol';
@@ -23,8 +23,10 @@ import { PieceEditGrace } from '@/game/pieceEditGrace';
 
 interface WorldSceneProps {
   brushHead: BrushHead;
-  workspaceRequest: { action: PaintWorkspaceAction; size?: number; sequence: number } | null;
+  workspaceRequest: { action: PaintWorkspaceAction; size?: number; height?: number; sequence: number } | null;
   onWorkspaceChange: (view: PaintWorkspaceView) => void;
+  eyedropperActive: boolean;
+  onColorPick: (colour: string | null) => void;
   multiplayerRequest: { action: 'join' | 'leave' | 'chat' | 'resync' | 'like' | 'inspect' | 'delete-piece' | 'set-role'; text?: string; role?: ServerRole; sequence: number } | null;
   displayName: string; username: string; nickName: string; onMultiplayerStatus: (status: MultiplayerStatus) => void;
   cosmetics: PlayerCosmetics; onMultiplayerView: (view: MultiplayerView) => void;
@@ -42,6 +44,8 @@ interface WorldSceneProps {
 const WorldScene = (props: WorldSceneProps) => {
   const workspaceCallbackRef = useRef(props.onWorkspaceChange);
   workspaceCallbackRef.current = props.onWorkspaceChange;
+  const colorPickCallbackRef = useRef(props.onColorPick);
+  colorPickCallbackRef.current = props.onColorPick;
   const mountRef = useRef<HTMLDivElement>(null);
   const worldRef = useRef<WorldEngine | null>(null);
   const multiplayerRef = useRef<WorldMultiplayerSession | null>(null);
@@ -57,6 +61,7 @@ const WorldScene = (props: WorldSceneProps) => {
   const posterPlacedRef = useRef(props.onPosterPlaced);
   const liveRef = useRef<LiveSettings>({
     brushHead: props.brushHead,
+    eyedropperActive: props.eyedropperActive,
     paintMode: props.paintMode, eraseMode: props.eraseMode, color: props.color,
     opacity: props.opacity, movement: props.movement, lookInput: props.lookInput, brushSize: props.brushSize,
     moveSpeed: props.moveSpeed, jumpPower: props.jumpPower,
@@ -69,6 +74,7 @@ const WorldScene = (props: WorldSceneProps) => {
     multiplayerViewRef.current = props.onMultiplayerView;
     liveRef.current = {
       brushHead: props.brushHead,
+      eyedropperActive: props.eyedropperActive,
       paintMode: props.paintMode, eraseMode: props.eraseMode, color: props.color,
       opacity: props.opacity, movement: props.movement, lookInput: props.lookInput, brushSize: props.brushSize,
       moveSpeed: props.moveSpeed, jumpPower: props.jumpPower,
@@ -93,7 +99,8 @@ const WorldScene = (props: WorldSceneProps) => {
     if (!container) return;
     const world = createWorld(container, liveRef.current.fogDensity);
     worldRef.current = world;
-    world.onPaintWorkspaceChange = workspace => workspaceCallbackRef.current({ selected: !!workspace?.selection, active: !!workspace?.active, width: workspace?.selection?.width ?? 0, height: workspace?.selection?.height ?? 0, hasPaint: !!workspace?.selection?.hasPaint, editableUntil: workspace?.editableUntil });
+    world.onPaintWorkspaceChange = workspace => workspaceCallbackRef.current({ selected: !!workspace?.selection, active: !!workspace?.active, width: workspace?.selection?.width ?? 0, height: workspace?.selection?.height ?? 0, zoom: workspace?.camera.zoom ?? 1, sizeLinked: workspace?.selection?.sizeLinked ?? true, hasPaint: !!workspace?.selection?.hasPaint, editableUntil: workspace?.editableUntil });
+    world.onColorPick = colour => colorPickCallbackRef.current(colour);
     const multiplayer = new WorldMultiplayerSession(world, status => multiplayerStatusRef.current(status), view => multiplayerViewRef.current(view));
     multiplayerRef.current = multiplayer;
     world.setPaintVisibility(liveRef.current.layerVisibility);
@@ -169,7 +176,10 @@ const WorldScene = (props: WorldSceneProps) => {
       if (world.paintWorkspace?.editableUntil) { multiplayerRef.current?.completePiece(); clearPaintWorkspace(world); }
       else exitPaintWorkspace(world);
     }
-    else if (request.action === 'resize') setPaintWorkspaceSize(world, request.size ?? 2);
+    else if (request.action === 'resize') setPaintWorkspaceSize(world, request.size ?? 2, request.height);
+    else if (request.action === 'zoom') setPaintWorkspaceZoom(world, request.size ?? 1);
+    else if (request.action === 'fit') { world.paintWorkspace?.pan?.set(0, 0); setPaintWorkspaceZoom(world, 1); }
+    else if (request.action === 'link') setPaintWorkspaceLinked(world, (request.size ?? 0) > 0);
     else if (request.action === 'finish' && world.paintWorkspace?.selection?.hasPaint) {
       exitPaintWorkspace(world);
       const state = world.paintWorkspace;

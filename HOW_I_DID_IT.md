@@ -101,3 +101,10 @@ Protocol v2 retains Aippy username and nickname separately. Painting sessions cr
 ## Canvas and server-admin follow-up
 
 Added pre-stroke box resizing, finer size controls, six deterministic wall heads, stationary drips, edge overspray and 60-second editing grace. Canvas mode uses a bottom pan stick and hides movement; the selector hides competing overlays. World look speed is doubled and avatar facing corrected without changing network yaw. Server permissions gate piece deletion and contextual role changes; acknowledgement and removal broadcasts remain authoritative. Tests cover local/replayed drip geometry across texture resolutions. Credits, protected reservations and comments await the existing server contracts. Phone performance and live two-client play are not established by unit tests or the build.
+
+
+## GraffCiti drawing workspace and live radio
+
+Renamed player-facing branding to GraffCiti while retaining existing save keys. The toolbar wraps within the game width, and its measured height positions canvas controls below it. Removed the collapsed Paint Station. Paint tools retain a contained opaque panel with a transparent surrounding dismiss area, wrapped colour swatches and five always-visible layer controls; drawing starts on layer 3. Added linked-square or independent pre-stroke width/height and bottom-left 0.5x–8x canvas zoom with recentering Fit. Eyedropper reads existing visible ink layer pixels on a tap without creating textures or painting. Browser-local named palettes remain game settings, not identity.
+
+Live Chillhop radio uses one App-owned HTMLAudioElement controller, metadata preparation on the home screen, explicit button playback, pause/reuse, volume control and error recovery. It does not pass through Aippy decoded audio; spray sounds remain independent. Test coverage includes palette storage failure, layer UI availability, sampling/compositing, zoom/dimensions, radio preparation/reuse/error/cleanup. Headless browser verification was unavailable because no browser executable is installed; no device FPS or live stream playback claim is made.

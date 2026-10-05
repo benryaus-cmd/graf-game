@@ -62,11 +62,11 @@ export function centeredPaintWorkspaceBounds(wall: PaintWall, face: number, uv: 
   return paintWorkspaceBoundsAtSize(wall, face, uv, PAINT_WORKSPACE_MAX_METRES);
 }
 
-function paintWorkspaceBoundsAtSize(wall: PaintWall, face: number, uv: THREE.Vector2, size: number): PaintWorkspaceBounds {
+function paintWorkspaceBoundsAtSize(wall: PaintWall, face: number, uv: THREE.Vector2, width: number, height = width): PaintWorkspaceBounds {
   const scale = wall.uvScales[face] ?? { u: 1, v: 1 };
   const dimensions = wall.faceDimensions[face] ?? { width: 1, height: 1 };
-  const halfU = Math.min(1, size / dimensions.width) / 2;
-  const halfV = Math.min(1, size / dimensions.height) / 2;
+  const halfU = Math.min(1, width / dimensions.width) / 2;
+  const halfV = Math.min(1, height / dimensions.height) / 2;
   const centerU = THREE.MathUtils.clamp(uv.x / scale.u, halfU, 1 - halfU);
   const centerV = THREE.MathUtils.clamp(uv.y / scale.v, halfV, 1 - halfV);
   return { minU: centerU - halfU, minV: centerV - halfV, maxU: centerU + halfU, maxV: centerV + halfV };
@@ -101,16 +101,18 @@ export function exitPaintWorkspace(world: WorldEngine): void {
   world.onPaintWorkspaceChange?.(state);
 }
 
-export function setPaintWorkspaceSize(world: WorldEngine, sizeMetres: number): PaintWorkspaceState | undefined {
+export function setPaintWorkspaceSize(world: WorldEngine, widthMetres: number, heightMetres?: number): PaintWorkspaceState | undefined {
   const state = world.paintWorkspace;
   const old = state?.selection;
-  if (!state || !old || old.hasPaint || !Number.isFinite(sizeMetres)) return state;
-  const size = THREE.MathUtils.clamp(sizeMetres, 0.5, 8);
+  if (!state || !old || old.hasPaint || !Number.isFinite(widthMetres) || (heightMetres !== undefined && !Number.isFinite(heightMetres))) return state;
+  const width = THREE.MathUtils.clamp(widthMetres, 0.5, 8);
+  const linked = heightMetres === undefined;
+  const height = linked ? width : THREE.MathUtils.clamp(heightMetres ?? old.height, 0.5, 8);
   const oldBounds = old.bounds;
   const center = new THREE.Vector2((oldBounds.minU + oldBounds.maxU) / 2, (oldBounds.minV + oldBounds.maxV) / 2);
   const scale = old.wall.uvScales[old.face] ?? { u: 1, v: 1 };
-  const newBounds = paintWorkspaceBoundsAtSize(old.wall, old.face, new THREE.Vector2(center.x * scale.u, center.y * scale.v), size);
-  const selection = createSelection(old.wall, old.face, newBounds);
+  const newBounds = paintWorkspaceBoundsAtSize(old.wall, old.face, new THREE.Vector2(center.x * scale.u, center.y * scale.v), width, height);
+  const selection = createSelection(old.wall, old.face, newBounds, linked);
   if (!selection) return state;
   clearSelection(state);
   state.selection = selection;
@@ -118,6 +120,25 @@ export function setPaintWorkspaceSize(world: WorldEngine, sizeMetres: number): P
     enableSelectedWallLayers(state);
     updatePaintWorkspaceCamera(state, world.renderer.domElement.clientWidth, world.renderer.domElement.clientHeight);
   }
+  world.onPaintWorkspaceChange?.(state);
+  return state;
+}
+
+export function setPaintWorkspaceLinked(world: WorldEngine, linked: boolean): PaintWorkspaceState | undefined {
+  const state = world.paintWorkspace;
+  const old = state?.selection;
+  if (!state || !old) return state;
+  if (linked && !old.hasPaint) return setPaintWorkspaceSize(world, Math.max(old.width, old.height));
+  old.sizeLinked = linked;
+  world.onPaintWorkspaceChange?.(state);
+  return state;
+}
+
+export function setPaintWorkspaceZoom(world: WorldEngine, zoom: number): PaintWorkspaceState | undefined {
+  const state = world.paintWorkspace;
+  if (!state || !Number.isFinite(zoom)) return state;
+  state.camera.zoom = THREE.MathUtils.clamp(zoom, 0.5, 8);
+  state.camera.updateProjectionMatrix();
   world.onPaintWorkspaceChange?.(state);
   return state;
 }
@@ -175,7 +196,7 @@ function normalizeBounds(bounds: PaintWorkspaceBounds): PaintWorkspaceBounds {
   };
 }
 
-function createSelection(wall: PaintWall, face: number, bounds: PaintWorkspaceBounds): PaintWorkspaceSelection | null {
+function createSelection(wall: PaintWall, face: number, bounds: PaintWorkspaceBounds, sizeLinked = true): PaintWorkspaceSelection | null {
   const uvScale = wall.uvScales[face];
   if (!uvScale) return null;
   const u0 = bounds.minU * uvScale.u;
@@ -217,6 +238,7 @@ function createSelection(wall: PaintWall, face: number, bounds: PaintWorkspaceBo
     wall,
     face,
     bounds,
+    sizeLinked,
     center,
     normal: worldNormal,
     up: worldUp.normalize(),

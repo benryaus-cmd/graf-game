@@ -7,11 +7,20 @@ import SkyMenu from '@/components/SkyMenu';
 import type { ShopItem, GameProgress } from '@/game/progression';
 import type { CameraMode, MovementInput, SkyMode, AvatarEmote } from '@/game/worldTypes';
 import type { BrushHead } from '@/game/sprayHeads';
+import type { ReactNode } from 'react';
+import RadioControl from '@/components/RadioControl';
+import type { LiveRadioController } from '@/game/liveRadio';
 
 export type HudMenu = 'paint' | 'bots' | 'avatar' | 'sky' | null;
 type PaintTool = 'paint' | 'eraser' | 'off';
 interface PaintLayerControl { name: string; visible: boolean }
 interface GameHudProps {
+  radioController?: LiveRadioController | null;
+  radioUrl?: string;
+  radioVolume?: number;
+  topControls?: ReactNode;
+  onEyedropper?: () => void;
+  eyedropperActive?: boolean;
   brushHead?: BrushHead;
   onBrushHeadChange?: (head: BrushHead) => void;
   hideTouchControls?: boolean;
@@ -65,28 +74,29 @@ const GameHud = (props: GameHudProps) => (
             aria-expanded={props.activeMenu === 'paint'}
           ><i style={{ backgroundColor: props.color }} /><span>PAINT TOOLS</span></button>
         </div>
-        <span className={`sound-status ${props.musicReady ? 'sound-playing' : ''}`}><i /> LO-FI</span>
+        {props.radioUrl ? <RadioControl controller={props.radioController ?? undefined} url={props.radioUrl} initialVolume={props.radioVolume ?? .6} /> : <span className="sound-status" title="Lo-fi music" aria-label="Lo-fi music">♪</span>}
         <SkyMenu
           sky={props.sky} open={props.activeMenu === 'sky'} panelColor={props.panelColor}
           onToggle={() => props.onMenuToggle('sky')} onClose={props.onMenuClose}
           onSelect={props.onSkySelect}
         />
-      </div>
-    </header>
     <div className="game-actions">
       <button
         type="button" className="view-switch" onClick={props.onViewChange}
         aria-label={`Change view, now ${props.cameraLabel}`}
       >
-        <span>◉</span> {props.cameraLabel}
+        <span aria-hidden="true">◉</span><span className="view-label">{props.viewMode === 'first' ? '1ST' : props.viewMode === 'third' ? '3RD' : 'MAP'}</span>
       </button>
       <button
         type="button" className="avatar-open" onClick={() => props.onMenuToggle('avatar')}
         aria-expanded={props.activeMenu === 'avatar'}
       >
-        <span className="coin-icon">◆</span> {props.progress.coins} <b>AVATAR</b>
+        <span aria-hidden="true">♙</span><b>AVATAR</b>
       </button>
     </div>
+    {props.topControls}
+      </div>
+    </header>
     {props.viewMode === 'map' && (
       <label className="map-zoom-control">
         <span>MAP VIEW SIZE</span>
@@ -116,6 +126,7 @@ const GameHud = (props: GameHudProps) => (
       <span className="jump-arrow">↑</span><span>{props.jumpLabel}</span>
     </button>}
     <PaintDock
+      onEyedropper={props.onEyedropper} eyedropperActive={props.eyedropperActive}
       brushHead={props.brushHead} onBrushHeadChange={props.onBrushHeadChange}
       open={props.activeMenu === 'paint'} onToggle={() => props.onMenuToggle('paint')}
       color={props.color} paintMode={props.paintMode} eraseMode={props.eraseMode}
