@@ -26,11 +26,11 @@ import { PieceEditGrace } from '@/game/pieceEditGrace';
 interface WorldSceneProps {
   adminFreePaint?: boolean;
   brushHead: BrushHead;
-  workspaceRequest: { action: PaintWorkspaceAction; size?: number; height?: number; title?: string; sequence: number } | null;
+  workspaceRequest: { action: PaintWorkspaceAction; size?: number; height?: number; title?: string; protectionEnabled?: boolean; sequence: number } | null;
   onWorkspaceChange: (view: PaintWorkspaceView) => void;
   eyedropperActive: boolean;
   onColorPick: (colour: string | null) => void;
-  multiplayerRequest: { action: 'join' | 'leave' | 'chat' | 'resync' | 'like' | 'inspect' | 'delete-piece' | 'set-role' | 'paint-over' | 'quote-protection' | 'buy-protection' | 'admin-action'; text?: string; role?: ServerRole; colour?: string; adminAction?: AdminAction; options?: AdminActionOptions; sequence: number } | null;
+  multiplayerRequest: { action: 'join' | 'leave' | 'chat' | 'resync' | 'like' | 'inspect' | 'delete-piece' | 'set-role' | 'paint-over' | 'quote-protection' | 'buy-protection' | 'admin-action'; text?: string; role?: ServerRole; colour?: string; protectionEnabled?: boolean; adminAction?: AdminAction; options?: AdminActionOptions; sequence: number } | null;
   displayName: string; username: string; nickName: string; onMultiplayerStatus: (status: MultiplayerStatus) => void;
   cosmetics: PlayerCosmetics; onMultiplayerView: (view: MultiplayerView) => void;
   sky: SkyMode; paintMode: boolean; eraseMode: boolean; color: string;
@@ -171,8 +171,8 @@ const WorldScene = (props: WorldSceneProps) => {
     else if (request.action === 'delete-piece') multiplayerRef.current?.deletePiece(request.text ?? '');
     else if (request.action === 'set-role' && request.role) multiplayerRef.current?.setRole(request.text ?? '', request.role);
     else if (request.action === 'admin-action' && request.adminAction) multiplayerRef.current?.adminAction(request.adminAction, request.text ?? '', request.options ?? {});
-    else if (request.action === 'quote-protection') multiplayerRef.current?.quoteProtection();
-    else if (request.action === 'buy-protection') multiplayerRef.current?.purchaseProtection();
+    else if (request.action === 'quote-protection') multiplayerRef.current?.quoteProtection(request.protectionEnabled ?? false);
+    else if (request.action === 'buy-protection') multiplayerRef.current?.purchaseProtection(request.protectionEnabled ?? false);
     else if (request.action === 'paint-over') multiplayerRef.current?.adminPaintOver(request.text ?? '', request.colour ?? props.color);
     else multiplayerRef.current?.resync();
   }, [props.multiplayerRequest]);
@@ -183,10 +183,15 @@ const WorldScene = (props: WorldSceneProps) => {
     editGrace.current.resume();
     world.onPaintEnd?.();
     if (request.action === 'start') {
+      if (world.multiplayerActive && !world.paintWorkspace?.selection?.purchaseApproved) {
+        multiplayerRef.current?.purchaseProtection(request.protectionEnabled ?? false);
+        return;
+      }
       if (world.paintWorkspace?.selection) { world.paintWorkspace.selection.started = true; world.paintWorkspace.selection.moving = false; }
       world.onPaintWorkspaceChange?.(world.paintWorkspace);
     }
     else if (request.action === 'enter') {
+      if (world.multiplayerActive && !world.paintWorkspace?.selection?.purchaseApproved) return;
       if (world.paintWorkspace?.selection) world.paintWorkspace.selection.started = true;
       if (world.paintWorkspace) world.paintWorkspace.editableUntil = undefined;
       if (world.paintWorkspace?.selection) world.paintWorkspace.selection.preview.visible = true;
@@ -196,11 +201,11 @@ const WorldScene = (props: WorldSceneProps) => {
       if (world.paintWorkspace?.editableUntil) { multiplayerRef.current?.completePiece(request.title); clearPaintWorkspace(world); }
       else exitPaintWorkspace(world);
     }
-    else if (request.action === 'resize') setPaintWorkspaceSize(world, request.size ?? 2, request.height);
+    else if (request.action === 'resize') { if (!world.paintWorkspace?.selection?.purchaseApproved) setPaintWorkspaceSize(world, request.size ?? 2, request.height); }
     else if (request.action === 'zoom') setPaintWorkspaceZoom(world, request.size ?? 1);
     else if (request.action === 'fit') { world.paintWorkspace?.pan?.set(0, 0); setPaintWorkspaceZoom(world, 1); }
     else if (request.action === 'link') setPaintWorkspaceLinked(world, (request.size ?? 0) > 0);
-    else if (request.action === 'move') setPaintWorkspaceMoving(world, (request.size ?? 0) > 0);
+    else if (request.action === 'move') { if (!world.paintWorkspace?.selection?.purchaseApproved) setPaintWorkspaceMoving(world, (request.size ?? 0) > 0); }
     else if (request.action === 'finish' && world.paintWorkspace?.selection?.hasPaint) {
       if (request.title) multiplayerRef.current?.setSelectedPieceTitle(request.title);
       exitPaintWorkspace(world);

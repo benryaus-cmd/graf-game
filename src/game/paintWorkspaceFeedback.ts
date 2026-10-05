@@ -10,7 +10,7 @@ export function workspaceWorldBounds(selection: PaintWorkspaceSelection): PieceB
   const positions = selection.preview.geometry.getAttribute('position');
   selection.wall.mesh.updateWorldMatrix(true, false);
   for (let i = 0; i < positions.count; i++) box.expandByPoint(selection.wall.mesh.localToWorld(new THREE.Vector3().fromBufferAttribute(positions, i)));
-  box.expandByScalar(.02);
+  // Use the exact rectangle: padding would inflate the charged area and exceed the 8 m limit.
   const bounds = { min: box.min.toArray() as [number, number, number], max: box.max.toArray() as [number, number, number] };
   cachedBounds.set(selection, bounds);
   return bounds;
@@ -25,9 +25,10 @@ export function setWorkspaceInvalid(selection: PaintWorkspaceSelection | null | 
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute('position', preview.geometry.getAttribute('position').clone());
     geometry.setIndex([0, 1, 2, 0, 2, 3]);
-    const material = new THREE.MeshBasicMaterial({ color: '#ff2222', transparent: true, opacity: .65, side: THREE.DoubleSide, depthWrite: false });
+    const material = new THREE.MeshBasicMaterial({ color: '#ff2222', transparent: true, opacity: .65, side: THREE.DoubleSide, depthWrite: false, depthTest: false });
     fill = new THREE.Mesh(geometry, material);
     fill.layers.mask = preview.layers.mask;
+    fill.renderOrder = 9_999;
     preview.add(fill);
     preview.userData.invalidFill = fill;
     preview.geometry.addEventListener('dispose', () => { geometry.dispose(); material.dispose(); preview.userData.invalidFill = undefined; });

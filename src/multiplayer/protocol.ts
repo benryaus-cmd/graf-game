@@ -1,7 +1,7 @@
 import type { PieceMetadata } from './pieceSync';
 import type { ServerRole } from './permissions';
 import type { ProtectionQuote } from './protectionSync';
-export interface ProtectionStatus { creditBalance: number | null; quote: ProtectionQuote | null; pendingQuote: boolean; pendingPurchase: boolean; protectedUntil: number | null; notice: string | null }
+export interface ProtectionStatus { creditBalance: number | null; quote: ProtectionQuote | null; quotes: { unprotected: ProtectionQuote | null; protected: ProtectionQuote | null }; purchased: boolean; protectionEnabled: boolean; pendingQuote: boolean; pendingPurchase: boolean; protectedUntil: number | null; notice: string | null }
 
 export interface StrokePoint { x: number; y: number; z: number; pressure: number }
 export interface SharedStroke {

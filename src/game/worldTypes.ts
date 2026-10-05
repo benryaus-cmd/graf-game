@@ -42,6 +42,7 @@ export interface PaintWorkspaceSelection {
   moving?: boolean;
   hasPaint?: boolean;
   started?: boolean;
+  purchaseApproved?: boolean;
   sizeLinked: boolean;
   wall: PaintWall;
   face: number;

@@ -51,11 +51,11 @@ const App = () => {
   const displayName = aippyDisplayName(aippyUser);
   const [multiplayerStatus, setMultiplayerStatus] = useState<MultiplayerStatus>({ phase: 'solo', playerCount: 0 });
   const [multiplayerView, setMultiplayerView] = useState<MultiplayerView>({ chat: [], revision: 0, accountFeaturesAvailable: false, worldItemCount: 0 });
-  const [multiplayerRequest, setMultiplayerRequest] = useState<{ action: 'join' | 'leave' | 'chat' | 'resync' | 'like' | 'inspect' | 'delete-piece' | 'set-role' | 'paint-over' | 'quote-protection' | 'buy-protection' | 'admin-action'; text?: string; role?: ServerRole; colour?: string; adminAction?: AdminAction; options?: AdminActionOptions; sequence: number } | null>(null);
-  const requestMultiplayer = (action: 'join' | 'leave' | 'chat' | 'resync' | 'like' | 'inspect' | 'delete-piece' | 'set-role' | 'paint-over' | 'quote-protection' | 'buy-protection' | 'admin-action', text?: string, role?: ServerRole, colour?: string) => {
+  const [multiplayerRequest, setMultiplayerRequest] = useState<{ action: 'join' | 'leave' | 'chat' | 'resync' | 'like' | 'inspect' | 'delete-piece' | 'set-role' | 'paint-over' | 'quote-protection' | 'buy-protection' | 'admin-action'; text?: string; role?: ServerRole; colour?: string; protectionEnabled?: boolean; adminAction?: AdminAction; options?: AdminActionOptions; sequence: number } | null>(null);
+  const requestMultiplayer = (action: 'join' | 'leave' | 'chat' | 'resync' | 'like' | 'inspect' | 'delete-piece' | 'set-role' | 'paint-over' | 'quote-protection' | 'buy-protection' | 'admin-action', text?: string, role?: ServerRole, colour?: string, protectionEnabled?: boolean) => {
     if (action === 'inspect') { setPaintMode(false); requestWorkspace('exit'); setViewMode('first'); }
     if (action === 'join' || action === 'leave') { poster.cancel(); requestWorkspace('clear'); }
-    setMultiplayerRequest(previous => ({ action, text, role, colour, sequence: (previous?.sequence ?? 0) + 1 }));
+    setMultiplayerRequest(previous => ({ action, text, role, colour, protectionEnabled, sequence: (previous?.sequence ?? 0) + 1 }));
   };
   const accentColor = tweaks.accentColor.useState();
   const panelColor = tweaks.panelColor.useState();
@@ -90,11 +90,24 @@ const App = () => {
   const [workspaceView, setWorkspaceView] = useState<PaintWorkspaceView>({ selected: false, active: false, width: 0, height: 0 });
   const [localPieceNames, setLocalPieceNames] = useState<Record<string, string>>(readLocalPieceNames);
   const [pieceTitleDraft, setPieceTitleDraft] = useState('');
+  const [protectionEnabled, setProtectionEnabled] = useState(false);
   const workspaceNameKey = workspaceView.bounds ? JSON.stringify(workspaceView.bounds) : '';
   useEffect(() => setPieceTitleDraft(workspaceNameKey ? localPieceNames[workspaceNameKey] ?? '' : ''), [workspaceNameKey]);
-  const [workspaceRequest, setWorkspaceRequest] = useState<{ action: PaintWorkspaceAction; size?: number; height?: number; title?: string; sequence: number } | null>(null);
-  const requestWorkspace = (action: PaintWorkspaceAction, size?: number, height?: number, requestedTitle?: string) => {
+  const [workspaceRequest, setWorkspaceRequest] = useState<{ action: PaintWorkspaceAction; size?: number; height?: number; title?: string; protectionEnabled?: boolean; sequence: number } | null>(null);
+  const activeProtectionQuote = multiplayerView.protection?.quotes?.[protectionEnabled ? 'protected' : 'unprotected'] ?? null;
+  const quoteMatchesWorkspace = !!activeProtectionQuote && !!workspaceView.bounds &&
+    activeProtectionQuote.bounds.min.every((value, axis) => value === workspaceView.bounds?.min[axis]) &&
+    activeProtectionQuote.bounds.max.every((value, axis) => value === workspaceView.bounds?.max[axis]);
+  const protectionStartDisabled = multiplayerStatus.phase === 'solo' ? false : multiplayerStatus.phase !== 'connected'
+    ? !multiplayerView.protection?.purchased
+    : !multiplayerView.protection?.purchased && (!activeProtectionQuote?.canPurchase || !quoteMatchesWorkspace || !!multiplayerView.protection?.pendingPurchase);
+  const protectionStartLabel = protectionStartDisabled
+    ? multiplayerStatus.phase !== 'solo' && multiplayerStatus.phase !== 'connected' ? 'RECONNECT TO PURCHASE'
+      : multiplayerView.protection?.pendingPurchase ? 'WAITING FOR SERVER' : 'WAITING FOR QUOTE'
+    : 'START PAINTING';
+  const requestWorkspace = (action: PaintWorkspaceAction, size?: number, height?: number, requestedTitle?: string, requestedProtectionEnabled?: boolean) => {
     if ((action === 'start' || action === 'enter') && multiplayerView.protection?.pendingPurchase) return;
+    if (action === 'start' && protectionStartDisabled) return;
     const title = requestedTitle?.trim().slice(0, 60) || undefined;
     if (action === 'finish' && title && workspaceNameKey) {
       const next = { ...localPieceNames, [workspaceNameKey]: title };
@@ -104,14 +117,14 @@ const App = () => {
     setMovement({ x: 0, y: 0 }); setLookInput({ x: 0, y: 0 });
     if (action === 'enter' || action === 'start') { setPaintMode(true); closeMenu(); }
     if (action === 'finish' || action === 'clear') setPaintMode(false);
-    setWorkspaceRequest(previous => ({ action, size, height, title, sequence: (previous?.sequence ?? 0) + 1 }));
+    setWorkspaceRequest(previous => ({ action, size, height, title, protectionEnabled: action === 'start' ? requestedProtectionEnabled ?? protectionEnabled : undefined, sequence: (previous?.sequence ?? 0) + 1 }));
   };
   const sizingKey = workspaceView.selected && workspaceView.bounds ? JSON.stringify(workspaceView.bounds) : '';
   useEffect(() => {
-    if (multiplayerStatus.phase !== 'connected' || !sizingKey || workspaceView.hasPaint || multiplayerView.protection?.protectedUntil || adminFreePaint) return;
-    const timer = window.setTimeout(() => requestMultiplayer('quote-protection'), 350);
+    if (multiplayerStatus.phase !== 'connected' || !sizingKey || workspaceView.hasPaint || multiplayerView.protection?.purchased || adminFreePaint) return;
+    const timer = window.setTimeout(() => requestMultiplayer('quote-protection', undefined, undefined, undefined, protectionEnabled), 350);
     return () => window.clearTimeout(timer);
-  }, [sizingKey, multiplayerStatus.phase, workspaceView.hasPaint, multiplayerView.protection?.protectedUntil, adminFreePaint]);
+  }, [sizingKey, multiplayerStatus.phase, workspaceView.hasPaint, multiplayerView.protection?.purchased, adminFreePaint, protectionEnabled]);
   useEffect(() => {
     if (adminPainting && !multiplayerStatus.canAdminPaint) { setAdminPainting(false); setPaintMode(false); }
   }, [adminPainting, multiplayerStatus.canAdminPaint]);
@@ -320,13 +333,16 @@ const App = () => {
           />
           {activeMenu !== 'paint' && <LookJoystick onLook={setLookInput} canvasMode={workspaceView.active} />}
           {activeMenu !== 'paint' && <PaintWorkspaceHud view={workspaceView} painting={paintMode && !adminFreePaint} onAction={requestWorkspace}
+            protectionEnabled={protectionEnabled} startDisabled={protectionStartDisabled} startLabel={protectionStartLabel}
             pieceTitle={pieceTitleDraft} onPieceTitleChange={setPieceTitleDraft}
-            protectedUntil={multiplayerView.protection?.protectedUntil} geometryLocked={!!multiplayerView.protection?.pendingPurchase || !!multiplayerView.protection?.protectedUntil}
+            protectedUntil={multiplayerView.protection?.protectedUntil} geometryLocked={!!multiplayerView.protection?.pendingPurchase || !!multiplayerView.protection?.purchased}
             protectionControls={multiplayerStatus.phase === 'connected' && !adminFreePaint && (!workspaceView.hasPaint || !!multiplayerView.protection?.protectedUntil) ? <ProtectionControls
-              balance={multiplayerView.protection?.creditBalance ?? null} quote={multiplayerView.protection?.quote ?? null}
-              pending={!!multiplayerView.protection?.pendingQuote || !!multiplayerView.protection?.pendingPurchase}
+              balance={multiplayerView.protection?.creditBalance ?? null} quote={activeProtectionQuote}
+              quotes={multiplayerView.protection?.quotes ?? { unprotected: null, protected: null }} protectionEnabled={protectionEnabled}
+              pending={!!multiplayerView.protection?.pendingQuote} pendingPurchase={!!multiplayerView.protection?.pendingPurchase} purchased={!!multiplayerView.protection?.purchased}
               protectedUntil={multiplayerView.protection?.protectedUntil ?? null} notice={multiplayerView.protection?.notice ?? null}
-              onQuote={() => requestMultiplayer('quote-protection')} onPurchase={() => requestMultiplayer('buy-protection')} /> : undefined} />}
+              onQuote={() => requestMultiplayer('quote-protection', undefined, undefined, undefined, protectionEnabled)}
+              onProtectionEnabledChange={setProtectionEnabled} /> : undefined} />}
           {eyedropperActive && <aside className="eyedropper-hint" role="status"><span>{eyedropperNotice}</span><button type="button" onClick={() => setEyedropperActive(false)}>CANCEL</button></aside>}
           <div hidden={activeMenu === 'paint'}>
           <PlayerInteractionCard adminResult={multiplayerView.adminResult} onAdminAction={(action, targetUsername, options) => {

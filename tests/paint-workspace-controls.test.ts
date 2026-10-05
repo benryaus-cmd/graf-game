@@ -8,6 +8,7 @@ import {
   setPaintWorkspaceMoving,
   setPaintWorkspaceSize,
 } from '../src/game/paintWorkspace';
+import { workspaceWorldBounds } from '../src/game/paintWorkspaceFeedback';
 import type { PaintWall, WorldEngine } from '../src/game/worldTypes';
 
 function setup() {
@@ -66,3 +67,33 @@ test('move mode repositions the bounded rectangle on its selected wall face only
   assert.equal(state.selection?.moving, false, 'painted geometry cannot remain in move mode');
   assert.deepEqual(state.selection?.bounds, boundsAfterPaint);
 });
+
+ test('purchased canvas geometry is fixed even before its first paint sample', () => {
+  const { world, state } = setup();
+  state.selection!.purchaseApproved = true;
+  const original = state.selection;
+  setPaintWorkspaceSize(world, 8, 8);
+  setPaintWorkspaceMoving(world, true);
+  assert.equal(state.selection, original);
+  assert.notEqual(state.selection!.moving, true);
+ });
+ test('canvas quote bounds use exact metres without padded area', () => {
+  const { world, state } = setup();
+  setPaintWorkspaceSize(world, 8, 8);
+  const bounds = workspaceWorldBounds(state.selection!);
+  assert.ok(Math.abs(bounds.max[0] - bounds.min[0] - 8) < 0.00001);
+  assert.ok(Math.abs(bounds.max[1] - bounds.min[1] - 8) < 0.00001);
+ });
+
+ test('selection edges render above painted overlays without writing scene depth', () => {
+  const { state } = setup();
+  const preview = state.selection!.preview;
+  const material = preview.material as THREE.LineBasicMaterial;
+  assert.equal(material.transparent, true);
+  assert.equal(material.depthTest, false);
+  assert.equal(material.depthWrite, false);
+  assert.ok(preview.renderOrder >= 10000);
+  const edge = preview.children.find(child => child instanceof THREE.Mesh) as THREE.Mesh;
+  assert.ok(edge);
+  assert.equal((edge.material as THREE.MeshBasicMaterial).depthTest, false);
+ });

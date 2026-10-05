@@ -12,6 +12,7 @@ import { stampPaintHit } from '../src/game/worldPainting';
 import { aippyDisplayName } from '../src/multiplayer/profile';
 import { PaintReplay, renderNetworkPoint } from '../src/multiplayer/paintReplay';
 import { WorldMultiplayerSession } from '../src/multiplayer/worldSession';
+import { selectPaintWorkspaceFace } from '../src/game/paintWorkspace';
 import { sprayOnWall } from '../src/game/worldPainting';
 import { restorePersistentChunkPaint } from '../src/game/paintPersistence';
 import { readCosmetics, readPlayer, readPlayerState, readStroke } from '../src/multiplayer/protocol';
@@ -475,6 +476,9 @@ for (const protocol of [1,2]) test(`protocol ${protocol}: brush renders before n
     world.playerPosition.copy(hit.point);
     const targetNormal = hit.face!.normal.clone().applyMatrix3(new THREE.Matrix3().getNormalMatrix(wall.mesh.matrixWorld)).normalize();
     const targetRay = new THREE.Ray(hit.point.clone().addScaledVector(targetNormal, 2), targetNormal.negate());
+    const area = selectPaintWorkspaceFace(world, wall, 0, { minU: 0, minV: 0, maxU: 1, maxV: 1 });
+    area.selection!.purchaseApproved = true; // This responsiveness fixture starts after confirmed canvas purchase.
+    area.selection!.started = true;
     const context: any = wall.layers[0].ensureFace(0);
     let renderedBeforeSend = false;
     const originalSend = socket.send.bind(socket);

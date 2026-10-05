@@ -37,6 +37,7 @@ export class WorldMultiplayerSession {
   private artworks: ArtworkSync;
   private pieces: PieceSync;
   private protection: ProtectionSync;
+  private canvasProtectionEnabled = false;
   private protectionRevision = 0;
   private previewKey = '';
   private previewSelection: PaintWorkspaceSelection | null = null;
@@ -116,14 +117,10 @@ export class WorldMultiplayerSession {
       const selection = world.paintWorkspace?.selection;
       const recordedBounds = this.selectedPieceId ? this.pieces.pieces.get(this.selectedPieceId)?.bounds : undefined;
       const movedDraft = !!selection && !!recordedBounds && !!this.selectedPieceId && !this.protection.protections.has(this.selectedPieceId) &&
-        JSON.stringify(recordedBounds) !== JSON.stringify(workspaceWorldBounds(selection));
+        !selection.purchaseApproved && JSON.stringify(recordedBounds) !== JSON.stringify(workspaceWorldBounds(selection));
       if (this.connection.connected && selection && (selection !== this.selectedPiece || movedDraft)) {
         this.completePiece();
-        const bounds = new THREE.Box3();
-        const positions = selection.preview.geometry.getAttribute('position');
-        for (let index = 0; index < positions.count; index++) bounds.expandByPoint(selection.wall.mesh.localToWorld(new THREE.Vector3().fromBufferAttribute(positions, index)));
-        bounds.expandByScalar(0.02);
-        this.selectedPieceId = this.pieces.create(selection.center.toArray() as [number, number, number], { min: bounds.min.toArray() as [number, number, number], max: bounds.max.toArray() as [number, number, number] });
+        this.selectedPieceId = this.pieces.create(selection.center.toArray(), workspaceWorldBounds(selection));
         this.selectedPiece = selection;
       }
       const value = this.paint.sample({
@@ -289,10 +286,12 @@ export class WorldMultiplayerSession {
     if (!selection) { this.protection.setCurrentBounds(null, null); return; }
     if (this.selectedPieceId && this.selectedPiece?.wall === selection.wall && this.selectedPiece.face === selection.face) {
       this.selectedPiece = selection;
-      this.protection.setCurrentBounds(this.selectedPieceId, workspaceWorldBounds(selection));
+      this.protection.setCurrentBounds(this.selectedPieceId, workspaceWorldBounds(selection), this.canvasProtectionEnabled);
     }
   }
-  quoteProtection(): boolean {
+  quoteProtection(protectionEnabled = false): boolean {
+    if (this.protection.pendingPurchasePieceId || this.world.paintWorkspace?.selection?.purchaseApproved) return false;
+    this.canvasProtectionEnabled = protectionEnabled;
     const selection = this.world.paintWorkspace?.selection;
     if (!this.connection.connected || this.connection.protocol !== 2 || !selection || selection.hasPaint) return false;
     const bounds = workspaceWorldBounds(selection);
@@ -301,12 +300,15 @@ export class WorldMultiplayerSession {
       this.selectedPieceId = this.pieces.create(selection.center.toArray(), bounds);
     }
     this.selectedPiece = selection;
-    return !!this.selectedPieceId && this.protection.requestQuote(this.selectedPieceId, bounds);
+    if (!this.selectedPieceId) return false;
+    this.protection.setCurrentBounds(this.selectedPieceId, bounds, protectionEnabled);
+    return this.protection.requestBothQuotes(this.selectedPieceId, bounds);
   }
-  purchaseProtection(): boolean {
+  purchaseProtection(protectionEnabled = false): boolean {
+    this.canvasProtectionEnabled = protectionEnabled;
     if (!this.connection.connected || !this.selectedPieceId || !this.protection.currentBounds) return false;
     if (this.world.paintWorkspace?.selection) this.world.paintWorkspace.selection.moving = false;
-    return this.protection.purchase(this.selectedPieceId, this.protection.currentBounds);
+    return this.protection.purchase(this.selectedPieceId, this.protection.currentBounds, protectionEnabled);
   }
   resync(): boolean {
     const sent = this.connection.send({ type: 'resync_request' });
@@ -327,10 +329,18 @@ export class WorldMultiplayerSession {
         serverTime: typeof message.serverTime === 'number' && Number.isFinite(message.serverTime) ? message.serverTime : undefined };
       this.emitView(); return;
     }
-    const confirmedBounds = message.type === 'protection_purchased' && typeof message.pieceId === 'string'
+    const confirmedBounds = ['protection_purchased', 'canvas_purchase_complete'].includes(message.type) && typeof message.pieceId === 'string'
       ? this.protection.purchaseBoundsFor(message.pieceId) : null;
     if (this.protection.accept(message)) {
-      if (message.type === 'protection_purchased' || message.type === 'piece_protection_updated') this.pieces.accept(confirmedBounds ? { ...message, protectionBounds: confirmedBounds } : message);
+      if (confirmedBounds && message.pieceId === this.selectedPieceId && this.selectedPiece && this.world.paintWorkspace?.selection === this.selectedPiece &&
+          JSON.stringify(confirmedBounds) === JSON.stringify(workspaceWorldBounds(this.selectedPiece)) &&
+          this.protection.isPurchased(this.selectedPieceId!, confirmedBounds, message.protectionEnabled as boolean)) {
+        this.canvasProtectionEnabled = message.protectionEnabled as boolean;
+        this.selectedPiece.purchaseApproved = true; this.selectedPiece.started = true; this.selectedPiece.moving = false;
+        this.world.onPaintWorkspaceChange?.(this.world.paintWorkspace);
+        this.emitView();
+      }
+      if ((message.type === 'protection_purchased' && message.protectionEnabled !== false) || message.type === 'piece_protection_updated') this.pieces.accept(confirmedBounds ? { ...message, protectionBounds: confirmedBounds } : message);
       return;
     }
     if (message.type === 'permissions') {
@@ -445,7 +455,7 @@ export class WorldMultiplayerSession {
     }
     const quote = this.protection.quote;
     setWorkspaceInvalid(this.world.paintWorkspace?.selection, !this.world.adminFreePaint && (
-      (quote !== null && this.protection.creditBalance !== null && quote.cost > this.protection.creditBalance) ||
+      (quote !== null && (!quote.canPurchase || !!quote.overlapPieceId || (this.protection.creditBalance !== null && quote.cost > this.protection.creditBalance))) ||
       this.previewOverlap || this.protection.errorCode === 'protected_area_overlap' || this.protection.errorCode === 'insufficient_credits'
     ));
     this.refreshWalls();
@@ -490,7 +500,7 @@ export class WorldMultiplayerSession {
     if (selectedPiece && !pieces.some(piece => piece.pieceId === selectedPiece.pieceId)) pieces.push(selectedPiece);
     const protection = this.protection;
     const protectedUntil = this.selectedPieceId ? protection?.protections.get(this.selectedPieceId)?.protectedUntil ?? null : null;
-    const view: MultiplayerView = { adminResult: this.adminResult, protection: protection ? { creditBalance: protection.creditBalance, quote: protection.quote, pendingQuote: !!protection.pendingQuotePieceId, pendingPurchase: !!protection.pendingPurchasePieceId, protectedUntil, notice: protection.notice } : undefined, chat: this.chat.messages, revision: this.order.revision, selectedPlayer: this.selectedPlayer, selectedPieceId: this.selectedPieceForView, piecePickSequence: this.piecePickSequence, roleChange: this.roleChange,
+    const view: MultiplayerView = { adminResult: this.adminResult, protection: protection ? { creditBalance: protection.creditBalance, quote: protection.quote, quotes: protection.quotes, protectionEnabled: this.canvasProtectionEnabled, purchased: !!this.world.paintWorkspace?.selection?.purchaseApproved, pendingQuote: !!protection.pendingQuotePieceId, pendingPurchase: !!protection.pendingPurchasePieceId, protectedUntil, notice: protection.notice } : undefined, chat: this.chat.messages, revision: this.order.revision, selectedPlayer: this.selectedPlayer, selectedPieceId: this.selectedPieceForView, piecePickSequence: this.piecePickSequence, roleChange: this.roleChange,
       accountFeaturesAvailable: this.accounts.available, worldItemCount: this.accounts.worldItems.size,
       pieces };
     const serial = JSON.stringify(view);

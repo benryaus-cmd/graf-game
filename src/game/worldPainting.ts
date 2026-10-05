@@ -81,6 +81,10 @@ export function stampPaintHit(
   return { object: hit.object, face, x, y, layer: layerIndex, holdSamples, worldPoint };
 }
 
+export function canPaintCanvas(world: WorldEngine, settings: LiveSettings): boolean {
+  return !world.multiplayerActive || !!(world.adminFreePaint && settings.adminFreePaint) || !!world.paintWorkspace?.selection?.purchaseApproved;
+}
+
 export function sprayOnWall(
   world: WorldEngine,
   event: PointerEvent,
@@ -94,6 +98,7 @@ export function sprayOnWall(
   lastBuzz: { current: number },
   stroke: { current: PaintPoint | null },
 ): void {
+  if (!canPaintCanvas(world, settings)) { stroke.current = null; return; }
   const rect = world.renderer.domElement.getBoundingClientRect();
   if (!rect.width || !rect.height) return;
   const coordinates = elementPointerPoint(world.renderer.domElement, event);

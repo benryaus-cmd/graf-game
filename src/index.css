@@ -1311,3 +1311,6 @@ button:active { transform: scale(0.97); }
 
 .piece-title-input { display: grid; gap: 3px; font-size: 8px; min-width: 100px; flex: 1 1 140px; }
 .piece-title-input input { width: 100%; min-width: 0; padding: 7px; color: #f3f1e9; background: rgba(0,0,0,.35); border: 1px solid rgba(255,255,255,.25); border-radius: 3px; }
+
+.game-shell .paint-workspace-controls.is-collapsed { width: auto; max-width: none; padding: 4px; }
+.workspace-collapse-toggle { margin-left: auto; font-size: 8px; }

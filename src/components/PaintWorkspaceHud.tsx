@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 export interface PaintWorkspaceView { selected: boolean; active: boolean; width: number; height: number; zoom?: number; sizeLinked?: boolean; started?: boolean; hasPaint?: boolean; moving?: boolean; editableUntil?: number; bounds?: { min: [number, number, number]; max: [number, number, number] } }
 export type PaintWorkspaceAction = 'start' | 'enter' | 'exit' | 'clear' | 'finish' | 'resize' | 'zoom' | 'fit' | 'link' | 'move';
-interface Props { view: PaintWorkspaceView; painting: boolean; onAction: (action: PaintWorkspaceAction, size?: number, height?: number, title?: string) => void; protectionControls?: ReactNode; geometryLocked?: boolean; protectedUntil?: number | null; pieceTitle?: string; onPieceTitleChange?: (title: string) => void }
-export default function PaintWorkspaceHud({ view, painting, onAction, protectionControls, geometryLocked = false, protectedUntil, pieceTitle = '', onPieceTitleChange }: Props) {
+interface Props { view: PaintWorkspaceView; painting: boolean; onAction: (action: PaintWorkspaceAction, size?: number, height?: number, title?: string, protectionEnabled?: boolean) => void; protectionControls?: ReactNode; geometryLocked?: boolean; protectedUntil?: number | null; pieceTitle?: string; onPieceTitleChange?: (title: string) => void; protectionEnabled?: boolean; startDisabled?: boolean; startLabel?: string }
+export default function PaintWorkspaceHud({ view, painting, onAction, protectionControls, geometryLocked = false, protectedUntil, pieceTitle = '', onPieceTitleChange, protectionEnabled = false, startDisabled = false, startLabel = 'START PAINTING' }: Props) {
+  const [collapsed, setCollapsed] = useState(false);
   const [now, setNow] = useState(Date.now);
   useEffect(() => {
     if (!view.editableUntil) return;
@@ -22,7 +23,9 @@ export default function PaintWorkspaceHud({ view, painting, onAction, protection
       <button type="button" aria-label="Zoom in" onClick={() => onAction('zoom', Math.min(8, (view.zoom ?? 1) + .25))}>+</button>
       <button type="button" onClick={() => onAction('fit')}>FIT</button>
     </aside>}
-    <aside className="paint-workspace-controls" aria-label="Painting area">
+    <aside className={`paint-workspace-controls${collapsed ? ' is-collapsed' : ''}`} aria-label="Painting area">
+    <button type="button" className="workspace-collapse-toggle" aria-expanded={!collapsed} aria-label={collapsed ? 'Expand canvas controls' : 'Collapse canvas controls'} onClick={() => setCollapsed(value => !value)}>{collapsed ? 'CANVAS ▾' : 'COLLAPSE ▴'}</button>
+    {!collapsed && <>
     {!view.selected ? <span>Tap a nearby wall to select your painting area.</span> : <>
       <span>{view.width.toFixed(1)} × {view.height.toFixed(1)} m <small>{protectedUntil && protectedUntil > now ? 'PROTECTED' : 'UNPROTECTED'}</small></span>
       {protectionControls}
@@ -52,9 +55,10 @@ export default function PaintWorkspaceHud({ view, painting, onAction, protection
         <button type="button" onClick={() => onAction(view.active ? 'exit' : 'enter')}>{view.active ? 'BACK TO WALL' : 'ENTER CANVAS'}</button>
         <button type="button" onClick={() => onAction(view.hasPaint ? 'finish' : 'clear', undefined, undefined, view.hasPaint ? pieceTitle : undefined)}>{view.hasPaint ? 'FINISH PIECE' : 'CANCEL'}</button>
       </> : <>
-        <button type="button" onClick={() => onAction('start')}>START PAINTING</button>
+        <button type="button" disabled={startDisabled} onClick={() => onAction('start', undefined, undefined, undefined, protectionEnabled)}>{startLabel}</button>
         <button type="button" onClick={() => onAction('clear')}>CANCEL</button>
       </>}
+    </>}
     </>}
   </aside></>;
 }

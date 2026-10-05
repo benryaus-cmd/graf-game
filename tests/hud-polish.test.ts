@@ -76,11 +76,14 @@ test('settings exposes the current shared radio volume', async () => {
 
 test('protection UI shows only server quote amounts and waits for confirmed balance', async () => {
   const { default: Protection } = await import('../src/components/ProtectionControls');
-  const props = { balance: null, quote: { pieceId: 'p', bounds: { min: [0, 0, 0], max: [2, 2, .02] }, cost: 25, durationSeconds: 14400 }, pending: false, protectedUntil: null, notice: null, onQuote() {}, onPurchase() {} } as Parameters<typeof Protection>[0];
+  const baseQuote = { pieceId: 'p', bounds: { min: [0, 0, 0], max: [2, 2, .02] }, protectionEnabled: false, cost: 25, durationSeconds: 14400, canPurchase: true, balance: 50, overlapPieceId: null };
+  const props = { balance: null, quote: baseQuote, quotes: { unprotected: baseQuote, protected: { ...baseQuote, protectionEnabled: true, cost: 60 } }, protectionEnabled: false, pending: false, pendingPurchase: false, purchased: false, protectedUntil: null, notice: null, onQuote() {}, onProtectionEnabledChange() {} } as Parameters<typeof Protection>[0];
   const unknown = renderToStaticMarkup(createElement(Protection, props));
   assert.ok(unknown.includes('25 credits'));
+  assert.ok(unknown.includes('60 credits'));
   assert.ok(unknown.includes('4.0 hours'));
-  assert.ok(unknown.includes('disabled=""'));
+  assert.ok(!unknown.includes('>PROTECT</button>'));
+  assert.ok(unknown.includes('PROTECT THIS PIECE'));
   const insufficient = renderToStaticMarkup(createElement(Protection, { ...props, balance: 10 }));
   assert.ok(insufficient.includes('NOT ENOUGH CREDITS'));
   assert.ok(insufficient.includes('is-invalid'));

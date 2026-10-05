@@ -64,10 +64,10 @@ export function attachWorldControls(
   const paint = (event: PointerEvent) => {
     if (world.paintWorkspace?.selection?.moving) return;
     if (!world.paintWorkspace?.selection && !adminFreePaint()) return;
-    if (!world.paintWorkspace.selection.started) return;
+    const selection = world.paintWorkspace?.selection;
+    if (!adminFreePaint() && (!selection?.started || (world.multiplayerActive && !selection.purchaseApproved))) return;
     if (paintRevision !== world.paintRevision) { endStroke(); paintRevision = world.paintRevision; }
     refreshWalls();
-    if (!world.paintWorkspace?.selection) return;
     sprayOnWall(
       world, event, settings.current, raycaster, pointer, wallMeshes, wallLookup,
       onSpray, onPaint, lastBuzz, stroke,

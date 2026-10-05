@@ -104,7 +104,7 @@ export function exitPaintWorkspace(world: WorldEngine): void {
 export function setPaintWorkspaceSize(world: WorldEngine, widthMetres: number, heightMetres?: number): PaintWorkspaceState | undefined {
   const state = world.paintWorkspace;
   const old = state?.selection;
-  if (!state || !old || old.hasPaint || !Number.isFinite(widthMetres) || (heightMetres !== undefined && !Number.isFinite(heightMetres))) return state;
+  if (!state || !old || old.hasPaint || old.purchaseApproved || !Number.isFinite(widthMetres) || (heightMetres !== undefined && !Number.isFinite(heightMetres))) return state;
   const width = THREE.MathUtils.clamp(widthMetres, 0.5, 8);
   const linked = old.sizeLinked;
   const height = linked ? width : THREE.MathUtils.clamp(heightMetres ?? old.height, 0.5, 8);
@@ -127,7 +127,7 @@ export function setPaintWorkspaceSize(world: WorldEngine, widthMetres: number, h
 export function setPaintWorkspaceMoving(world: WorldEngine, moving: boolean): PaintWorkspaceState | undefined {
   const state = world.paintWorkspace;
   const selection = state?.selection;
-  if (!state || !selection || (selection.hasPaint && moving)) return state;
+  if (!state || !selection || ((selection.hasPaint || selection.purchaseApproved) && moving)) return state;
   selection.moving = moving;
   world.onPaintWorkspaceChange?.(state);
   return state;
@@ -137,7 +137,7 @@ export function setPaintWorkspaceMoving(world: WorldEngine, moving: boolean): Pa
 export function movePaintWorkspaceToUv(world: WorldEngine, uv: THREE.Vector2): PaintWorkspaceState | undefined {
   const state = world.paintWorkspace;
   const old = state?.selection;
-  if (!state || !old || !old.moving || old.hasPaint) return state;
+  if (!state || !old || !old.moving || old.hasPaint || old.purchaseApproved) return state;
   const nextBounds = paintWorkspaceBoundsAtSize(old.wall, old.face, uv, old.width, old.height);
   const selection = createSelection(old.wall, old.face, nextBounds, old.sizeLinked);
   if (!selection) return state;
@@ -262,8 +262,23 @@ function createSelection(wall: PaintWall, face: number, bounds: PaintWorkspaceBo
   const worldNormal = worldRight.clone().cross(worldUp).normalize();
   const localOutlinePoints = LOCAL_POINTS.map((point) => point.clone().addScaledVector(LOCAL_NORMAL, 0.018));
   const outline = new THREE.BufferGeometry().setFromPoints(localOutlinePoints);
-  const preview = new THREE.LineLoop(outline, new THREE.LineBasicMaterial({ color: '#ffd166', depthTest: false }));
-  preview.renderOrder = 100;
+  const preview = new THREE.LineLoop(outline, new THREE.LineBasicMaterial({ color: '#ffd166', transparent: true, depthTest: false, depthWrite: false }));
+  preview.renderOrder = 10_000;
+  // Thin raised ribbons remain visible over transparent paint and poster layers.
+  const edgeVertices: number[] = [];
+  for (let i = 0; i < 4; i++) {
+    const a = localOutlinePoints[i], b = localOutlinePoints[(i + 1) % 4];
+    const side = new THREE.Vector3().crossVectors(LOCAL_NORMAL, b.clone().sub(a).normalize()).multiplyScalar(.007);
+    const corners = [a.clone().add(side), b.clone().add(side), b.clone().sub(side), a.clone().sub(side)];
+    for (const index of [0, 1, 2, 0, 2, 3]) edgeVertices.push(...corners[index].toArray());
+  }
+  const edgeGeometry = new THREE.BufferGeometry();
+  edgeGeometry.setAttribute('position', new THREE.Float32BufferAttribute(edgeVertices, 3));
+  const edgeMaterial = new THREE.MeshBasicMaterial({ color: '#ffd166', transparent: true, opacity: .95, side: THREE.DoubleSide, depthTest: false, depthWrite: false });
+  const raisedEdges = new THREE.Mesh(edgeGeometry, edgeMaterial);
+  raisedEdges.renderOrder = 10_001; raisedEdges.frustumCulled = false;
+  preview.add(raisedEdges);
+  outline.addEventListener('dispose', () => { edgeGeometry.dispose(); edgeMaterial.dispose(); });
   preview.frustumCulled = false;
   wall.mesh.add(preview);
   return {

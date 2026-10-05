@@ -273,3 +273,9 @@ Admin/owner free paint requires server-granted authority. Selected art offers wh
 Radio now has one channel-name button that cycles and plays, plus volume. It attempts playback from the menu and retries after a trusted tap if browser autoplay policy blocks it. Drip is a firmer soft spray with a short hold before its progressive tail develops. Cheap unprotected canvas charges, empty paid reservation refunds, comments and final vote-command mapping still require exact server contracts; see docs/credits-protection-comments-handoff.md.
 
 Nearby art discovery must remain available within its spatial range independently of the 60-second resume-edit grace period. VIEW briefly pulses the piece bounds in-world. Optional artwork titles accompany completion; the existing server must preserve/broadcast `piece_complete.title` for names to survive reconnects and reach other players.
+
+## Server canvas economy integration
+
+Both unprotected and protected multiplayer canvases require server purchase approval before spraying. Prices are ceil(area × 3.75) and ceil(area × 7.5), respectively, for 0.5–8 m sides. Protected purchase includes four hours. Server account balances start at 1,000 credits, accrue 24 per full connected minute, and award 24 per qualifying like; active protected art gains an additional hour per qualifying like. Solo painting remains free.
+
+Canvas sizing/Back to Wall controls can collapse to a compact button while zoom remains available. The area preview uses a thin raised border rendered above paint/poster layers; visual edging never changes purchased bounds.
