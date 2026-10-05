@@ -853,3 +853,20 @@ test('live metadata/artwork packets decode and a server movement packet missing 
   const artwork=readArtwork(liveContract.artwork.artwork)!;
   assert.deepEqual(artwork.quaternion,[0,0,0,1]);assert.equal(artwork.sequence,liveContract.artwork.sequence);
 });
+
+test('join account and permissions messages are retained before the initial snapshot', () => {
+  const socket = new Socket();
+  const messages: any[] = [];
+  const connection = new MultiplayerConnection('wss://example.test', () => {}, message => messages.push(message), () => socket);
+  connection.connect('Owner', 'public'); socket.readyState = 1;
+  socket.receive({ type: 'hello', playerId: 'owner-id', protocol: 2 });
+  socket.receive({ type: 'account_state', username: 'owner', credits: 1000 });
+  socket.receive({ type: 'permissions', role: 'owner', permissions: ['*'] });
+  assert.deepEqual(messages.map(message => message.type), ['account_state', 'permissions']);
+  assert.equal(connection.connected, false);
+  socket.receive({ type: 'world_snapshot', roomId: 'public', playerId: 'owner-id', strokes: [], players: [] });
+  assert.equal(connection.connected, true);
+  socket.receive({ type: 'error', code: 'insufficient_credits', pieceId: 'piece' });
+  assert.equal(messages.at(-1).code, 'insufficient_credits');
+  connection.disconnect();
+});

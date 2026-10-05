@@ -1294,3 +1294,20 @@ button:active { transform: scale(0.97); }
 .settings-radio-volume > span { display: flex; justify-content: space-between; font-size: 11px; letter-spacing: .08em; }
 .settings-radio-volume input { width: 100%; accent-color: #c5e6b4; cursor: pointer; }
 .radio-channel-button i { display: block; flex: 0 0 6px; width: 6px; height: 6px; border-radius: 50%; background: var(--radio-station-color, #63db8e); }
+.admin-paint-over { border: 1px solid #ffffff30; padding: 8px; display: grid; gap: 8px; }
+.admin-paint-over legend { font-size: 9px; letter-spacing: .1em; }
+.admin-paint-over > div { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.admin-paint-over button { min-height: 36px; padding: 4px 8px; background: #354b3e; border: 1px solid #718f7e; border-radius: 5px; font-size: 9px; }
+.admin-paint-over input { width: 40px; height: 36px; padding: 0; border: 0; background: transparent; }
+.canvas-credit-status { position: relative; display: inline-flex; align-items: center; min-height: 36px; padding: 0 7px; border: 1px solid #adccae60; border-radius: 5px; background: #17271bc9; color: #c5e6b4; font-size: 9px; font-weight: 800; }
+.canvas-credit-gain { position: absolute; top: 100%; right: 0; padding: 4px; color: #9fffaa; animation: credit-rise 2.5s ease-out forwards; }
+@keyframes credit-rise { from { opacity: 1; transform: translateY(5px); } to { opacity: 0; transform: translateY(-30px); } }
+.protection-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; width: 100%; font-size: 9px; }
+.protection-controls > small, .protection-controls > span { flex-basis: 100%; }
+.protection-controls.is-invalid { color: #ff7272; }
+.protection-controls button:disabled { opacity: .5; cursor: default; }
+.paint-workspace-size-controls { flex-wrap: wrap; }
+.paint-workspace-size-controls > .workspace-size { flex: 1 1 90px; }
+
+.piece-title-input { display: grid; gap: 3px; font-size: 8px; min-width: 100px; flex: 1 1 140px; }
+.piece-title-input input { width: 100%; min-width: 0; padding: 7px; color: #f3f1e9; background: rgba(0,0,0,.35); border: 1px solid rgba(255,255,255,.25); border-radius: 3px; }

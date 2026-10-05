@@ -106,7 +106,7 @@ export function setPaintWorkspaceSize(world: WorldEngine, widthMetres: number, h
   const old = state?.selection;
   if (!state || !old || old.hasPaint || !Number.isFinite(widthMetres) || (heightMetres !== undefined && !Number.isFinite(heightMetres))) return state;
   const width = THREE.MathUtils.clamp(widthMetres, 0.5, 8);
-  const linked = heightMetres === undefined;
+  const linked = old.sizeLinked;
   const height = linked ? width : THREE.MathUtils.clamp(heightMetres ?? old.height, 0.5, 8);
   const oldBounds = old.bounds;
   const center = new THREE.Vector2((oldBounds.minU + oldBounds.maxU) / 2, (oldBounds.minV + oldBounds.maxV) / 2);
@@ -124,11 +124,43 @@ export function setPaintWorkspaceSize(world: WorldEngine, widthMetres: number, h
   return state;
 }
 
+export function setPaintWorkspaceMoving(world: WorldEngine, moving: boolean): PaintWorkspaceState | undefined {
+  const state = world.paintWorkspace;
+  const selection = state?.selection;
+  if (!state || !selection || (selection.hasPaint && moving)) return state;
+  selection.moving = moving;
+  world.onPaintWorkspaceChange?.(state);
+  return state;
+}
+
+/** Re-centres the existing rectangle on another UV point of its already-selected face. */
+export function movePaintWorkspaceToUv(world: WorldEngine, uv: THREE.Vector2): PaintWorkspaceState | undefined {
+  const state = world.paintWorkspace;
+  const old = state?.selection;
+  if (!state || !old || !old.moving || old.hasPaint) return state;
+  const nextBounds = paintWorkspaceBoundsAtSize(old.wall, old.face, uv, old.width, old.height);
+  const selection = createSelection(old.wall, old.face, nextBounds, old.sizeLinked);
+  if (!selection) return state;
+  selection.started = old.started;
+  selection.moving = true;
+  clearSelection(state);
+  state.selection = selection;
+  if (state.active) {
+    enableSelectedWallLayers(state);
+    updatePaintWorkspaceCamera(state, world.renderer.domElement.clientWidth, world.renderer.domElement.clientHeight);
+  }
+  world.onPaintWorkspaceChange?.(state);
+  return state;
+}
+
 export function setPaintWorkspaceLinked(world: WorldEngine, linked: boolean): PaintWorkspaceState | undefined {
   const state = world.paintWorkspace;
   const old = state?.selection;
   if (!state || !old) return state;
-  if (linked && !old.hasPaint) return setPaintWorkspaceSize(world, Math.max(old.width, old.height));
+  if (linked && !old.hasPaint) {
+    old.sizeLinked = true;
+    return setPaintWorkspaceSize(world, Math.max(old.width, old.height));
+  }
   old.sizeLinked = linked;
   world.onPaintWorkspaceChange?.(state);
   return state;

@@ -8,7 +8,7 @@ const footprints: Record<PaintHead, readonly [string, number, number]> = {
   fat: ['circle', 1.65, 0.12],
   marker: ['square', 0.88, 0],
   roller: ['roller', 1.35, 0],
-  drip: ['drip', 0.7, 2.8],
+  drip: ['drip', 0.94, 0],
 };
 
 export function headForTool(tool: string | undefined): PaintHead | undefined {
@@ -42,19 +42,19 @@ export function drawPaintHead(
   holdSamples = 1,
 ): void {
   const [kind, scale, tail] = paintHeadFootprint(head);
-  const dwellScale = ['aerosol', 'circle', 'drip'].includes(kind)
+  const dwellScale = ['aerosol', 'circle'].includes(kind)
     ? 1 + Math.min(29, Math.max(0, holdSamples - 1)) * 0.02
-    : 1;
+    : kind === 'drip' ? 1 + Math.min(20, Math.max(0, holdSamples - 10)) * 0.01 : 1;
   const r = radius * scale * dwellScale;
   context.beginPath();
   if (kind === 'square') {
     context.fillRect(x - r, y - r, r * 2, r * 2);
   } else if (kind === 'roller') {
     context.fillRect(x - r * 1.55, y - r * 0.58, r * 3.1, r * 1.16);
-  } else if (kind === 'aerosol') {
+  } else if (kind === 'aerosol' || kind === 'drip') {
     context.save();
-    context.globalAlpha *= 0.7;
-    context.filter = `blur(${Math.max(1, radius * 32)}px)`;
+    context.globalAlpha *= kind === 'drip' ? 0.88 : 0.7;
+    context.filter = `blur(${Math.max(kind === 'drip' ? 0.4 : 1, radius * (kind === 'drip' ? 12 : 32))}px)`;
     context.arc(x, y, r, 0, Math.PI * 2);
     context.fill();
     context.restore();
@@ -62,7 +62,15 @@ export function drawPaintHead(
     context.arc(x, y, r, 0, Math.PI * 2);
     context.fill();
   }
-  if (tail) {
+  if (kind === 'drip' && holdSamples > 10) {
+    const progress = Math.min(12, (holdSamples - 10) * 0.28);
+    context.beginPath();
+    context.moveTo(x, y + r * 0.45);
+    context.lineTo(x, y + r * (0.45 + progress));
+    context.lineWidth = radius * 0.24;
+    context.lineCap = 'round';
+    context.stroke();
+  } else if (tail) {
     const length = Math.min(12, tail + Math.min(29, Math.max(0, holdSamples - 1)) * 0.33);
     context.beginPath();
     context.moveTo(x, y + r * 0.45);

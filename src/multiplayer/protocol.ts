@@ -1,5 +1,7 @@
 import type { PieceMetadata } from './pieceSync';
 import type { ServerRole } from './permissions';
+import type { ProtectionQuote } from './protectionSync';
+export interface ProtectionStatus { creditBalance: number | null; quote: ProtectionQuote | null; pendingQuote: boolean; pendingPurchase: boolean; protectedUntil: number | null; notice: string | null }
 
 export interface StrokePoint { x: number; y: number; z: number; pressure: number }
 export interface SharedStroke {
@@ -24,9 +26,9 @@ export interface SharedPlayer {
   state?: PlayerState;
 }
 export type ConnectionPhase = 'solo' | 'connecting' | 'connected' | 'disconnected';
-export interface MultiplayerStatus { phase: ConnectionPhase; playerCount: number; notice?: string; role?: ServerRole; canDeletePieces?: boolean }
+export interface MultiplayerStatus { phase: ConnectionPhase; playerCount: number; notice?: string; role?: ServerRole; canDeletePieces?: boolean; canAdminPaint?: boolean }
 export interface ChatMessage { id: string; playerId: string; displayName: string; text: string; timestamp: number }
-export interface MultiplayerView { chat: ChatMessage[]; revision: number; accountFeaturesAvailable: boolean; worldItemCount: number; pieces?: PieceMetadata[]; selectedPieceId?: string | null; piecePickSequence?: number; selectedPlayer?: { playerId: string; username: string; nickName: string; role?: ServerRole } | null; roleChange?: { targetUsername: string; previousRole: ServerRole; role: ServerRole; serverTime: number } }
+export interface MultiplayerView { adminResult?: { type: string; targetUsername: string; amount?: number; balance?: number; permanent?: boolean; bannedUntil?: number; serverTime?: number }; protection?: ProtectionStatus; chat: ChatMessage[]; revision: number; accountFeaturesAvailable: boolean; worldItemCount: number; pieces?: PieceMetadata[]; selectedPieceId?: string | null; piecePickSequence?: number; selectedPlayer?: { online?: boolean; playerId: string; username: string; nickName: string; role?: ServerRole } | null; roleChange?: { targetUsername: string; previousRole: ServerRole; role: ServerRole; serverTime: number } }
 export type Message = Record<string, unknown> & { type: string };
 
 export function readPoint(value: unknown): StrokePoint | null {

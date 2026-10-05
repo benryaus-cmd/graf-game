@@ -40,7 +40,6 @@ const RadioControl = ({ url, initialVolume, controller: externalController }: Ra
       : radioState.playing
         ? 'Live radio playing'
         : 'Live radio paused';
-  const buttonLabel = radioState.error ? 'Retry radio' : radioState.playing || radioState.buffering ? 'Pause radio' : 'Play radio';
 
   return (
     <div
@@ -52,22 +51,11 @@ const RadioControl = ({ url, initialVolume, controller: externalController }: Ra
       onKeyDown={stop}
     >
       <button
-        className="radio-button"
-        type="button"
-        aria-label={buttonLabel}
-        aria-pressed={radioState.playing}
-        title={status}
-        onClick={() => radio?.toggle()}
-      >
-        {radioState.buffering ? <span className="radio-status-dot is-buffering" /> : <span className={`radio-status-dot${radioState.playing ? ' is-playing' : ''}`} />}
-        <span>RADIO</span>
-      </button>
-      <button
         className="radio-channel-button"
         type="button"
-        aria-label={`Change radio channel, currently ${radioState.stationName}`}
-        title={`Current channel: ${radioState.stationName}. Press to change.`}
-        onClick={() => radio?.nextStation()}
+        aria-label={`Change channel and play radio. Current channel: ${radioState.stationName}`}
+        title={`${radioState.stationName} · ${status}. Press to change channel and play.`}
+        onClick={() => radio?.nextStation(true)}
         style={{ '--radio-station-color': RADIO_STATIONS.find((station) => station.id === radioState.stationId)?.color ?? '#7ee1aa' } as CSSProperties}
       >
         <i aria-hidden="true" />

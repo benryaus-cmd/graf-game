@@ -472,6 +472,34 @@
     {
       "source": "vite.config.ts",
       "target": "src/games/importedGame/upstream/vite.config.ts"
+    },
+    {
+      "source": "src/components/CanvasCredits.tsx",
+      "target": "src/games/importedGame/upstream/src/components/CanvasCredits.tsx"
+    },
+    {
+      "source": "src/components/ProtectionControls.tsx",
+      "target": "src/games/importedGame/upstream/src/components/ProtectionControls.tsx"
+    },
+    {
+      "source": "src/game/paintWorkspaceFeedback.ts",
+      "target": "src/games/importedGame/upstream/src/game/paintWorkspaceFeedback.ts"
+    },
+    {
+      "source": "src/multiplayer/adminActions.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/adminActions.ts"
+    },
+    {
+      "source": "src/multiplayer/adminPaint.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/adminPaint.ts"
+    },
+    {
+      "source": "src/multiplayer/protectionSync.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/protectionSync.ts"
+    },
+    {
+      "source": "src/multiplayer/piecePulse.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/piecePulse.ts"
     }
   ]
 }

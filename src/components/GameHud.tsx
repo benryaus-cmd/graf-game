@@ -12,9 +12,11 @@ import RadioControl from '@/components/RadioControl';
 import type { LiveRadioController } from '@/game/liveRadio';
 
 export type HudMenu = 'paint' | 'bots' | 'avatar' | 'sky' | null;
-type PaintTool = 'paint' | 'eraser' | 'off';
+type PaintTool = 'paint' | 'eraser' | 'off' | 'admin';
 interface PaintLayerControl { name: string; visible: boolean }
 interface GameHudProps {
+  canAdminPaint?: boolean;
+  adminFreePaint?: boolean;
   radioController?: LiveRadioController | null;
   radioUrl?: string;
   radioVolume?: number;
@@ -67,6 +69,8 @@ const GameHud = (props: GameHudProps) => (
             aria-label={props.paintMode ? 'Switch to explore mode' : 'Switch to paint mode'}
             onClick={() => props.onToolChange(props.paintMode ? 'off' : 'paint')}
           >{props.paintMode ? 'EXPLORE' : 'PAINT'}</button>
+          {props.canAdminPaint && <button type="button" className="paint-mode-switch" aria-pressed={!!props.adminFreePaint}
+            aria-label="Admin free painting" onClick={() => props.onToolChange(props.adminFreePaint ? 'off' : 'admin')}>ADMIN</button>}
           <button
             type="button" className="paint-color-trigger"
             onClick={() => props.onMenuToggle('paint')}

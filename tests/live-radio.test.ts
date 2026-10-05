@@ -139,7 +139,7 @@ test('dispose pauses, removes listeners and releases the stream source', () => {
   assert.equal(notifications, beforeDispose);
 });
 
-test('channel cycling reuses one audio element, preserves volume, and does not autoplay while paused', () => {
+test('channel click cycles on one audio element, preserves volume, and starts the selected station', () => {
   let creations = 0;
   const audio = new FakeAudio();
   const controller = new LiveRadioController(RADIO_STREAM_URL, 0.4, () => {
@@ -149,19 +149,31 @@ test('channel cycling reuses one audio element, preserves volume, and does not a
 
   controller.setVolume(0.63);
   controller.prepare();
-  controller.nextStation();
+  controller.nextStation(true);
   assert.equal(controller.getState().stationId, RADIO_STATIONS[1].id);
   assert.equal(controller.getState().stationName, RADIO_STATIONS[1].name);
   assert.equal(audio.source, RADIO_STATIONS[1].url);
   assert.equal(audio.volume, 0.63);
-  assert.equal(audio.paused, true);
+  assert.equal(audio.paused, false);
+  assert.equal(controller.getState().buffering, true);
   assert.equal(creations, 1);
 
-  controller.nextStation();
+  controller.nextStation(true);
   assert.equal(controller.getState().stationId, RADIO_STATIONS[2].id);
   assert.equal(audio.source, RADIO_STATIONS[2].url);
-  assert.equal(audio.paused, true);
+  assert.equal(audio.paused, false);
   assert.equal(creations, 1);
+  controller.dispose();
+});
+
+test('selecting a station without a playback request keeps a paused player paused', () => {
+  const audio = new FakeAudio();
+  const controller = new LiveRadioController(RADIO_STREAM_URL, 0.4, () => audio);
+  controller.prepare();
+  controller.selectStation(RADIO_STATIONS[1].id);
+  assert.equal(audio.source, RADIO_STATIONS[1].url);
+  assert.equal(audio.paused, true);
+  assert.equal(controller.getState().playing, false);
   controller.dispose();
 });
 

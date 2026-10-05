@@ -33,21 +33,40 @@ test('every head has a distinct deterministic footprint recipe', () => {
   assert.equal(new Set(footprints.map(value => JSON.stringify(value))).size, 6);
 });
 
-test('same-position dwell grows drip length to a bounded cap and movement resets dwell', () => {
+test('drip has no moving-stamp tail, then grows progressively after a short stationary hold', () => {
   let dwell = 1;
-  for (let i = 0; i < 29; i++) dwell = nextHoldSamples({ worldPoint: [10, 20, 0], holdSamples: dwell }, [10, 20, 0]);
-  const tail = (samples: number) => {
+  for (let i = 0; i < 59; i++) dwell = nextHoldSamples({ worldPoint: [10, 20, 0], holdSamples: dwell }, [10, 20, 0]);
+  const tail = (samples: number): number | null => {
     const ys: number[] = [];
     const context = {
       beginPath() {}, arc() {}, fill() {}, save() {}, restore() {}, moveTo(_x: number, y: number) { ys.push(y); },
       lineTo(_x: number, y: number) { ys.push(y); }, stroke() {},
     } as unknown as CanvasRenderingContext2D;
     drawPaintHead(context, 0, 0, 1, 'drip', samples);
-    return Math.max(...ys) - Math.min(...ys);
+    return ys.length ? Math.max(...ys) - Math.min(...ys) : null;
   };
-  assert.ok(tail(dwell) > tail(1));
+  assert.equal(tail(1), null, 'a moving stamp is only a head mark');
+  assert.equal(tail(10), null, 'drips wait for a brief stationary hold');
+  assert.ok((tail(12) ?? 0) > 0);
+  assert.ok((tail(30) ?? 0) > (tail(12) ?? 0));
   assert.equal(tail(dwell), tail(dwell + 100));
   assert.equal(nextHoldSamples({ worldPoint: [10, 20, 0], holdSamples: dwell }, [10.006, 20, 0]), 1);
+});
+
+test('drip keeps a soft aerosol edge with a tighter blur and firmer opacity', () => {
+  const marks: Array<{ filter: string; alpha: number }> = [];
+  const saved: Array<{ filter: string; alpha: number }> = [];
+  const context: any = {
+    globalAlpha: 1, filter: 'none', save() { saved.push({ filter: this.filter, alpha: this.globalAlpha }); },
+    restore() { const state = saved.pop()!; this.filter = state.filter; this.globalAlpha = state.alpha; }, beginPath() {},
+    arc() { marks.push({ filter: this.filter, alpha: this.globalAlpha }); }, fill() {}, moveTo() {}, lineTo() {}, stroke() {},
+  };
+  drawPaintHead(context, 0, 0, .02, 'soft', 1);
+  drawPaintHead(context, 0, 0, .02, 'drip', 1);
+  assert.equal(marks[0].filter, 'blur(1px)');
+  assert.equal(marks[0].alpha, 0.7);
+  assert.equal(marks[1].filter, 'blur(0.4px)');
+  assert.equal(marks[1].alpha, 0.88);
 });
 
 test('local stamping and replay produce matching dwell geometry at different canvas resolutions', () => {

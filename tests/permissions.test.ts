@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { canAssignRole, canDeletePieces, canManageRole, readPermissions } from '../src/multiplayer/permissions';
+import { canAdminPaint, canAssignRole, canDeletePieces, canManageRole, readPermissions } from '../src/multiplayer/permissions';
 
 test('server permissions authorize only wildcard or remove_graffiti', () => {
   assert.deepEqual(readPermissions({ type: 'permissions', role: 'admin', permissions: ['remove_graffiti', 'kick'] }), {
@@ -15,6 +15,13 @@ test('malformed or absent server permission payload grants nothing', () => {
   assert.equal(readPermissions({ type: 'permissions', role: 'player', permissions: 'remove_graffiti' }), null);
   assert.equal(readPermissions({ type: 'permissions', role: 'superuser', permissions: ['*'] }), null);
   assert.equal(readPermissions(null), null);
+});
+
+test('admin free paint requires a server bypass permission or server admin/owner role', () => {
+  assert.equal(canAdminPaint(readPermissions({ type: 'permissions', role: 'player', permissions: ['bypass_graffiti_protection'] })), true);
+  assert.equal(canAdminPaint(readPermissions({ type: 'permissions', role: 'admin', permissions: [] })), true);
+  assert.equal(canAdminPaint(readPermissions({ type: 'permissions', role: 'owner', permissions: [] })), true);
+  assert.equal(canAdminPaint(readPermissions({ type: 'permissions', role: 'moderator', permissions: ['kick'] })), false);
 });
 
 test('server role gates allow owner all roles and admin all except owner', () => {

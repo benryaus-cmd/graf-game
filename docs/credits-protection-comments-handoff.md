@@ -1,21 +1,22 @@
-# Next existing-server contracts
+# Existing-server credit and protection integration
 
-The owner now requests credits, basic protection and comments. These are not in the supplied protocol-v2 handover. Do not invent live message names or pretend client-only state is shared authority.
+The client now reads authoritative credits from `account_state.credits` (and accepts the earlier `credit_balance.balance` envelope for compatibility). It never creates a starter allowance, accrues funds, charges, refunds or awards a protection extension locally. Positive confirmed balance changes animate in the HUD.
 
-Implement these in the existing backend, not a new service, then supply the exact request, acknowledgement, broadcast and snapshot shapes:
+Sizing sends debounced world-space `protection_quote` requests with `pieceId` and `bounds`. The client serializes/coalesces quotes and invalidates displayed quotes immediately when the selected rectangle changes. `protection_quote_result` supplies cost and duration; `protection_purchase` submits the confirmed bounds, and only `protection_purchased` supplies the balance and expiry. Pending requests time out without assuming a charge was rejected; late purchase confirmations use the original purchased bounds. After an ambiguous quote timeout, quoting stays paused until reconnect because replies do not identify the request. Disconnection clears session balances and quotes.
 
-- Credits: starter balance sufficient for two maximum-size pieces; slow server-timed accrual only while connected. Persist balances across reconnects. Prevent reconnect starter grants and duplicate-session accrual. Reserve/deduct by piece or area, never per spray sample. Give accepted reservations a bounded painting budget so local drawing stays immediate. Specify starting allowance, maximum box area, cost and accrual rate together.
-- Protection: reserve a world-space bounded area for a piece, retain owner and server expiry, reject overlapping placement/paint by other players until expiry (the agreed goal is four hours). Validate both strokes and artwork placement; drips outside a box must not bypass another protected piece. Include protected metadata in snapshots and broadcasts. Expiry and rejection belong to the server, not a local clock or localStorage.
-- Art comments: piece ID, plain text, server-generated ID/timestamp and sender display identity. Bounded recent comments, length/rate limits, duplicate-request handling and removal when the piece expires. Supply fetch/submit/broadcast envelopes.
+Snapshots parse `protected`, `protectedUntil`, and `protectionBounds`. Red filled previews use public protected bounds or insufficient server-quoted funds as advisory feedback. Admin/owner bypass uses server role/permissions; server checks remain final. `piece_protection_updated` with `addedSeconds:3600` can display a confirmed +1 hour. Existing Like currently sends `piece_like`; confirm whether the final server wants that command to qualify/extend protection or a separate `piece_vote` command before replacing the working Like path.
 
-piece_like and piece metadata are already connected. Client-trusted Aippy names remain display identity, not secure ownership/authentication. Specify the temporary owner key policy consistently with the current server; do not claim this solves secure account identity.
+## Remaining server contract details
 
-No backend code or infrastructure was changed in this client pass.
+- Cheap unprotected canvas purchasing/accrual pricing still needs its request/ack contract. The client currently charges only the optional protection purchase, never fabricates a canvas charge.
+- Quote handlers currently require a piece ID, so a sizing draft is registered through existing `piece_create`. Clean up empty abandoned drafts server-side. Persist final piece bounds/protection bounds when purchasing after resize.
+- Cancel on an empty canvas does not imply refunding purchased protection. Supply an idempotent reservation cancel/refund contract if that is intended.
+- Echo a quote/request ID or bounds in quote results to distinguish a very late result after a timeout/retry.
+- Paint rejection should identify rejected stroke IDs so optimistic local strokes can be removed safely; a generic error alone cannot distinguish a rejected stroke from an offline draft.
+- Comments still need supported submit/fetch/broadcast messages. No fake shared comments were added.
 
-## Admin additions requested
+Roles, credits, bans, kick decisions, paint validation, protected overlap, timers, qualifying votes and persistence remain owned by the existing backend. No server code or infrastructure was changed.
 
-The supplied `permissions`, `admin_delete_piece`, `admin_delete_piece_complete`, and `piece_removed` contracts are now integrated. Client controls use server permissions and wait for shared removal. Contextual player management uses `admin_set_role`, its acknowledgement and `player_role_changed`; admins cannot assign or change owners. Server role persistence remains the owner's separate work. Protected-area enforcement and any independent poster-deletion contract remain server work; nickname matching grants no client privileges.
+## Artwork names
 
-## Concrete canvas economy proposal (not a live server contract)
-
-Use separate canvas credits: 1 credit per square metre, rounded up with minimum 1. A medium 2 × 2 m canvas costs 4; an ultra 8 × 8 m canvas costs 64. Give 128 starter credits once, then accrue 4 per 300 connected seconds (0.8 per minute). Solo costs nothing. Charge once when Start Painting accepts a piece reservation, not on individual strokes. Balance, starter entitlement, elapsed connected time, reservations, expansion costs, overlap rejection and admin bypass must be server-owned and included in reconnect snapshots. Keep drawing immediate after admission. Supply exact message envelopes before client wiring.
+Optional titles are trimmed to 60 characters and accompany `piece_complete` as `title`. Snapshot/piece metadata accepts `title`. Confirm the existing server stores and broadcasts that field; there is no separate invented rename API. Until that support is confirmed, a submitted name is local display metadata and is not guaranteed across reconnects.

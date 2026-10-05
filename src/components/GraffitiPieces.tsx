@@ -12,6 +12,9 @@ interface GraffitiPiecesProps {
   onDelete?: (pieceId: string) => boolean;
   selectedPieceId?: string | null;
   piecePickSequence?: number;
+  canPaintOver?: boolean;
+  paintColour?: string;
+  onPaintOver?: (pieceId: string, colour: string) => boolean;
 }
 
 type PendingLikes = Record<string, number>;
@@ -25,8 +28,15 @@ const formatTimeLeft = (milliseconds: number) => {
 
 const statusLabel = (status?: string) => ['complete', 'completed'].includes(status?.toLowerCase() ?? '') ? 'COMPLETE' : 'ACTIVE';
 const pendingKey = (piece: PieceMetadata) => piece.currentWindowStartedAt ?? 0;
+const protectionLabel = (piece: PieceMetadata, now: number) => {
+  if (!piece.protectedUntil || piece.protectedUntil <= now) return 'UNPROTECTED';
+  const minutes = Math.ceil((piece.protectedUntil - now) / 60_000);
+  return `PROTECTED · ${Math.floor(minutes / 60)}h ${minutes % 60}m remaining`;
+};
 
-const GraffitiPieces = ({ pieces, connected, onLike, onResync, onView, role, canDeletePieces = false, onDelete, selectedPieceId, piecePickSequence }: GraffitiPiecesProps) => {
+const GraffitiPieces = ({ pieces, connected, onLike, onResync, onView, role, canDeletePieces = false, onDelete, selectedPieceId, piecePickSequence, canPaintOver, paintColour = '#ffffff', onPaintOver }: GraffitiPiecesProps) => {
+  const [coverColour, setCoverColour] = useState(paintColour);
+  const [protectionGain, setProtectionGain] = useState(false);
   const [open, setOpen] = useState(true);
   const [viewingPieceId, setViewingPieceId] = useState<string | null>(selectedPieceId ?? null);
   const [now, setNow] = useState(() => Date.now());
@@ -35,6 +45,12 @@ const GraffitiPieces = ({ pieces, connected, onLike, onResync, onView, role, can
   const [deleteNotice, setDeleteNotice] = useState<string | null>(null);
   const visiblePieces = pieces.slice(0, 20);
   const viewingPiece = pieces.find(piece => piece.pieceId === viewingPieceId);
+  useEffect(() => {
+    if (viewingPiece?.protectionAddedSeconds !== 3600) { setProtectionGain(false); return; }
+    setProtectionGain(true);
+    const timer = window.setTimeout(() => setProtectionGain(false), 3500);
+    return () => window.clearTimeout(timer);
+  }, [viewingPiece?.pieceId, viewingPiece?.protectedUntil, viewingPiece?.protectionAddedSeconds]);
 
   useEffect(() => {
     if (selectedPieceId === undefined) return;
@@ -116,14 +132,29 @@ const GraffitiPieces = ({ pieces, connected, onLike, onResync, onView, role, can
             <article aria-label="Graffiti artwork details" style={{ padding: 10, border: '1px solid rgba(255,255,255,.13)', borderRadius: 4, background: 'rgba(255,255,255,.045)' }}>
               <button type="button" onClick={() => setViewingPieceId(null)} style={{ ...smallButtonStyle, marginBottom: 8 }}>BACK TO NEARBY ART</button>
               <div style={{ display: 'grid', gap: 6 }}>
-                <b style={{ fontSize: 12 }}>Graffiti piece</b>
+                <b style={{ fontSize: 12 }}>{viewingPiece.title || 'Graffiti piece'}</b>
                 <span style={{ color: '#aeb2aa', fontSize: 9 }}>X {Math.round(viewingPiece.anchor[0])} · Z {Math.round(viewingPiece.anchor[2])}</span>
                 <span style={{ color: '#b8bcb4', fontSize: 9 }}>{statusLabel(viewingPiece.status)} · GENERATION {viewingPiece.survivalGeneration ?? 0}</span>
+                <span style={{ color: '#c5e6b4', fontSize: 9 }}>{protectionLabel(viewingPiece, now)}</span>
+                {protectionGain && <b role="status">+1 hour protection</b>}
                 <span style={{ color: '#aeb2aa', fontSize: 9 }}>{viewingPiece.currentWindowLikes ?? 0}/20 survival threshold this window · {viewingPiece.lifetimeLikes ?? 0} lifetime likes</span>
                 <button type="button" onClick={() => requestLike(viewingPiece)} disabled={!connected || pendingLikes[viewingPiece.pieceId] === pendingKey(viewingPiece)} style={{ ...smallButtonStyle, color: '#ffb19d' }}>
                   {pendingLikes[viewingPiece.pieceId] === pendingKey(viewingPiece) ? 'REQUESTED' : 'LIKE'}
                 </button>
                 {canDeletePieces && onDelete && <button type="button" onClick={() => requestDelete(viewingPiece)} disabled={!connected} style={{ ...smallButtonStyle, color: '#ffc0b2' }}>DELETE</button>}
+                {canPaintOver && onPaintOver && <fieldset className="admin-paint-over">
+                  <legend>PAINT OVER</legend>
+                  <div>
+                    <button type="button" onClick={() => setCoverColour('#ffffff')}>WHITE</button>
+                    <button type="button" onClick={() => setCoverColour('#000000')}>BLACK</button>
+                    <button type="button" onClick={() => setCoverColour(paintColour)}>CURRENT</button>
+                    <input type="color" value={coverColour} aria-label="Paint over colour" onChange={event => setCoverColour(event.target.value)} />
+                  </div>
+                  <button type="button" disabled={!connected} onClick={() => {
+                    if (onPaintOver(viewingPiece.pieceId, coverColour)) setDeleteNotice('Paint-over requested in the selected colour.');
+                    else setSendError('Paint-over is unavailable.');
+                  }}>PAINT OVER</button>
+                </fieldset>}
               </div>
             </article>
           ) : visiblePieces.length === 0 ? (
@@ -134,7 +165,7 @@ const GraffitiPieces = ({ pieces, connected, onLike, onResync, onView, role, can
                 const currentLikes = piece.currentWindowLikes ?? 0;
                 const pending = pendingLikes[piece.pieceId] === pendingKey(piece);
                 const timeLeft = formatTimeLeft((piece.currentWindowEndsAt ?? now) - now);
-                const label = 'Graffiti piece';
+                const label = piece.title || 'Graffiti piece';
                 return (
                   <li key={piece.pieceId} style={{ padding: 10, border: '1px solid rgba(255,255,255,.13)', borderRadius: 4, background: 'rgba(255,255,255,.045)' }}>
                     <div style={{ display: 'flex', alignItems: 'start', gap: 8 }}>
@@ -142,6 +173,7 @@ const GraffitiPieces = ({ pieces, connected, onLike, onResync, onView, role, can
                         <b style={{ fontSize: 11 }}>{label}</b>
                         <span style={{ color: '#aeb2aa', fontSize: 9 }}>X {Math.round(piece.anchor[0])} · Z {Math.round(piece.anchor[2])}</span>
                         <span style={{ color: '#b8bcb4', fontSize: 9 }}>{statusLabel(piece.status)} · GENERATION {piece.survivalGeneration ?? 0}</span>
+                        <span style={{ color: '#c5e6b4', fontSize: 9 }}>{protectionLabel(piece, now)}</span>
                       </div>
                       <button type="button" onClick={() => { setViewingPieceId(piece.pieceId); onView?.(piece.pieceId); }} style={smallButtonStyle}>VIEW</button>
                       {canDeletePieces && onDelete && <button type="button" onClick={() => requestDelete(piece)} disabled={!connected} style={{ ...smallButtonStyle, color: '#ffc0b2', opacity: connected ? 1 : .62 }}>DELETE</button>}

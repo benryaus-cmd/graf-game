@@ -39,6 +39,7 @@ export interface PaintWorkspaceBounds {
 }
 
 export interface PaintWorkspaceSelection {
+  moving?: boolean;
   hasPaint?: boolean;
   started?: boolean;
   sizeLinked: boolean;
@@ -155,6 +156,7 @@ export interface WorldEngine {
   onPaintEnd?: () => void;
   onMultiplayerFrame?: (delta: number, settings: LiveSettings) => void;
   multiplayerActive?: boolean;
+  adminFreePaint?: boolean;
   onArtworkPlaced?: (wall: PaintWall, face: number, artwork: PosterArtwork) => void;
   groundLevel: number;
   velocityY: number;
@@ -172,6 +174,7 @@ export interface LookInput {
 }
 
 export interface LiveSettings {
+  adminFreePaint?: boolean;
   brushHead?: BrushHead;
   eyedropperActive?: boolean;
   paintMode: boolean;

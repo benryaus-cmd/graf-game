@@ -15,6 +15,10 @@ export function canDeletePieces(value: ServerPermissions | null): boolean {
   return !!value && (value.permissions.includes('*') || value.permissions.includes('remove_graffiti'));
 }
 
+export function canAdminPaint(value: ServerPermissions | null): boolean {
+  return !!value && (value.permissions.includes('bypass_graffiti_protection') || value.role === 'admin' || value.role === 'owner');
+}
+
 export function canAssignRole(actor: ServerRole | null | undefined, target: ServerRole): boolean {
   return actor === 'owner' || (actor === 'admin' && target !== 'owner');
 }

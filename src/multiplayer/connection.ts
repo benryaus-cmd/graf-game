@@ -74,12 +74,13 @@ export class MultiplayerConnection {
         const notice = typeof message.message === 'string' ? message.message.slice(0, 160) :
           typeof message.code === 'string' ? notices[message.code] ?? ('Server rejected an update: ' + message.code.slice(0, 80)) : 'Server rejected an update.';
         if (!this.connected) this.fail(notice);
-        else this.onStatus({ phase: 'connected', playerCount: -1, notice });
-      } else if (message.type === 'kicked' || message.type === 'maintenance') {
-        this.fail(typeof message.message === 'string' ? message.message.slice(0, 160) : 'Multiplayer session ended.');
+        else { this.onStatus({ phase: 'connected', playerCount: -1, notice }); this.onMessage(message); }
+      } else if (message.type === 'kicked' || message.type === 'banned' || message.type === 'maintenance') {
+        const reason = typeof message.reason === 'string' ? message.reason.slice(0, 160) : typeof message.message === 'string' ? message.message.slice(0, 160) : '';
+        this.fail(message.type === 'banned' ? `Banned from multiplayer${reason ? ': ' + reason : '.'}` : reason || 'Multiplayer session ended.');
       } else if (message.type === 'ping') {
         this.sendRaw({ type: 'pong', ...(message.timestamp !== undefined ? { timestamp: message.timestamp } : {}) });
-      } else if (this.connected) this.onMessage(message);
+      } else if (this.connected || (this.playerId && ['account_state', 'permissions', 'credit_balance'].includes(message.type))) this.onMessage(message);
     };
     socket.onerror = () => { if (generation === this.generation) this.fail('Connection lost. Offline paint stays local; Reconnect to resync.'); };
     socket.onclose = () => { if (generation === this.generation) this.fail('Disconnected. Offline paint stays local; Reconnect to resync.'); };

@@ -81,18 +81,18 @@ export class LiveRadioController {
     else this.play();
   }
 
-  nextStation(): void {
+  nextStation(startPlayback = false): void {
     if (this.disposed || this.stations.length < 2) return;
     const currentIndex = this.stations.findIndex((station) => station.id === this.activeStation.id);
     const next = this.stations[(currentIndex + 1 + this.stations.length) % this.stations.length];
-    this.selectStation(next.id);
+    this.selectStation(next.id, startPlayback);
   }
 
-  selectStation(stationId: string): void {
+  selectStation(stationId: string, startPlayback = false): void {
     if (this.disposed) return;
     const station = this.stations.find((candidate) => candidate.id === stationId);
     if (!station || station.id === this.activeStation.id) return;
-    const shouldResume = this.playRequested;
+    const shouldResume = startPlayback || this.playRequested;
     this.playRequested = false;
     this.playRequest += 1;
     if (this.audio) {
@@ -113,6 +113,8 @@ export class LiveRadioController {
         this.playRequested = false;
         this.update({ playing: false, buffering: false, error: true });
       }
+    } else if (shouldResume) {
+      this.play();
     }
   }
 

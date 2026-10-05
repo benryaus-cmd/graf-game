@@ -59,8 +59,11 @@ test('canvas actions show only the preparation pair or painting pair', async () 
   assert.ok(!preparing.includes('ENTER CANVAS'));
   const painting = render(true);
   assert.ok(painting.includes('ENTER CANVAS'));
-  assert.ok(painting.includes('FINISH PIECE'));
-  assert.ok(!painting.includes('CANCEL'));
+  assert.ok(painting.includes('CANCEL'));
+  assert.ok(!painting.includes('FINISH PIECE'));
+  const painted = renderToStaticMarkup(createElement(Hud, { view: { ...view, started: true, hasPaint: true }, painting: true, onAction: () => {} }));
+  assert.ok(painted.includes('FINISH PIECE'));
+  assert.ok(!painted.includes('CANCEL'));
 });
 
 test('settings exposes the current shared radio volume', async () => {
@@ -69,4 +72,16 @@ test('settings exposes the current shared radio volume', async () => {
   assert.ok(html.includes('65%'));
   assert.ok(html.includes('value="65"'));
   assert.ok(html.includes('Radio volume in settings'));
+});
+
+test('protection UI shows only server quote amounts and waits for confirmed balance', async () => {
+  const { default: Protection } = await import('../src/components/ProtectionControls');
+  const props = { balance: null, quote: { pieceId: 'p', bounds: { min: [0, 0, 0], max: [2, 2, .02] }, cost: 25, durationSeconds: 14400 }, pending: false, protectedUntil: null, notice: null, onQuote() {}, onPurchase() {} } as Parameters<typeof Protection>[0];
+  const unknown = renderToStaticMarkup(createElement(Protection, props));
+  assert.ok(unknown.includes('25 credits'));
+  assert.ok(unknown.includes('4.0 hours'));
+  assert.ok(unknown.includes('disabled=""'));
+  const insufficient = renderToStaticMarkup(createElement(Protection, { ...props, balance: 10 }));
+  assert.ok(insufficient.includes('NOT ENOUGH CREDITS'));
+  assert.ok(insufficient.includes('is-invalid'));
 });

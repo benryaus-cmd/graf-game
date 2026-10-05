@@ -472,6 +472,34 @@
     {
       "source": "vite.config.ts",
       "target": "vite.config.ts"
+    },
+    {
+      "source": "src/components/CanvasCredits.tsx",
+      "target": "src/components/CanvasCredits.tsx"
+    },
+    {
+      "source": "src/components/ProtectionControls.tsx",
+      "target": "src/components/ProtectionControls.tsx"
+    },
+    {
+      "source": "src/game/paintWorkspaceFeedback.ts",
+      "target": "src/game/paintWorkspaceFeedback.ts"
+    },
+    {
+      "source": "src/multiplayer/adminActions.ts",
+      "target": "src/multiplayer/adminActions.ts"
+    },
+    {
+      "source": "src/multiplayer/adminPaint.ts",
+      "target": "src/multiplayer/adminPaint.ts"
+    },
+    {
+      "source": "src/multiplayer/protectionSync.ts",
+      "target": "src/multiplayer/protectionSync.ts"
+    },
+    {
+      "source": "src/multiplayer/piecePulse.ts",
+      "target": "src/multiplayer/piecePulse.ts"
     }
   ]
 }

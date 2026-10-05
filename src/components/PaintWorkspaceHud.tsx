@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-export interface PaintWorkspaceView { selected: boolean; active: boolean; width: number; height: number; zoom?: number; sizeLinked?: boolean; started?: boolean; hasPaint?: boolean; editableUntil?: number }
-export type PaintWorkspaceAction = 'start' | 'enter' | 'exit' | 'clear' | 'finish' | 'resize' | 'zoom' | 'fit' | 'link';
-interface Props { view: PaintWorkspaceView; painting: boolean; onAction: (action: PaintWorkspaceAction, size?: number, height?: number) => void }
-export default function PaintWorkspaceHud({ view, painting, onAction }: Props) {
+import type { ReactNode } from 'react';
+export interface PaintWorkspaceView { selected: boolean; active: boolean; width: number; height: number; zoom?: number; sizeLinked?: boolean; started?: boolean; hasPaint?: boolean; moving?: boolean; editableUntil?: number; bounds?: { min: [number, number, number]; max: [number, number, number] } }
+export type PaintWorkspaceAction = 'start' | 'enter' | 'exit' | 'clear' | 'finish' | 'resize' | 'zoom' | 'fit' | 'link' | 'move';
+interface Props { view: PaintWorkspaceView; painting: boolean; onAction: (action: PaintWorkspaceAction, size?: number, height?: number, title?: string) => void; protectionControls?: ReactNode; geometryLocked?: boolean; protectedUntil?: number | null; pieceTitle?: string; onPieceTitleChange?: (title: string) => void }
+export default function PaintWorkspaceHud({ view, painting, onAction, protectionControls, geometryLocked = false, protectedUntil, pieceTitle = '', onPieceTitleChange }: Props) {
   const [now, setNow] = useState(Date.now);
   useEffect(() => {
     if (!view.editableUntil) return;
@@ -23,21 +24,33 @@ export default function PaintWorkspaceHud({ view, painting, onAction }: Props) {
     </aside>}
     <aside className="paint-workspace-controls" aria-label="Painting area">
     {!view.selected ? <span>Tap a nearby wall to select your painting area.</span> : <>
-      <span>{view.width.toFixed(1)} × {view.height.toFixed(1)} m <small>UNPROTECTED</small></span>
-      {!view.started && !view.hasPaint && <div className="paint-workspace-size-controls">
+      <span>{view.width.toFixed(1)} × {view.height.toFixed(1)} m <small>{protectedUntil && protectedUntil > now ? 'PROTECTED' : 'UNPROTECTED'}</small></span>
+      {protectionControls}
+      {!view.hasPaint && !geometryLocked && <div className="paint-workspace-size-controls">
+        <button type="button" aria-pressed={!!view.moving} onClick={() => onAction('move', view.moving ? 0 : 1)}>
+          {view.moving ? 'DONE MOVING' : 'MOVE AREA'}
+        </button>
+        {view.moving && <small>Drag on this wall to reposition the box.</small>}
         <button type="button" aria-pressed={view.sizeLinked !== false} onClick={() => onAction('link', view.sizeLinked === false ? 1 : 0)}>
           {view.sizeLinked === false ? 'UNLOCKED' : 'LOCKED'}
         </button>
-        <label className="workspace-size"><span>{view.sizeLinked === false ? 'BOX WIDTH' : 'BOX SIZE'}</span><input type="range" min="0.5" max="8" step="0.5"
+        <label className="workspace-size"><span>BOX WIDTH</span><input type="range" min="0.5" max="8" step="0.5"
           value={Math.max(.5, Math.min(8, view.width))} aria-label="Painting box width"
-          onChange={event => onAction('resize', Number(event.target.value), view.sizeLinked === false ? view.height : undefined)} /></label>
-        {view.sizeLinked === false && <label className="workspace-size"><span>BOX HEIGHT</span><input type="range" min="0.5" max="8" step="0.5"
+          onChange={event => {
+            const size = Number(event.target.value);
+            onAction('resize', size, view.sizeLinked === false ? view.height : size);
+          }} /></label>
+        <label className="workspace-size"><span>BOX HEIGHT</span><input type="range" min="0.5" max="8" step="0.5"
           value={Math.max(.5, Math.min(8, view.height))} aria-label="Painting box height"
-          onChange={event => onAction('resize', view.width, Number(event.target.value))} /></label>}
+          onChange={event => {
+            const size = Number(event.target.value);
+            onAction('resize', view.sizeLinked === false ? view.width : size, size);
+          }} /></label>
       </div>}
       {view.started || view.hasPaint || view.active ? <>
+        {view.hasPaint && <label className="piece-title-input"><span>NAME PIECE · OPTIONAL</span><input value={pieceTitle} maxLength={60} placeholder="Add a title" aria-label="Optional piece name" onChange={event => onPieceTitleChange?.(event.target.value)} /></label>}
         <button type="button" onClick={() => onAction(view.active ? 'exit' : 'enter')}>{view.active ? 'BACK TO WALL' : 'ENTER CANVAS'}</button>
-        <button type="button" onClick={() => onAction('finish')}>FINISH PIECE</button>
+        <button type="button" onClick={() => onAction(view.hasPaint ? 'finish' : 'clear', undefined, undefined, view.hasPaint ? pieceTitle : undefined)}>{view.hasPaint ? 'FINISH PIECE' : 'CANCEL'}</button>
       </> : <>
         <button type="button" onClick={() => onAction('start')}>START PAINTING</button>
         <button type="button" onClick={() => onAction('clear')}>CANCEL</button>

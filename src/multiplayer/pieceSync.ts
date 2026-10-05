@@ -17,8 +17,13 @@ export interface PieceMetadata {
   survivalGeneration?: number;
   strokeIds: string[];
   status?: string;
+  title?: string;
   revision?: number;
   sequence?: number;
+  protected?: boolean;
+  protectedUntil?: number;
+  protectionBounds?: PieceBounds;
+  protectionAddedSeconds?: number;
 }
 
 export function choosePieceAtWorldPoint(
@@ -26,8 +31,10 @@ export function choosePieceAtWorldPoint(
   point: readonly [number, number, number],
   tolerance = 0.1,
 ): PieceMetadata | null {
-  const matches = [...pieces].filter(piece => piece.bounds.min.every((minimum, axis) =>
-    point[axis] >= minimum - tolerance && point[axis] <= piece.bounds.max[axis] + tolerance));
+  const matches = [...pieces].filter(piece => {
+    const bounds = piece.protectionBounds ?? piece.bounds;
+    return bounds.min.every((minimum, axis) => point[axis] >= minimum - tolerance && point[axis] <= bounds.max[axis] + tolerance);
+  });
   matches.sort((a, b) => (b.createdAt ?? b.sequence ?? 0) - (a.createdAt ?? a.sequence ?? 0));
   return matches[0] ?? null;
 }
@@ -51,6 +58,14 @@ function timestamp(value: unknown): number | undefined {
     if (Number.isFinite(parsed) && parsed >= 0) return parsed;
   }
   return undefined;
+}
+
+function readProtectionBounds(value: unknown): PieceBounds | undefined {
+  if (!value || typeof value !== 'object') return undefined;
+  const candidate = value as Record<string, unknown>;
+  const min = vector(candidate.min), max = vector(candidate.max);
+  if (!min || !max || min.some((n, axis) => n > max[axis] || max[axis] - n > MAX_EXTENT)) return undefined;
+  return { min, max };
 }
 
 function count(value: unknown): number | undefined {
@@ -94,7 +109,12 @@ export function readPieceMetadata(value: unknown): PieceMetadata | null {
     currentWindowLikes: count(v.currentWindowLikes), lifetimeLikes: count(v.lifetimeLikes),
     survivalGeneration: count(v.survivalGeneration), strokeIds,
     status: typeof v.status === 'string' && v.status.length <= 32 ? v.status : undefined,
+    title: typeof v.title === 'string' && v.title.trim().length <= 60 ? v.title.trim() || undefined : undefined,
     revision: safeRevision(v.revision), sequence: safeRevision(v.sequence),
+    protected: typeof v.protected === 'boolean' ? v.protected : undefined,
+    protectedUntil: timestamp(v.protectedUntil),
+    protectionBounds: readProtectionBounds(v.protectionBounds),
+    protectionAddedSeconds: count(v.protectionAddedSeconds),
   };
 }
 
@@ -105,6 +125,7 @@ function makeId(): string {
 export class PieceSync {
   readonly pieces = new Map<string, PieceMetadata>();
   private readonly optimistic = new Map<string, number>();
+  private readonly localTitles = new Map<string, string>();
 
   constructor(
     private readonly send: (message: Message) => boolean,
@@ -116,7 +137,9 @@ export class PieceSync {
     const next = new Map<string, PieceMetadata>();
     const authoritative = new Set<string>();
     for (const value of values.slice(0, 10_000)) {
-      const piece = readPieceMetadata(value);
+      const parsed = readPieceMetadata(value);
+      const cachedTitle = parsed && this.localTitles.get(parsed.pieceId);
+      const piece = parsed && !parsed.title && cachedTitle ? { ...parsed, title: cachedTitle } : parsed;
       if (piece) { next.set(piece.pieceId, piece); authoritative.add(piece.pieceId); }
     }
     // A local create may be excluded from a snapshot until the server publishes its echo.
@@ -134,6 +157,14 @@ export class PieceSync {
   }
 
   accept(message: Message): void {
+    if (message.type === 'piece_protection_updated' || message.type === 'protection_purchased') {
+      const id = typeof message.pieceId === 'string' ? message.pieceId : '';
+      const existing = this.pieces.get(id);
+      const until = timestamp(message.protectedUntil);
+      if (!existing || until === undefined) return;
+      this.pieces.set(id, { ...existing, protected: true, protectedUntil: until, protectionBounds: readProtectionBounds(message.protectionBounds) ?? existing.protectionBounds, protectionAddedSeconds: count(message.addedSeconds) });
+      this.notify(); return;
+    }
     if (message.type === 'piece_removed') {
       const pieceId = typeof message.pieceId === 'string' && message.pieceId.length <= 100 ? message.pieceId : '';
       if (!pieceId) return;
@@ -144,6 +175,7 @@ export class PieceSync {
       const removedIds = [...new Set([...suppliedIds, ...(old?.strokeIds ?? [])])];
       this.pieces.delete(pieceId);
       this.optimistic.delete(pieceId);
+      this.localTitles.delete(pieceId);
       this.notify(removedIds);
       return;
     }
@@ -155,6 +187,7 @@ export class PieceSync {
     const existing = this.pieces.get(id);
     const piece = readPieceMetadata(existing ? { ...existing, ...candidate } : raw);
     if (!piece) return;
+    if (piece.title) this.localTitles.set(piece.pieceId, piece.title);
     this.pieces.set(piece.pieceId, piece);
     this.optimistic.delete(piece.pieceId);
     this.notify();
@@ -171,10 +204,28 @@ export class PieceSync {
     return pieceId;
   }
 
-  complete(pieceId: string): boolean {
+  complete(pieceId: string, title?: string): boolean {
     const piece = this.pieces.get(pieceId);
     if (!piece) return false;
-    return this.send({ type: 'piece_complete', pieceId });
+    const cleanTitle = (title ?? piece.title)?.trim().slice(0, 60);
+    if (!this.send({ type: 'piece_complete', pieceId, ...(cleanTitle ? { title: cleanTitle } : {}) })) return false;
+    if (cleanTitle) {
+      this.cacheTitle(pieceId, cleanTitle);
+      this.pieces.set(pieceId, { ...piece, title: cleanTitle });
+      this.notify();
+    }
+    return true;
+  }
+
+  setLocalTitle(pieceId: string, title: string): boolean {
+    const piece = this.pieces.get(pieceId);
+    const cleanTitle = title.trim().slice(0, 60);
+    if (!piece) return false;
+    if (!cleanTitle) return true;
+    this.cacheTitle(pieceId, cleanTitle);
+    this.pieces.set(pieceId, { ...piece, title: cleanTitle });
+    this.notify();
+    return true;
   }
 
   like(pieceId: string): boolean {
@@ -190,5 +241,11 @@ export class PieceSync {
 
   private notify(removedStrokeIds?: string[]): void {
     this.onChange([...this.pieces.values()], removedStrokeIds);
+  }
+
+  private cacheTitle(pieceId: string, title: string): void {
+    this.localTitles.delete(pieceId);
+    this.localTitles.set(pieceId, title);
+    if (this.localTitles.size > 1000) this.localTitles.delete(this.localTitles.keys().next().value!);
   }
 }

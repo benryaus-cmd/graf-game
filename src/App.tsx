@@ -4,6 +4,9 @@ import { aippyTweaks } from '@aippy/runtime/tweaks';
 import GameHud, { type HudMenu } from '@/components/GameHud';
 import WorldScene from '@/components/WorldScene';
 import LookJoystick from '@/components/LookJoystick';
+import type { AdminAction, AdminActionOptions } from '@/multiplayer/adminActions';
+import CanvasCredits from '@/components/CanvasCredits';
+import ProtectionControls from '@/components/ProtectionControls';
 import GraffitiPieces from '@/components/GraffitiPieces';
 import PaintWorkspaceHud, { type PaintWorkspaceView, type PaintWorkspaceAction } from '@/components/PaintWorkspaceHud';
 import MultiplayerControls from '@/components/MultiplayerControls';
@@ -31,20 +34,28 @@ const CAMERA_LABELS: Record<CameraMode, string> = {
   first: 'FIRST PERSON', third: 'THIRD PERSON', map: 'MAP VIEW',
 };
 const MAX_LAYERS = 5;
+const LOCAL_PIECE_NAMES_KEY = 'sidestreet.local-piece-names.v1';
+const readLocalPieceNames = (): Record<string, string> => {
+  try {
+    const value: unknown = JSON.parse(localStorage.getItem(LOCAL_PIECE_NAMES_KEY) ?? '{}');
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+    return Object.fromEntries(Object.entries(value).filter(([key, title]) => key.length <= 300 && typeof title === 'string' && title.length <= 60).slice(-1000));
+  } catch { return {}; }
+};
 interface PaintLayerState { name: string; visible: boolean }
 interface EmoteSignal { emote: AvatarEmote; sequence: number }
-type PaintTool = 'paint' | 'eraser' | 'off';
+type PaintTool = 'paint' | 'eraser' | 'off' | 'admin';
 
 const App = () => {
   const aippyUser = useUserInfo();
   const displayName = aippyDisplayName(aippyUser);
   const [multiplayerStatus, setMultiplayerStatus] = useState<MultiplayerStatus>({ phase: 'solo', playerCount: 0 });
   const [multiplayerView, setMultiplayerView] = useState<MultiplayerView>({ chat: [], revision: 0, accountFeaturesAvailable: false, worldItemCount: 0 });
-  const [multiplayerRequest, setMultiplayerRequest] = useState<{ action: 'join' | 'leave' | 'chat' | 'resync' | 'like' | 'inspect' | 'delete-piece' | 'set-role'; text?: string; role?: ServerRole; sequence: number } | null>(null);
-  const requestMultiplayer = (action: 'join' | 'leave' | 'chat' | 'resync' | 'like' | 'inspect' | 'delete-piece' | 'set-role', text?: string, role?: ServerRole) => {
+  const [multiplayerRequest, setMultiplayerRequest] = useState<{ action: 'join' | 'leave' | 'chat' | 'resync' | 'like' | 'inspect' | 'delete-piece' | 'set-role' | 'paint-over' | 'quote-protection' | 'buy-protection' | 'admin-action'; text?: string; role?: ServerRole; colour?: string; adminAction?: AdminAction; options?: AdminActionOptions; sequence: number } | null>(null);
+  const requestMultiplayer = (action: 'join' | 'leave' | 'chat' | 'resync' | 'like' | 'inspect' | 'delete-piece' | 'set-role' | 'paint-over' | 'quote-protection' | 'buy-protection' | 'admin-action', text?: string, role?: ServerRole, colour?: string) => {
     if (action === 'inspect') { setPaintMode(false); requestWorkspace('exit'); setViewMode('first'); }
     if (action === 'join' || action === 'leave') { poster.cancel(); requestWorkspace('clear'); }
-    setMultiplayerRequest(previous => ({ action, text, role, sequence: (previous?.sequence ?? 0) + 1 }));
+    setMultiplayerRequest(previous => ({ action, text, role, colour, sequence: (previous?.sequence ?? 0) + 1 }));
   };
   const accentColor = tweaks.accentColor.useState();
   const panelColor = tweaks.panelColor.useState();
@@ -66,6 +77,8 @@ const App = () => {
   const { warmAudio, playSpray, playChime } = useSprayAudio();
   const [sky, setSky] = useState<SkyMode>('day');
   const [paintMode, setPaintMode] = useState(false);
+  const [adminPainting, setAdminPainting] = useState(false);
+  const adminFreePaint = adminPainting && multiplayerStatus.phase === 'connected' && !!multiplayerStatus.canAdminPaint;
   const [portrait, setPortrait] = useState(false);
   const [screenPortrait, setScreenPortrait] = useState(() => window.innerHeight >= window.innerWidth);
   const rotatedPortrait = portrait ? !screenPortrait : screenPortrait;
@@ -75,13 +88,33 @@ const App = () => {
     return () => window.removeEventListener('resize', update);
   }, []);
   const [workspaceView, setWorkspaceView] = useState<PaintWorkspaceView>({ selected: false, active: false, width: 0, height: 0 });
-  const [workspaceRequest, setWorkspaceRequest] = useState<{ action: PaintWorkspaceAction; size?: number; height?: number; sequence: number } | null>(null);
-  const requestWorkspace = (action: PaintWorkspaceAction, size?: number, height?: number) => {
+  const [localPieceNames, setLocalPieceNames] = useState<Record<string, string>>(readLocalPieceNames);
+  const [pieceTitleDraft, setPieceTitleDraft] = useState('');
+  const workspaceNameKey = workspaceView.bounds ? JSON.stringify(workspaceView.bounds) : '';
+  useEffect(() => setPieceTitleDraft(workspaceNameKey ? localPieceNames[workspaceNameKey] ?? '' : ''), [workspaceNameKey]);
+  const [workspaceRequest, setWorkspaceRequest] = useState<{ action: PaintWorkspaceAction; size?: number; height?: number; title?: string; sequence: number } | null>(null);
+  const requestWorkspace = (action: PaintWorkspaceAction, size?: number, height?: number, requestedTitle?: string) => {
+    if ((action === 'start' || action === 'enter') && multiplayerView.protection?.pendingPurchase) return;
+    const title = requestedTitle?.trim().slice(0, 60) || undefined;
+    if (action === 'finish' && title && workspaceNameKey) {
+      const next = { ...localPieceNames, [workspaceNameKey]: title };
+      setLocalPieceNames(next);
+      try { localStorage.setItem(LOCAL_PIECE_NAMES_KEY, JSON.stringify(next)); } catch { /* local naming is best effort */ }
+    }
     setMovement({ x: 0, y: 0 }); setLookInput({ x: 0, y: 0 });
     if (action === 'enter' || action === 'start') { setPaintMode(true); closeMenu(); }
     if (action === 'finish' || action === 'clear') setPaintMode(false);
-    setWorkspaceRequest(previous => ({ action, size, height, sequence: (previous?.sequence ?? 0) + 1 }));
+    setWorkspaceRequest(previous => ({ action, size, height, title, sequence: (previous?.sequence ?? 0) + 1 }));
   };
+  const sizingKey = workspaceView.selected && workspaceView.bounds ? JSON.stringify(workspaceView.bounds) : '';
+  useEffect(() => {
+    if (multiplayerStatus.phase !== 'connected' || !sizingKey || workspaceView.hasPaint || multiplayerView.protection?.protectedUntil || adminFreePaint) return;
+    const timer = window.setTimeout(() => requestMultiplayer('quote-protection'), 350);
+    return () => window.clearTimeout(timer);
+  }, [sizingKey, multiplayerStatus.phase, workspaceView.hasPaint, multiplayerView.protection?.protectedUntil, adminFreePaint]);
+  useEffect(() => {
+    if (adminPainting && !multiplayerStatus.canAdminPaint) { setAdminPainting(false); setPaintMode(false); }
+  }, [adminPainting, multiplayerStatus.canAdminPaint]);
   const [eraseMode, setEraseMode] = useState(false);
   const [color, setColor] = useState(COLORS[0]);
   const [eyedropperActive, setEyedropperActive] = useState(false);
@@ -110,6 +143,7 @@ const App = () => {
     setRadioController(radio);
     const unsubscribe = radio.subscribe(state => setRadioVolume(state.volume));
     radio.prepare();
+    radio.play();
     return () => { unsubscribe(); radio.dispose(); };
   }, []);
   useEffect(() => {
@@ -124,6 +158,8 @@ const App = () => {
   }, [hasJoined, portrait]);
 
   const startAudioOnFirstClick = () => {
+    const radioState = radioController?.getState();
+    if (radioState && !radioState.playing && !radioState.buffering) radioController?.play();
     if (audioStartedRef.current) return;
     audioStartedRef.current = true;
     void warmAudio();
@@ -133,6 +169,8 @@ const App = () => {
   const updateBrushSize = (value: number) => setBrushSelection({ value: Math.max(.1, Math.min(10, value / 3)), source: initialBrushSize });
   const selectColor = (nextColor: string) => { setColor(nextColor); playChime(); };
   const selectPaintTool = (tool: PaintTool) => {
+    setAdminPainting(tool === 'admin');
+    if (tool === 'admin') { requestWorkspace('clear'); setPaintMode(true); closeMenu(); return; }
     setEyedropperActive(false);
     if (tool !== 'off' && workspaceView.editableUntil) requestWorkspace('enter');
     if (tool === 'off' && workspaceView.active) requestWorkspace('exit');
@@ -232,7 +270,7 @@ const App = () => {
             workspaceRequest={workspaceRequest} onWorkspaceChange={setWorkspaceView}
             multiplayerRequest={multiplayerRequest} displayName={displayName} username={aippyUser.username} nickName={aippyUser.nickName} onMultiplayerStatus={setMultiplayerStatus}
             cosmetics={cosmetics} onMultiplayerView={setMultiplayerView}
-            sky={sky} paintMode={paintMode} eraseMode={eraseMode} color={color}
+            adminFreePaint={adminFreePaint} sky={sky} paintMode={paintMode} eraseMode={eraseMode} color={color}
             movement={movement} lookInput={lookInput} brushSize={brushSize} opacity={opacity} moveSpeed={moveSpeed}
             jumpPower={jumpPower} lookSensitivity={lookSensitivity} fogDensity={fogDensity}
             jumpSignal={jumpSignal} layerIndex={selectedLayer} layerVisibility={layerVisibility}
@@ -249,7 +287,7 @@ const App = () => {
             brushHead={brushHead} onBrushHeadChange={setBrushHead}
             hideTouchControls={workspaceView.active || activeMenu === 'paint' || eyedropperActive}
             panelColor={panelColor} accentColor={accentColor} sky={sky} activeMenu={activeMenu}
-            musicReady={false} radioController={radioController} radioUrl={radioController ? RADIO_STREAM_URL : undefined} radioVolume={musicVolume} paintMode={paintMode} eraseMode={eraseMode}
+            canAdminPaint={!!multiplayerStatus.canAdminPaint} adminFreePaint={adminFreePaint} musicReady={false} radioController={radioController} radioUrl={radioController ? RADIO_STREAM_URL : undefined} radioVolume={musicVolume} paintMode={paintMode} eraseMode={eraseMode}
             showCrosshair={showCrosshair} color={color} brushSize={brushSize * 3} opacity={opacity}
             layers={layers} selectedLayer={selectedLayer} cameraLabel={CAMERA_LABELS[viewMode]}
             viewMode={viewMode} mapZoom={mapZoom} progress={progress}
@@ -272,7 +310,8 @@ const App = () => {
                 onClick={() => { setMovement({ x: 0, y: 0 }); setLookInput({ x: 0, y: 0 }); setPortrait(value => !value); }}>↶ <span>{rotatedPortrait ? 'LANDSCAPE' : 'PORTRAIT'}</span></button>
               <button type="button" className="settings-trigger" aria-label="Settings" onClick={() => setSettingsOpen(true)}>⚙</button>
               <div className="top-network-controls" hidden={activeMenu === 'paint'}>
-                {<GraffitiPieces selectedPieceId={multiplayerView.selectedPieceId} piecePickSequence={multiplayerView.piecePickSequence} pieces={multiplayerView.pieces ?? []} connected={multiplayerStatus.phase === 'connected'} role={multiplayerStatus.role} canDeletePieces={multiplayerStatus.canDeletePieces} onDelete={pieceId => { if (multiplayerStatus.phase !== 'connected' || !multiplayerStatus.canDeletePieces) return false; requestMultiplayer('delete-piece', pieceId); return true; }} onLike={pieceId => { if (multiplayerStatus.phase !== 'connected') return false; requestMultiplayer('like', pieceId); return true; }} onResync={() => requestMultiplayer('resync')} onView={pieceId => requestMultiplayer('inspect', pieceId)} />}
+                {multiplayerStatus.phase !== 'solo' && <CanvasCredits balance={multiplayerView.protection?.creditBalance ?? null} />}
+                {<GraffitiPieces canPaintOver={!!multiplayerStatus.canAdminPaint} paintColour={color} onPaintOver={(pieceId, colour) => { if (!multiplayerStatus.canAdminPaint) return false; requestMultiplayer('paint-over', pieceId, undefined, colour); return true; }} selectedPieceId={multiplayerView.selectedPieceId} piecePickSequence={multiplayerView.piecePickSequence} pieces={multiplayerView.pieces ?? []} connected={multiplayerStatus.phase === 'connected'} role={multiplayerStatus.role} canDeletePieces={multiplayerStatus.canDeletePieces} onDelete={pieceId => { if (multiplayerStatus.phase !== 'connected' || !multiplayerStatus.canDeletePieces) return false; requestMultiplayer('delete-piece', pieceId); return true; }} onLike={pieceId => { if (multiplayerStatus.phase !== 'connected') return false; requestMultiplayer('like', pieceId); return true; }} onResync={() => requestMultiplayer('resync')} onView={pieceId => requestMultiplayer('inspect', pieceId)} />}
                 <MultiplayerControls status={multiplayerStatus} displayName={displayName} avatar={aippyUser.avatar} profileLoading={aippyUser.isLoading}
                   onJoin={() => requestMultiplayer('join')} onLeave={() => requestMultiplayer('leave')}
                   messages={multiplayerView.chat} onChat={text => requestMultiplayer('chat', text)} onResync={() => requestMultiplayer('resync')} />
@@ -280,10 +319,21 @@ const App = () => {
             </>}
           />
           {activeMenu !== 'paint' && <LookJoystick onLook={setLookInput} canvasMode={workspaceView.active} />}
-          {activeMenu !== 'paint' && <PaintWorkspaceHud view={workspaceView} painting={paintMode} onAction={requestWorkspace} />}
+          {activeMenu !== 'paint' && <PaintWorkspaceHud view={workspaceView} painting={paintMode && !adminFreePaint} onAction={requestWorkspace}
+            pieceTitle={pieceTitleDraft} onPieceTitleChange={setPieceTitleDraft}
+            protectedUntil={multiplayerView.protection?.protectedUntil} geometryLocked={!!multiplayerView.protection?.pendingPurchase || !!multiplayerView.protection?.protectedUntil}
+            protectionControls={multiplayerStatus.phase === 'connected' && !adminFreePaint && (!workspaceView.hasPaint || !!multiplayerView.protection?.protectedUntil) ? <ProtectionControls
+              balance={multiplayerView.protection?.creditBalance ?? null} quote={multiplayerView.protection?.quote ?? null}
+              pending={!!multiplayerView.protection?.pendingQuote || !!multiplayerView.protection?.pendingPurchase}
+              protectedUntil={multiplayerView.protection?.protectedUntil ?? null} notice={multiplayerView.protection?.notice ?? null}
+              onQuote={() => requestMultiplayer('quote-protection')} onPurchase={() => requestMultiplayer('buy-protection')} /> : undefined} />}
           {eyedropperActive && <aside className="eyedropper-hint" role="status"><span>{eyedropperNotice}</span><button type="button" onClick={() => setEyedropperActive(false)}>CANCEL</button></aside>}
           <div hidden={activeMenu === 'paint'}>
-          <PlayerInteractionCard selected={multiplayerView.selectedPlayer} ownRole={multiplayerStatus.role} connected={multiplayerStatus.phase === 'connected'} notice={multiplayerStatus.notice} roleChange={multiplayerView.roleChange}
+          <PlayerInteractionCard adminResult={multiplayerView.adminResult} onAdminAction={(action, targetUsername, options) => {
+            if (multiplayerStatus.phase !== 'connected' || !['admin', 'owner'].includes(multiplayerStatus.role ?? '')) return false;
+            setMultiplayerRequest(previous => ({ action: 'admin-action', text: targetUsername, adminAction: action, options, sequence: (previous?.sequence ?? 0) + 1 }));
+            return true;
+          }} selected={multiplayerView.selectedPlayer} ownRole={multiplayerStatus.role} connected={multiplayerStatus.phase === 'connected'} notice={multiplayerStatus.notice} roleChange={multiplayerView.roleChange}
             onSetRole={(username, role) => {
               const ownRole = multiplayerStatus.role;
               if (multiplayerStatus.phase !== 'connected' || (ownRole !== 'owner' && ownRole !== 'admin') || (ownRole === 'admin' && role === 'owner')) return false;

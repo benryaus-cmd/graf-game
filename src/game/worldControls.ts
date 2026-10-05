@@ -8,7 +8,7 @@ import type { PosterPlacementSession } from '@/game/posterPlacement';
 import { commitPosterPlacement } from '@/game/posterCanvas';
 import { updatePosterPreview } from '@/game/posterPreview';
 import { elementPointerIsRotated, elementPointerPoint } from '@/game/pointerCoordinates';
-import { centeredPaintWorkspaceBounds, clearPaintWorkspace, selectPaintWorkspaceFace, updatePaintWorkspaceCamera } from '@/game/paintWorkspace';
+import { centeredPaintWorkspaceBounds, clearPaintWorkspace, movePaintWorkspaceToUv, selectPaintWorkspaceFace, updatePaintWorkspaceCamera } from '@/game/paintWorkspace';
 import { isPaintTargetReachable } from '@/game/paintTargeting';
 import { samplePaintColour } from '@/game/paintEyedropper';
 
@@ -44,6 +44,7 @@ export function attachWorldControls(
   let selectingWorkspace = false;
   let paintRevision = world.paintRevision;
   const endStroke = () => { stroke.current = null; world.onPaintEnd?.(); };
+  const adminFreePaint = () => settings.current.adminFreePaint === true && world.adminFreePaint === true;
 
   const refreshWalls = () => {
     if (world.paintWorkspace?.selection && !world.walls.includes(world.paintWorkspace.selection.wall)) {
@@ -61,7 +62,8 @@ export function attachWorldControls(
     });
   };
   const paint = (event: PointerEvent) => {
-    if (!world.paintWorkspace?.selection) return;
+    if (world.paintWorkspace?.selection?.moving) return;
+    if (!world.paintWorkspace?.selection && !adminFreePaint()) return;
     if (!world.paintWorkspace.selection.started) return;
     if (paintRevision !== world.paintRevision) { endStroke(); paintRevision = world.paintRevision; }
     refreshWalls();
@@ -71,6 +73,21 @@ export function attachWorldControls(
       onSpray, onPaint, lastBuzz, stroke,
     );
     if (!stroke.current) world.onPaintEnd?.();
+  };
+  const moveWorkspaceAtPointer = (event: PointerEvent) => {
+    const selection = world.paintWorkspace?.selection;
+    if (!selection?.moving || selection.hasPaint) return false;
+    refreshWalls();
+    const rect = canvas.getBoundingClientRect();
+    if (!rect.width || !rect.height) return false;
+    const coordinates = elementPointerPoint(canvas, event);
+    pointer.set(coordinates.x * 2 - 1, 1 - coordinates.y * 2);
+    raycaster.setFromCamera(pointer, world.paintWorkspace?.active ? world.paintWorkspace.camera : world.cameraMode === 'map' ? world.mapCamera : world.camera);
+    const hit = raycaster.intersectObject(selection.wall.mesh, false).find(candidate => candidate.face &&
+      (candidate.face.materialIndex ?? 0) === selection.face);
+    if (!hit?.uv) return false;
+    movePaintWorkspaceToUv(world, hit.uv);
+    return true;
   };
   const selectPaintFaceAtPointer = (event: PointerEvent) => {
     refreshWalls();
@@ -135,8 +152,10 @@ export function attachWorldControls(
     endStroke();
     try { canvas.setPointerCapture(event.pointerId); } catch { pointerId = null; return; }
     if (settings.current.paintMode && !settings.current.eyedropperActive && !posterState.current) {
-      selectingWorkspace = !world.paintWorkspace?.selection;
-      if (selectingWorkspace) selectPaintFaceAtPointer(event);
+      const movingWorkspace = !!world.paintWorkspace?.selection?.moving;
+      selectingWorkspace = movingWorkspace || (!world.paintWorkspace?.selection && !adminFreePaint());
+      if (movingWorkspace) moveWorkspaceAtPointer(event);
+      else if (selectingWorkspace) selectPaintFaceAtPointer(event);
       else paint(event);
     }
   };
@@ -144,6 +163,7 @@ export function attachWorldControls(
     if (pointerId !== event.pointerId) return;
     if (settings.current.eyedropperActive) { endStroke(); return; }
     if (settings.current.paintMode && !posterState.current) {
+      if (world.paintWorkspace?.selection?.moving) { moveWorkspaceAtPointer(event); return; }
       if (selectingWorkspace) return;
       paintPointerMove(event);
       return;
