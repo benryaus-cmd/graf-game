@@ -8,6 +8,8 @@ export interface SocketLike {
   send(data: string): void; close(): void;
 }
 
+export interface PlayerIdentity { username?: string; nickName?: string }
+
 export class MultiplayerConnection {
   playerId: string | null = null;
   protocol = 1;
@@ -25,7 +27,7 @@ export class MultiplayerConnection {
     private makeSocket: (url: string) => SocketLike = url => new WebSocket(url) as unknown as SocketLike,
   ) {}
 
-  connect(displayName: string, roomId: string): void {
+  connect(displayName: string, roomId: string, identity: PlayerIdentity = {}): void {
     this.closeSocket();
     this.roomId = roomId;
     const generation = this.generation;
@@ -48,7 +50,14 @@ export class MultiplayerConnection {
         this.playerId = message.playerId;
         this.protocol = message.protocol as number;
         this.capabilities = Array.isArray(message.capabilities) ? message.capabilities.filter((v): v is string => typeof v === 'string') : [];
-        this.sendRaw({ type: 'join', ...(this.protocol === 2 ? { protocol: 2 } : {}), roomId, displayName: displayName.trim().slice(0, 40) || 'PLAYER' });
+        const join: Message = { type: 'join', ...(this.protocol === 2 ? { protocol: 2 } : {}), roomId, displayName: displayName.trim().slice(0, 40) || 'PLAYER' };
+        if (this.protocol === 2) {
+          const username = identity.username?.trim().slice(0, 40);
+          const nickName = identity.nickName?.trim().slice(0, 40);
+          if (username) join.username = username;
+          if (nickName) join.nickName = nickName;
+        }
+        this.sendRaw(join);
       } else if (message.type === 'world_snapshot') {
         if (!this.playerId || message.playerId !== this.playerId || message.roomId !== this.roomId) return;
         if (!Array.isArray(message.strokes) || !Array.isArray(message.players)) return;

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { MultiplayerConnection } from '../src/multiplayer/connection';
 import { PaintSync } from '../src/multiplayer/paintSync';
+import { StrokeIndex } from '../src/multiplayer/strokeIndex';
 import { assignSurfaceIds, encodeSurface, decodeSurface, pointToHit } from '../src/multiplayer/surfaces';
 import { interpolatePlayer } from '../src/multiplayer/playerSync';
 import { createCityChunk } from '../src/game/cityChunkContent';
@@ -58,6 +59,31 @@ class Socket {
   close() { this.readyState = 3; this.onclose?.(); }
   receive(value: any) { this.onmessage?.({ data: JSON.stringify(value) }); }
 }
+
+test('stroke index returns only a wall bucket in stable sequence order and tracks mutations', () => {
+  const index = new StrokeIndex();
+  const wallId = (n: number) => `ss1:0:${Math.floor(n / 100)}:wall`;
+  const makeStroke = (n: number) => ({ strokeId:`stroke-${n}`, surfaceId:encodeSurface(wallId(n), n % 6, 0),
+    colour:'#fff', tool:'spray', brushSize:1, points:[], sequence:10_000 - n });
+  for (let n = 0; n < 10_000; n++) index.set(makeStroke(n));
+  const bucket = index.forWall(wallId(3));
+  assert.equal(bucket.length, 100);
+  assert.ok(bucket.every(stroke => decodeSurface(stroke.surfaceId)?.wallId === wallId(3)));
+  assert.deepEqual(bucket.map(stroke => stroke.sequence), [...bucket.map(stroke => stroke.sequence)].sort((a, b) => a! - b!));
+
+  const equalA = { ...makeStroke(30_000), strokeId:'equal-a', sequence:7 };
+  const equalB = { ...makeStroke(30_001), strokeId:'equal-b', sequence:7 };
+  equalA.surfaceId = encodeSurface(wallId(3), 0, 0); equalB.surfaceId = equalA.surfaceId;
+  index.set(equalA); index.set(equalB);
+  assert.deepEqual(index.forWall(wallId(3)).filter(stroke => stroke.strokeId.startsWith('equal-')).map(stroke => stroke.strokeId), ['equal-a','equal-b']);
+  equalA.sequence = 0; index.changed(equalA);
+  assert.equal(index.forWall(wallId(3))[0].strokeId, 'equal-a');
+  equalA.surfaceId = encodeSurface('ss1:9:9:other', 0, 0); index.changed(equalA);
+  assert.ok(!index.forWall(wallId(3)).some(stroke => stroke.strokeId === 'equal-a'));
+  assert.equal(index.forWall('ss1:9:9:other')[0].strokeId, 'equal-a');
+  index.delete('equal-a'); index.clear();
+  assert.deepEqual(index.forWall(wallId(3)), []);
+});
 
 test('solo creates no socket; explicit connect joins after server hello, not before', () => {
   const sockets: Socket[] = [];
@@ -325,6 +351,9 @@ test('server brush units reconstruct the same local paint path, width, opacity, 
 });
 
 test('offscreen snapshot replay retains paint made during replay without double deposition', () => {
+  let disposed = 0;
+  const disposeTexture = THREE.Texture.prototype.dispose;
+  THREE.Texture.prototype.dispose = function() { disposed++; return disposeTexture.call(this); };
   const chunk = createCityChunk(0, 0, materials()); chunk.group.updateMatrixWorld(true);
   const wall = chunk.walls[0];
   const v = wall.mesh.localToWorld(new THREE.Vector3(1, 1, 0));
@@ -343,6 +372,8 @@ test('offscreen snapshot replay retains paint made during replay without double 
   assert.equal(replay.isRebuilding(wall), false);
   assert.equal(context.draws.length, 2);
   assert.equal(context.draws[1].colour, '#00ff00');
+  THREE.Texture.prototype.dispose = disposeTexture;
+  assert.ok(disposed > 0, 'temporary staging textures are disposed after commit');
 });
 
 test('delayed solo image decoding cannot contaminate a multiplayer session', () => {
@@ -407,10 +438,10 @@ for (const protocol of [1,2]) test(`protocol ${protocol}: brush renders before n
   const scene = new THREE.Scene();
   const stream = createCityChunkStream(scene, materials()); stream.updateAt(0, 0);
   const world: any = {
-    scene, walls: stream.walls, setPaintSession: stream.setPaintSession,
+    scene, walls: stream.walls, colliders: stream.colliders, setPaintSession: stream.setPaintSession,
     playerPosition: new THREE.Vector3(0, 1.72, 0), playerYaw: 0, playerPitch: 0,
     velocityY: 0, abilityActive: false, paintRevision: 0, cameraMode: 'first',
-    camera: new THREE.PerspectiveCamera(), renderer: { domElement: { getBoundingClientRect: () => ({ left: 0, top: 0, width: 100, height: 100 }) } },
+    camera: new THREE.PerspectiveCamera(), renderer: { domElement: { closest: () => null, getBoundingClientRect: () => ({ left: 0, top: 0, width: 100, height: 100 }) } },
   };
   const statuses: any[] = [];
   const session = new WorldMultiplayerSession(world, status => statuses.push(status));
@@ -427,18 +458,22 @@ for (const protocol of [1,2]) test(`protocol ${protocol}: brush renders before n
     const v = wall.mesh.localToWorld(new THREE.Vector3(1, 1, 0));
     const sample = { x: v.x, y: v.y, z: v.z, pressure: 0.88 };
     const hit = pointToHit(wall, 0, sample)!; hit.distance = 2;
+    world.playerPosition.copy(hit.point);
+    const targetNormal = hit.face!.normal.clone().applyMatrix3(new THREE.Matrix3().getNormalMatrix(wall.mesh.matrixWorld)).normalize();
+    const targetRay = new THREE.Ray(hit.point.clone().addScaledVector(targetNormal, 2), targetNormal.negate());
     const context: any = wall.layers[0].ensureFace(0);
     let renderedBeforeSend = false;
     const originalSend = socket.send.bind(socket);
     socket.send = data => { if (JSON.parse(data).type === 'stroke_begin') renderedBeforeSend = context.draws.length > 0; originalSend(data); };
     sprayOnWall(world, { clientX: 50, clientY: 50 } as PointerEvent, settings,
-      { setFromCamera() {}, intersectObjects: () => [hit] } as any,
+      { ray: targetRay, setFromCamera() {}, intersectObjects: () => [hit] } as any,
       new THREE.Vector2(), [wall.mesh], new Map([[wall.mesh, wall]]), () => {}, () => {}, { current: 0 }, { current: null });
     assert.equal(renderedBeforeSend, true);
     assert.equal(socket.sent.find(m => m.type === 'stroke_begin').brushSize, 5);
     assert.equal(socket.sent.find(m => m.type === 'stroke_begin').opacity, protocol === 1 ? 1 : 0.88);
     world.onPaintEnd();
     assert.equal(socket.sent.find(m => m.type === 'stroke_points').points[0].pressure, protocol === 1 ? 0.88 : 1);
+    world.playerPosition.set(0, 1.72, 0);
     socket.receive({ type: 'player_joined', player: { id: 'remote', displayName: 'Other Aippy User', state: {} } });
     socket.receive({ type: 'player_state', playerId: 'remote', state: { position: [3,1.72,-4], rotation: [0,0,0], movement: 'walking', jumping: false } });
     world.onMultiplayerFrame(0.016, settings);
@@ -453,8 +488,9 @@ for (const protocol of [1,2]) test(`protocol ${protocol}: brush renders before n
     socket.close();
     assert.equal(statuses[statuses.length - 1].phase, 'disconnected');
     const count = context.draws.length;
+    world.playerPosition.copy(hit.point);
     sprayOnWall(world, { clientX: 50, clientY: 50 } as PointerEvent, settings,
-      { setFromCamera() {}, intersectObjects: () => [hit] } as any,
+      { ray: targetRay, setFromCamera() {}, intersectObjects: () => [hit] } as any,
       new THREE.Vector2(), [wall.mesh], new Map([[wall.mesh, wall]]), () => {}, () => {}, { current: 0 }, { current: null });
     assert.equal(context.draws.length, count + 1, 'offline brush still renders');
     session.leave();
@@ -566,6 +602,76 @@ test('poster snapshot mounts once, orders overlapping images by server sequence 
   assert.equal(notices.length,0);
 });
 
+test('poster image decoding starts in a bounded queue and advances as loads settle', () => {
+  const images: any[] = [];
+  const sync = new ArtworkSync(() => true, () => {}, () => { const image: any = {}; images.push(image); return image; });
+  const chunk = createCityChunk(0, 0, materials()); const wall = chunk.walls[0];
+  const saved = (id: string, sequence: number) => ({ id, assetRef: 'https://example.test/' + id + '.png', surfaceId: encodeSurface(wall.surfaceId!,0,0), face:'0', position:[0,0,0], rotation:[0,0,0,1], width:1, height:1, sequence });
+  sync.snapshot(['a','b','c','d','e'].map((id, index) => saved(id, index)));
+  const walls = new Map([[wall.surfaceId!,wall]]);
+  sync.refresh(walls); sync.refresh(walls);
+  assert.equal(images.length, 3);
+  images[0].onload(); sync.refresh(walls);
+  assert.equal(images.length, 4);
+  images[1].onerror(); sync.refresh(walls);
+  assert.equal(images.length, 5);
+  sync.clear();
+});
+
+test('artwork indexed for an unloaded wall mounts when that wall becomes available', () => {
+  const images: any[] = [];
+  const sync = new ArtworkSync(() => true, () => {}, () => { const image: any = {}; images.push(image); return image; });
+  const first = createCityChunk(0, 0, materials()).walls[0];
+  const later = createCityChunk(1, 0, materials()).walls[0];
+  const saved = { id:'later', assetRef:'https://example.test/later.png', surfaceId:encodeSurface(later.surfaceId!,0,0), face:'0', position:[0,0,0], rotation:[0,0,0,1], width:1, height:1, sequence:1 };
+  sync.snapshot([saved]);
+  sync.refresh(new Map([[first.surfaceId!, first]]));
+  assert.equal(images.length, 0);
+  sync.refresh(new Map([[later.surfaceId!, later]]));
+  assert.equal(images.length, 1);
+  images[0].onload();
+  assert.equal((later.layers[0]?.mesh ?? later.mesh).children.filter(child => child.userData.posterArtwork).length, 1);
+  sync.clear();
+});
+
+test('updated artwork cancels its stale image load and mounts the newest asset', () => {
+  const images: any[] = [];
+  const sync = new ArtworkSync(() => true, () => {}, () => { const image: any = { src: '' }; images.push(image); return image; });
+  const wall = createCityChunk(0, 0, materials()).walls[0];
+  const saved = (assetRef: string) => ({ id:'same', assetRef, surfaceId:encodeSurface(wall.surfaceId!,0,0), face:'0', position:[0,0,0], rotation:[0,0,0,1], width:1, height:1 });
+  sync.snapshot([saved('https://example.test/old.png')]);
+  const walls = new Map([[wall.surfaceId!, wall]]);
+  sync.refresh(walls);
+  const staleLoad = images[0].onload;
+  sync.accept({ type:'artwork_placed', artwork:saved('https://example.test/new.png') });
+  assert.equal(images[0].src, '');
+  sync.refresh(walls);
+  assert.equal(images.length, 2);
+  staleLoad();
+  assert.equal((wall.layers[0]?.mesh ?? wall.mesh).children.filter(child => child.userData.posterArtwork).length, 0);
+  images[1].onload();
+  assert.equal((wall.layers[0]?.mesh ?? wall.mesh).children.filter(child => child.userData.posterArtwork).length, 1);
+  sync.clear();
+});
+
+test('timed out artwork loads release their concurrency slot and queued images continue', () => {
+  const images: any[] = [], timers: Array<() => void> = [];
+  const sync = new ArtworkSync(() => true, () => {}, () => { const image: any = { src: '' }; images.push(image); return image; }, undefined,
+    callback => { timers.push(callback); return timers.length as any; }, () => {});
+  const wall = createCityChunk(0, 0, materials()).walls[0];
+  const saved = (id: string) => ({ id, assetRef:`https://example.test/${id}.png`, surfaceId:encodeSurface(wall.surfaceId!,0,0), face:'0', position:[0,0,0], rotation:[0,0,0,1], width:1, height:1 });
+  sync.snapshot(['a','b','c','d'].map(saved));
+  const walls = new Map([[wall.surfaceId!, wall]]);
+  sync.refresh(walls);
+  assert.equal(images.length, 3);
+  timers[0](); sync.refresh(walls);
+  assert.equal(images[0].src, '');
+  assert.equal(images.length, 4);
+  images[3].onload();
+  assert.ok((wall.layers[0]?.mesh ?? wall.mesh).children.some(child => child.userData.posterArtwork));
+  sync.clear();
+});
+
 test('local poster renders immediately; upload completion shares only its URL and own echo does not mount twice', async () => {
   let release!: (response: Response) => void;
   const upload = new ArtworkUpload(async () => new Promise<Response>(resolve=> { release=resolve; }));
@@ -582,6 +688,8 @@ test('local poster renders immediately; upload completion shares only its URL an
   sync.accept({type:'artwork_placed',artwork:{...sent[0],id:sent[0].artworkId,sequence:50}});
   sync.refresh(new Map([[wall.surfaceId!,wall]])); assert.equal(images.length,0);
   assert.equal((wall.layers[0]?.mesh ?? wall.mesh).children.find(c=>c.userData.posterArtwork)!.renderOrder,140);
+  sync.snapshot([]);
+  assert.equal((wall.layers[0]?.mesh ?? wall.mesh).children.filter(c=>c.userData.posterArtwork).length,0);
   sync.clear();
 });
 

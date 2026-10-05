@@ -4,15 +4,16 @@ import { aippyTweaks } from '@aippy/runtime/tweaks';
 import { useSound } from '@aippy/runtime/audio';
 import GameHud, { type HudMenu } from '@/components/GameHud';
 import WorldScene from '@/components/WorldScene';
+import LookJoystick from '@/components/LookJoystick';
+import GraffitiPieces from '@/components/GraffitiPieces';
+import PaintWorkspaceHud, { type PaintWorkspaceView, type PaintWorkspaceAction } from '@/components/PaintWorkspaceHud';
 import MultiplayerControls from '@/components/MultiplayerControls';
 import { useUserInfo } from '@aippy/runtime/user';
 import { aippyDisplayName } from '@/multiplayer/profile';
 import type { MultiplayerStatus, MultiplayerView } from '@/multiplayer/protocol';
 import SettingsModal from '@/components/SettingsModal';
 import { useSprayAudio } from '@/components/useSprayAudio';
-import { useBotArtwork } from '@/game/useBotArtwork';
 import { usePosterPlacement } from '@/game/usePosterPlacement';
-import { syncBotArtworkConfig } from '@/game/generateBotArtwork';
 import { getAvatarAppearance, loadGameProgress, saveGameProgress, type GameProgress, type ShopItem } from '@/game/progression';
 import tweaksConfig from '@/config/tweaksConfig.json';
 import type { AvatarEmote, CameraMode, MovementInput, SkyMode } from '@/game/worldTypes';
@@ -35,9 +36,10 @@ const App = () => {
   const displayName = aippyDisplayName(aippyUser);
   const [multiplayerStatus, setMultiplayerStatus] = useState<MultiplayerStatus>({ phase: 'solo', playerCount: 0 });
   const [multiplayerView, setMultiplayerView] = useState<MultiplayerView>({ chat: [], revision: 0, accountFeaturesAvailable: false, worldItemCount: 0 });
-  const [multiplayerRequest, setMultiplayerRequest] = useState<{ action: 'join' | 'leave' | 'chat' | 'resync'; text?: string; sequence: number } | null>(null);
-  const requestMultiplayer = (action: 'join' | 'leave' | 'chat' | 'resync', text?: string) => {
-    if (action === 'join' || action === 'leave') poster.cancel();
+  const [multiplayerRequest, setMultiplayerRequest] = useState<{ action: 'join' | 'leave' | 'chat' | 'resync' | 'like' | 'inspect'; text?: string; sequence: number } | null>(null);
+  const requestMultiplayer = (action: 'join' | 'leave' | 'chat' | 'resync' | 'like' | 'inspect', text?: string) => {
+    if (action === 'inspect') { setPaintMode(false); requestWorkspace('exit'); setViewMode('first'); }
+    if (action === 'join' || action === 'leave') { poster.cancel(); requestWorkspace('clear'); }
     setMultiplayerRequest(previous => ({ action, text, sequence: (previous?.sequence ?? 0) + 1 }));
   };
   const accentColor = tweaks.accentColor.useState();
@@ -57,17 +59,25 @@ const App = () => {
   const { warmAudio, playSpray, playChime } = useSprayAudio();
   const [sky, setSky] = useState<SkyMode>('day');
   const [paintMode, setPaintMode] = useState(false);
+  const [portrait, setPortrait] = useState(false);
+  const [workspaceView, setWorkspaceView] = useState<PaintWorkspaceView>({ selected: false, active: false, width: 0, height: 0 });
+  const [workspaceRequest, setWorkspaceRequest] = useState<{ action: PaintWorkspaceAction; sequence: number } | null>(null);
+  const requestWorkspace = (action: PaintWorkspaceAction) => {
+    setMovement({ x: 0, y: 0 }); setLookInput({ x: 0, y: 0 });
+    if (action === 'enter') { setPaintMode(true); closeMenu(); }
+    setWorkspaceRequest(previous => ({ action, sequence: (previous?.sequence ?? 0) + 1 }));
+  };
   const [eraseMode, setEraseMode] = useState(false);
   const [color, setColor] = useState(COLORS[0]);
   const [activeMenu, setActiveMenu] = useState<HudMenu>(null);
   const [musicReady, setMusicReady] = useState(false);
   const [movement, setMovement] = useState<MovementInput>({ x: 0, y: 0 });
+  const [lookInput, setLookInput] = useState<MovementInput>({ x: 0, y: 0 });
   const [jumpSignal, setJumpSignal] = useState(0);
   const [viewMode, setViewMode] = useState<CameraMode>('first');
   const [mapZoom, setMapZoom] = useState(1);
   const [botsEnabled, setBotsEnabled] = useState(false);
   const [nearbyBotIndex, setNearbyBotIndex] = useState<number | null>(null);
-  const { artworkRequest, requestArtwork, completeArtwork } = useBotArtwork();
   const poster = usePosterPlacement();
   const [layers, setLayers] = useState<PaintLayerState[]>([{ name: 'Layer 1', visible: true }]);
   const [selectedLayer, setSelectedLayer] = useState(0);
@@ -77,7 +87,6 @@ const App = () => {
   const [devViewerOpen, setDevViewerOpen] = useState(false);
   const audioStartedRef = useRef(false);
   const lastCoinAtRef = useRef(0);
-  useEffect(() => { syncBotArtworkConfig(); }, []);
   useEffect(() => () => stopAll(), [stopAll]);
   useEffect(() => saveGameProgress(progress), [progress]);
 
@@ -95,11 +104,13 @@ const App = () => {
   const updateBrushSize = (value: number) => setBrushSelection({ value, source: initialBrushSize });
   const selectColor = (nextColor: string) => { setColor(nextColor); playChime(); };
   const selectPaintTool = (tool: PaintTool) => {
+    if (tool === 'off' && workspaceView.active) requestWorkspace('exit');
     setPaintMode(tool !== 'off');
     setEraseMode(tool === 'eraser');
   };
   const selectSky = (mode: SkyMode) => { setSky(mode); closeMenu(); playChime(); };
   const startPosterPlacement = (dataUrl: string, size: number) => {
+    if (workspaceView.active) requestWorkspace('exit');
     poster.start(dataUrl, size);
     setPaintMode(false);
     setEraseMode(false);
@@ -159,7 +170,7 @@ const App = () => {
 
   return (
     <main
-      className="game-shell"
+      className={`game-shell ${portrait ? 'game-portrait' : ''}`}
       style={{ '--accent': accentColor, '--panel': panelColor } as CSSProperties}
       onClickCapture={startAudioOnFirstClick}
     >
@@ -180,18 +191,19 @@ const App = () => {
       ) : (
         <>
           <WorldScene
-            multiplayerRequest={multiplayerRequest} displayName={displayName} onMultiplayerStatus={setMultiplayerStatus}
+            workspaceRequest={workspaceRequest} onWorkspaceChange={setWorkspaceView}
+            multiplayerRequest={multiplayerRequest} displayName={displayName} username={aippyUser.username} nickName={aippyUser.nickName} onMultiplayerStatus={setMultiplayerStatus}
             cosmetics={cosmetics} onMultiplayerView={setMultiplayerView}
             sky={sky} paintMode={paintMode} eraseMode={eraseMode} color={color}
-            movement={movement} brushSize={brushSize} opacity={opacity} moveSpeed={moveSpeed}
+            movement={movement} lookInput={lookInput} brushSize={brushSize} opacity={opacity} moveSpeed={moveSpeed}
             jumpPower={jumpPower} lookSensitivity={lookSensitivity} fogDensity={fogDensity}
             jumpSignal={jumpSignal} layerIndex={selectedLayer} layerVisibility={layerVisibility}
             viewMode={viewMode} mapZoom={mapZoom} botsEnabled={botsEnabled} avatar={appearance}
-            emoteSignal={emoteSignal} artworkRequest={artworkRequest}
+            emoteSignal={emoteSignal}
             posterPlacement={poster.placement} posterSize={poster.size}
             posterCommitSignal={poster.commitSignal} onPosterValidity={poster.setValid}
             onPosterPlaced={poster.complete}
-            onArtworkPlaced={completeArtwork} onNearbyBot={setNearbyBotIndex}
+            onNearbyBot={setNearbyBotIndex}
             onSpray={playSpray} onPaint={earnPaintCoin}
           />
           <GameHud
@@ -212,8 +224,15 @@ const App = () => {
             onViewChange={changeView} onMapZoomChange={setMapZoom}
             onPurchase={purchaseItem} onEquip={equipItem} onEmote={playEmote}
             onMovement={setMovement} onJump={() => setJumpSignal(signal => signal + 1)}
-            onBotsToggle={() => setBotsEnabled(enabled => !enabled)} onDrawRequest={requestArtwork}
+            onBotsToggle={() => setBotsEnabled(enabled => !enabled)}
           />
+          <button type="button" className="portrait-toggle" aria-pressed={portrait}
+            onClick={() => { setMovement({ x: 0, y: 0 }); setLookInput({ x: 0, y: 0 }); setPortrait(value => !value); }}>
+            {portrait ? '↻ LANDSCAPE' : '↻ PORTRAIT'}
+          </button>
+          {!workspaceView.active && <LookJoystick onLook={setLookInput} />}
+          <PaintWorkspaceHud view={workspaceView} painting={paintMode} onAction={requestWorkspace} />
+          {multiplayerStatus.phase !== 'solo' && <GraffitiPieces pieces={multiplayerView.pieces ?? []} connected={multiplayerStatus.phase === 'connected'} onLike={pieceId => { if (multiplayerStatus.phase !== 'connected') return false; requestMultiplayer('like', pieceId); return true; }} onResync={() => requestMultiplayer('resync')} onView={pieceId => requestMultiplayer('inspect', pieceId)} />}
           <MultiplayerControls
             status={multiplayerStatus} displayName={displayName} avatar={aippyUser.avatar} profileLoading={aippyUser.isLoading}
             onJoin={() => requestMultiplayer('join')} onLeave={() => requestMultiplayer('leave')}

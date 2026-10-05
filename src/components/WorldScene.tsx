@@ -8,33 +8,36 @@ import { jumpWorld } from '@/game/worldMovement';
 import {
   disposePosterPlacementSession, type PosterPlacementSession,
 } from '@/game/posterPlacement';
-import { loadBotArtwork, loadPosterImage } from '@/game/worldSceneRequests';
+import { loadPosterImage } from '@/game/worldSceneRequests';
 import type { PosterPlacementRequest } from '@/game/usePosterPlacement';
 import { applyAvatarAppearance, triggerAvatarEmote } from '@/game/playerAvatarAppearance';
 import type { AvatarAppearance } from '@/game/progression';
-import type { BotArtworkRequest } from '@/game/useBotArtwork';
 import type { AvatarEmote, CameraMode, LiveSettings, MovementInput, SkyMode, WorldEngine } from '@/game/worldTypes';
+import { enterPaintWorkspace, exitPaintWorkspace, clearPaintWorkspace } from '@/game/paintWorkspace';
+import type { PaintWorkspaceView, PaintWorkspaceAction } from '@/components/PaintWorkspaceHud';
 import { WorldMultiplayerSession } from '@/multiplayer/worldSession';
 import type { MultiplayerStatus, MultiplayerView, PlayerCosmetics } from '@/multiplayer/protocol';
 
 interface WorldSceneProps {
-  multiplayerRequest: { action: 'join' | 'leave' | 'chat' | 'resync'; text?: string; sequence: number } | null;
-  displayName: string; onMultiplayerStatus: (status: MultiplayerStatus) => void;
+  workspaceRequest: { action: PaintWorkspaceAction; sequence: number } | null;
+  onWorkspaceChange: (view: PaintWorkspaceView) => void;
+  multiplayerRequest: { action: 'join' | 'leave' | 'chat' | 'resync' | 'like' | 'inspect'; text?: string; sequence: number } | null;
+  displayName: string; username: string; nickName: string; onMultiplayerStatus: (status: MultiplayerStatus) => void;
   cosmetics: PlayerCosmetics; onMultiplayerView: (view: MultiplayerView) => void;
   sky: SkyMode; paintMode: boolean; eraseMode: boolean; color: string;
-  movement: MovementInput; brushSize: number; opacity: number;
+  movement: MovementInput; lookInput: MovementInput; brushSize: number; opacity: number;
   moveSpeed: number; jumpPower: number; lookSensitivity: number; fogDensity: number;
   jumpSignal: number; layerIndex: number; layerVisibility: boolean[];
   viewMode: CameraMode; mapZoom: number; botsEnabled: boolean;
   avatar: AvatarAppearance; emoteSignal: { emote: AvatarEmote; sequence: number } | null;
-  artworkRequest: BotArtworkRequest | null;
   posterPlacement: PosterPlacementRequest | null; posterSize: number; posterCommitSignal: number;
   onPosterValidity: (valid: boolean) => void; onPosterPlaced: (sequence: number, placed: boolean) => void;
-  onArtworkPlaced: (sequence: number, placed: boolean) => void;
   onNearbyBot: (index: number | null) => void; onSpray: () => void; onPaint: () => void;
 }
 
 const WorldScene = (props: WorldSceneProps) => {
+  const workspaceCallbackRef = useRef(props.onWorkspaceChange);
+  workspaceCallbackRef.current = props.onWorkspaceChange;
   const mountRef = useRef<HTMLDivElement>(null);
   const worldRef = useRef<WorldEngine | null>(null);
   const multiplayerRef = useRef<WorldMultiplayerSession | null>(null);
@@ -46,12 +49,11 @@ const WorldScene = (props: WorldSceneProps) => {
   const sprayRef = useRef(props.onSpray);
   const paintRef = useRef(props.onPaint);
   const nearbyBotRef = useRef(props.onNearbyBot);
-  const artworkPlacedRef = useRef(props.onArtworkPlaced);
   const posterValidityRef = useRef(props.onPosterValidity);
   const posterPlacedRef = useRef(props.onPosterPlaced);
   const liveRef = useRef<LiveSettings>({
     paintMode: props.paintMode, eraseMode: props.eraseMode, color: props.color,
-    opacity: props.opacity, movement: props.movement, brushSize: props.brushSize,
+    opacity: props.opacity, movement: props.movement, lookInput: props.lookInput, brushSize: props.brushSize,
     moveSpeed: props.moveSpeed, jumpPower: props.jumpPower,
     lookSensitivity: props.lookSensitivity, fogDensity: props.fogDensity,
     layerIndex: props.layerIndex, layerVisibility: props.layerVisibility,
@@ -62,7 +64,7 @@ const WorldScene = (props: WorldSceneProps) => {
     multiplayerViewRef.current = props.onMultiplayerView;
     liveRef.current = {
       paintMode: props.paintMode, eraseMode: props.eraseMode, color: props.color,
-      opacity: props.opacity, movement: props.movement, brushSize: props.brushSize,
+      opacity: props.opacity, movement: props.movement, lookInput: props.lookInput, brushSize: props.brushSize,
       moveSpeed: props.moveSpeed, jumpPower: props.jumpPower,
       lookSensitivity: props.lookSensitivity, fogDensity: props.fogDensity,
       layerIndex: props.layerIndex, layerVisibility: props.layerVisibility,
@@ -70,7 +72,6 @@ const WorldScene = (props: WorldSceneProps) => {
     sprayRef.current = props.onSpray;
     paintRef.current = props.onPaint;
     nearbyBotRef.current = props.onNearbyBot;
-    artworkPlacedRef.current = props.onArtworkPlaced;
     posterValidityRef.current = props.onPosterValidity;
     posterPlacedRef.current = props.onPosterPlaced;
     posterSizeRef.current = props.posterSize;
@@ -86,6 +87,7 @@ const WorldScene = (props: WorldSceneProps) => {
     if (!container) return;
     const world = createWorld(container, liveRef.current.fogDensity);
     worldRef.current = world;
+    world.onPaintWorkspaceChange = workspace => workspaceCallbackRef.current({ selected: !!workspace?.selection, active: !!workspace?.active, width: workspace?.selection?.width ?? 0, height: workspace?.selection?.height ?? 0 });
     const multiplayer = new WorldMultiplayerSession(world, status => multiplayerStatusRef.current(status), view => multiplayerViewRef.current(view));
     multiplayerRef.current = multiplayer;
     world.setPaintVisibility(liveRef.current.layerVisibility);
@@ -134,18 +136,28 @@ const WorldScene = (props: WorldSceneProps) => {
   useEffect(() => {
     const request = props.multiplayerRequest;
     if (!request) return;
-    if (request.action === 'join') multiplayerRef.current?.join(props.displayName);
+    if (request.action === 'join') multiplayerRef.current?.join(props.displayName, undefined, { username: props.username, nickName: props.nickName });
     else if (request.action === 'leave') multiplayerRef.current?.leave();
     else if (request.action === 'chat') multiplayerRef.current?.sendChat(request.text ?? '');
+    else if (request.action === 'inspect') multiplayerRef.current?.inspectPiece(request.text ?? '');
+    else if (request.action === 'like') multiplayerRef.current?.likePiece(request.text ?? '');
     else multiplayerRef.current?.resync();
   }, [props.multiplayerRequest]);
+
+  useEffect(() => {
+    const world = worldRef.current, request = props.workspaceRequest;
+    if (!world || !request) return;
+    world.onPaintEnd?.();
+    if (request.action === 'enter') enterPaintWorkspace(world);
+    else if (request.action === 'exit') exitPaintWorkspace(world);
+    else { multiplayerRef.current?.completePiece(); clearPaintWorkspace(world); }
+  }, [props.workspaceRequest]);
 
   useEffect(() => { multiplayerRef.current?.setCosmetics(props.cosmetics); }, [props.cosmetics]);
 
   useEffect(() => loadPosterImage(
     props.posterPlacement, worldRef, posterRef, posterSizeRef, posterCommitRef, posterValidityRef,
   ), [props.posterPlacement?.sequence, props.posterPlacement?.dataUrl]);
-  useEffect(() => loadBotArtwork(props.artworkRequest, worldRef, artworkPlacedRef), [props.artworkRequest]);
 
   useEffect(() => {
     let previousIndex = -1;

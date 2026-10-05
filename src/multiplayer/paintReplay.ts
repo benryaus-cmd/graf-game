@@ -5,9 +5,9 @@ import { decodeSurface, pointToHit } from './surfaces';
 import type { SharedStroke, StrokePoint } from './protocol';
 
 interface PaintJob {
-  stroke: SharedStroke; points: StrokePoint[]; previous: StrokePoint | null; index: number; count: number;
+  stroke: SharedStroke; surface: ReturnType<typeof decodeSurface>; points: StrokePoint[]; previous: StrokePoint | null; index: number; count: number;
 }
-interface WallReplay { original: PaintWall; target: PaintWall; jobs: PaintJob[]; staging: boolean }
+interface WallReplay { original: PaintWall; target: PaintWall; jobs: PaintJob[]; staging: boolean; committing: boolean; commitIndex: number }
 
 export class PaintReplay {
   private replays = new Map<string, WallReplay>();
@@ -40,16 +40,17 @@ export class PaintReplay {
       };
       layers.push(layer); return layer;
     } };
-    this.replays.set(wall.surfaceId, { original: wall, target, jobs: [], staging: true });
+    this.replays.set(wall.surfaceId, { original: wall, target, jobs: [], staging: true, committing: false, commitIndex: 0 });
   }
   enqueue(wall: PaintWall, stroke: SharedStroke, points: StrokePoint[], previous: StrokePoint | null): void {
     if (!wall.surfaceId || !points.length) return;
     let replay = this.replays.get(wall.surfaceId);
     if (!replay) {
-      replay = { original: wall, target: wall, jobs: [], staging: false };
+      replay = { original: wall, target: wall, jobs: [], staging: false, committing: false, commitIndex: 0 };
       this.replays.set(wall.surfaceId, replay);
     }
-    replay.jobs.push({ stroke, points, previous, index: 0, count: points.length });
+    if (replay.staging && replay.committing) { replay.commitIndex = 0; replay.committing = false; }
+    replay.jobs.push({ stroke, surface: decodeSurface(stroke.surfaceId), points, previous, index: 0, count: points.length });
   }
   isRebuilding(wall: PaintWall): boolean { return !!this.replays.get(wall.surfaceId!)?.staging; }
   removeMissing(walls: Map<string, PaintWall>): void {
@@ -64,35 +65,41 @@ export class PaintReplay {
     for (const [id, replay] of this.replays) {
       while (replay.jobs.length && remaining > 0 && performance.now() < deadline) {
         const job = replay.jobs[0];
-        const surface = decodeSurface(job.stroke.surfaceId);
+        const surface = job.surface;
         if (!surface) { replay.jobs.shift(); continue; }
         const previousPoint = job.index > 0 ? job.points[job.index - 1] : job.previous;
         renderNetworkPoint(replay.target, surface.face, surface.layer, job.stroke, job.points[job.index], previousPoint, this.visibility());
         job.index++; remaining--;
         if (job.index >= job.count) replay.jobs.shift();
       }
-      if (!replay.jobs.length) {
-        if (replay.staging) this.commit(replay);
+      if (!replay.jobs.length && replay.staging) {
+        replay.committing = true;
+        if (!this.commit(replay, deadline)) break;
+      }
+      if (!replay.jobs.length && !replay.committing) {
         this.dispose(replay); this.replays.delete(id);
       }
       if (remaining <= 0 || performance.now() >= deadline) break;
     }
   }
-  private commit(replay: WallReplay): void {
-    replay.original.layers.forEach((layer, index) => {
-      layer.contexts.forEach((context, face) => {
-        if (!context) return;
+  private commit(replay: WallReplay, deadline: number): boolean {
+    const faces = replay.original.layers.flatMap((layer, index) => layer.contexts.map((context, face) => ({ layer, index, context, face })).filter(entry => !!entry.context));
+    let processed = 0;
+    while (replay.commitIndex < faces.length && processed < 2 && performance.now() < deadline) {
+        const { layer, index, context, face } = faces[replay.commitIndex++];
         context.save(); context.setTransform(1, 0, 0, 1, 0, 0); context.globalAlpha = 1;
         context.globalCompositeOperation = 'source-over';
         context.clearRect(0, 0, context.canvas.width, context.canvas.height);
         const staging = replay.target.layers[index]?.contexts[face];
         if (staging) context.drawImage(staging.canvas, 0, 0);
         context.restore(); layer.textures[face].needsUpdate = true;
-      });
-    });
+        processed++;
+    }
+    if (replay.commitIndex >= faces.length) { replay.committing = false; replay.staging = false; return true; }
+    return false;
   }
   private dispose(replay: WallReplay): void {
-    if (replay.staging) replay.target.layers.forEach(layer => layer.textures.forEach(texture => texture.dispose()));
+    if (replay.target !== replay.original) replay.target.layers.forEach(layer => layer.textures.forEach(texture => texture.dispose()));
   }
 }
 

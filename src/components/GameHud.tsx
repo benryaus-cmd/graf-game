@@ -30,7 +30,6 @@ interface GameHudProps {
   onPurchase: (item: ShopItem) => void; onEquip: (item: ShopItem) => void;
   onEmote: (emote: AvatarEmote) => void;
   onMovement: (movement: MovementInput) => void; onJump: () => void; onBotsToggle: () => void;
-  onDrawRequest: (prompt: string, botIndex: number) => Promise<boolean>;
 }
 
 const GameHud = (props: GameHudProps) => (
@@ -53,6 +52,20 @@ const GameHud = (props: GameHudProps) => (
         <div><p>OPEN CANVAS <span>·</span> 04</p><h1>SIDESTREET</h1></div>
       </div>
       <div className="top-actions">
+        <div className="paint-quick-controls" aria-label="Paint mode and color">
+          <button
+            type="button" className="paint-mode-switch"
+            aria-pressed={props.paintMode}
+            aria-label={props.paintMode ? 'Switch to explore mode' : 'Switch to paint mode'}
+            onClick={() => props.onToolChange(props.paintMode ? 'off' : 'paint')}
+          >{props.paintMode ? 'PAINT' : 'EXPLORE'}</button>
+          <button
+            type="button" className="paint-color-trigger"
+            onClick={() => props.onMenuToggle('paint')}
+            aria-label={`Open paint selector, current color ${props.color}`}
+            aria-expanded={props.activeMenu === 'paint'}
+          ><i style={{ backgroundColor: props.color }} /><span>COLOR</span></button>
+        </div>
         <span className={`sound-status ${props.musicReady ? 'sound-playing' : ''}`}><i /> LO-FI</span>
         <SkyMenu
           sky={props.sky} open={props.activeMenu === 'sky'} panelColor={props.panelColor}
@@ -75,7 +88,7 @@ const GameHud = (props: GameHudProps) => (
         drawingDisabled={props.purchasesDisabled}
         nearbyBotIndex={props.nearbyBotIndex} open={props.activeMenu === 'bots'}
         onToggle={() => props.onMenuToggle('bots')} onClose={props.onMenuClose}
-        onBotsToggle={props.onBotsToggle} onDrawRequest={props.onDrawRequest}
+        onBotsToggle={props.onBotsToggle}
       />
       <button
         type="button" className="avatar-open" onClick={() => props.onMenuToggle('avatar')}

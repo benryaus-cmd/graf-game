@@ -1,6 +1,8 @@
+import type { PieceMetadata } from './pieceSync';
+
 export interface StrokePoint { x: number; y: number; z: number; pressure: number }
 export interface SharedStroke {
-  strokeId: string; playerId?: string; surfaceId: string;
+  strokeId: string; playerId?: string; pieceId?: string; surfaceId: string;
   colour: string; tool: string; brushSize: number; points: StrokePoint[];
   operation?: 'paint' | 'erase'; opacity?: number; layerIndex?: number; face?: string;
   sequence?: number; revision?: number;
@@ -10,11 +12,19 @@ export interface PlayerState {
   position: number[]; rotation: number[]; movement?: string; tool?: string; jumping?: boolean;
   animation?: string; emote?: string; visibleHeldItem?: string; flightState?: string; cosmetics?: PlayerCosmetics;
 }
-export interface SharedPlayer { playerId: string; displayName: string; state?: PlayerState }
+export interface SharedPlayer {
+  playerId: string;
+  /** Legacy/server-preformatted label retained for protocol 1 and older snapshots. */
+  displayName: string;
+  /** Aippy profile identity fields are deliberately kept separate. */
+  username?: string;
+  nickName?: string;
+  state?: PlayerState;
+}
 export type ConnectionPhase = 'solo' | 'connecting' | 'connected' | 'disconnected';
 export interface MultiplayerStatus { phase: ConnectionPhase; playerCount: number; notice?: string }
 export interface ChatMessage { id: string; playerId: string; displayName: string; text: string; timestamp: number }
-export interface MultiplayerView { chat: ChatMessage[]; revision: number; accountFeaturesAvailable: boolean; worldItemCount: number }
+export interface MultiplayerView { chat: ChatMessage[]; revision: number; accountFeaturesAvailable: boolean; worldItemCount: number; pieces?: PieceMetadata[] }
 export type Message = Record<string, unknown> & { type: string };
 
 export function readPoint(value: unknown): StrokePoint | null {
@@ -28,7 +38,9 @@ export function readStroke(value: unknown): SharedStroke | null {
       typeof s.colour !== 'string' || !/^#[0-9a-f]{6}$/i.test(s.colour) ||
       !Number.isFinite(s.brushSize) || s.brushSize <= 0) return null;
   return {
-    strokeId: s.strokeId ?? s.id!, playerId: s.playerId, surfaceId: s.surfaceId,
+    strokeId: s.strokeId ?? s.id!, playerId: s.playerId,
+    pieceId: typeof s.pieceId === 'string' && s.pieceId.length <= 100 ? s.pieceId : undefined,
+    surfaceId: s.surfaceId,
     colour: s.colour, tool: typeof s.tool === 'string' ? s.tool : 'spray',
     brushSize: s.brushSize,
     operation: s.operation === 'erase' || s.tool === 'eraser' ? 'erase' : 'paint',
@@ -66,5 +78,12 @@ export function readCosmetics(value: unknown): PlayerCosmetics | undefined {
 export function readPlayer(value: unknown): SharedPlayer | null {
   const p = value as SharedPlayer & { id?: string };
   if (!p || typeof (p.playerId ?? p.id) !== 'string') return null;
-  return { playerId: p.playerId ?? p.id!, displayName: typeof p.displayName === 'string' ? p.displayName.slice(0, 40) : 'PLAYER', state: readPlayerState(p.state) ?? undefined };
+  const username = readIdentityField(p.username, 40);
+  const nickName = readIdentityField(p.nickName, 40);
+  const displayName = readIdentityField(p.displayName, 40) ?? (nickName || (username ? '@' + username : 'PLAYER'));
+  return { playerId: p.playerId ?? p.id!, displayName, username, nickName, state: readPlayerState(p.state) ?? undefined };
+}
+
+function readIdentityField(value: unknown, maxLength: number): string | undefined {
+  return typeof value === 'string' && value.trim() ? value.trim().slice(0, maxLength) : undefined;
 }

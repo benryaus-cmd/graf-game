@@ -5,7 +5,6 @@ import aiConfig from '@/config/aiConfig.json';
 const provider = aippyAIRuntime.aippyAIProvider();
 const configBridge = aippyAIRuntime as unknown as { sendAIConfigToContainer?: () => void };
 type ImageSize = '1024x1024' | '1024x1536' | '1536x1024';
-type ImageQuality = 'standard' | 'high' | 'low';
 type ArtworkKind = 'mural' | 'poster';
 
 export function syncBotArtworkConfig(): void {
@@ -24,7 +23,6 @@ async function generateArtwork(description: string, kind: ArtworkKind): Promise<
   const result = await generateImage({
     model: provider.imageModel(aiConfig.imageModel.value),
     size: aiConfig.imageSize.value as ImageSize,
-    quality: aiConfig.imageQuality.value as ImageQuality,
     prompt: `${direction} ${lettering} The requested subject is: ${prompt}`,
   });
   const image = result.images[0];

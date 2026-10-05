@@ -35,6 +35,8 @@ test('existing live server: two players, state, shared stroke, late join and cle
     assert.equal(readPlayer(joined.player)?.playerId, b.connection.playerId);
     a.connection.send({ type: 'player_state', state: { position: [0, 1.72, 0], rotation: [0, 0.2, 0], movement: 'idle', tool: 'spray', jumping: false } });
     await until(() => b!.messages.some(m => m.type === 'player_state' && m.playerId === a.connection.playerId), 'remote transform');
+    const remoteState = b.messages.find(m => m.type === 'player_state' && m.playerId === a.connection.playerId);
+    assert.deepEqual(remoteState?.state?.position, [0, 1.72, 0], 'server preserves actual position, not just the event type');
     const material = new THREE.MeshStandardMaterial();
     const chunk = createCityChunk(0, 0, { wallMaterial: material, groundMaterial: material, railMaterial: material, glassMaterial: material });
     chunk.group.updateMatrixWorld(true);

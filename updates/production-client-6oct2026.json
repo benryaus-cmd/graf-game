@@ -1,0 +1,129 @@
+{
+  "baseUrl": "https://raw.githubusercontent.com/benryaus-cmd/graf-game/main/",
+  "files": [
+    {
+      "source": "src/App.tsx",
+      "target": "src/games/importedGame/upstream/src/App.tsx"
+    },
+    {
+      "source": "src/components/BotControls.tsx",
+      "target": "src/games/importedGame/upstream/src/components/BotControls.tsx"
+    },
+    {
+      "source": "src/components/GameHud.tsx",
+      "target": "src/games/importedGame/upstream/src/components/GameHud.tsx"
+    },
+    {
+      "source": "src/components/GraffitiPieces.tsx",
+      "target": "src/games/importedGame/upstream/src/components/GraffitiPieces.tsx"
+    },
+    {
+      "source": "src/components/LookJoystick.tsx",
+      "target": "src/games/importedGame/upstream/src/components/LookJoystick.tsx"
+    },
+    {
+      "source": "src/components/MovementJoystick.tsx",
+      "target": "src/games/importedGame/upstream/src/components/MovementJoystick.tsx"
+    },
+    {
+      "source": "src/components/PaintDock.tsx",
+      "target": "src/games/importedGame/upstream/src/components/PaintDock.tsx"
+    },
+    {
+      "source": "src/components/PaintWorkspaceHud.tsx",
+      "target": "src/games/importedGame/upstream/src/components/PaintWorkspaceHud.tsx"
+    },
+    {
+      "source": "src/components/PosterStudio.tsx",
+      "target": "src/games/importedGame/upstream/src/components/PosterStudio.tsx"
+    },
+    {
+      "source": "src/components/WorldScene.tsx",
+      "target": "src/games/importedGame/upstream/src/components/WorldScene.tsx"
+    },
+    {
+      "source": "src/dev/zip.ts",
+      "target": "src/games/importedGame/upstream/src/dev/zip.ts"
+    },
+    {
+      "source": "src/game/generateBotArtwork.ts",
+      "target": "src/games/importedGame/upstream/src/game/generateBotArtwork.ts"
+    },
+    {
+      "source": "src/game/paintTargeting.ts",
+      "target": "src/games/importedGame/upstream/src/game/paintTargeting.ts"
+    },
+    {
+      "source": "src/game/paintWorkspace.ts",
+      "target": "src/games/importedGame/upstream/src/game/paintWorkspace.ts"
+    },
+    {
+      "source": "src/game/pointerCoordinates.ts",
+      "target": "src/games/importedGame/upstream/src/game/pointerCoordinates.ts"
+    },
+    {
+      "source": "src/game/posterPreview.ts",
+      "target": "src/games/importedGame/upstream/src/game/posterPreview.ts"
+    },
+    {
+      "source": "src/game/tagBrush.ts",
+      "target": "src/games/importedGame/upstream/src/game/tagBrush.ts"
+    },
+    {
+      "source": "src/game/tagLibrary.ts",
+      "target": "src/games/importedGame/upstream/src/game/tagLibrary.ts"
+    },
+    {
+      "source": "src/game/worldControls.ts",
+      "target": "src/games/importedGame/upstream/src/game/worldControls.ts"
+    },
+    {
+      "source": "src/game/worldPainting.ts",
+      "target": "src/games/importedGame/upstream/src/game/worldPainting.ts"
+    },
+    {
+      "source": "src/game/worldTypes.ts",
+      "target": "src/games/importedGame/upstream/src/game/worldTypes.ts"
+    },
+    {
+      "source": "src/index.css",
+      "target": "src/games/importedGame/upstream/src/index.css"
+    },
+    {
+      "source": "src/multiplayer/artworkSync.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/artworkSync.ts"
+    },
+    {
+      "source": "src/multiplayer/connection.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/connection.ts"
+    },
+    {
+      "source": "src/multiplayer/paintReplay.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/paintReplay.ts"
+    },
+    {
+      "source": "src/multiplayer/paintSync.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/paintSync.ts"
+    },
+    {
+      "source": "src/multiplayer/pieceSync.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/pieceSync.ts"
+    },
+    {
+      "source": "src/multiplayer/protocol.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/protocol.ts"
+    },
+    {
+      "source": "src/multiplayer/remotePlayers.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/remotePlayers.ts"
+    },
+    {
+      "source": "src/multiplayer/strokeIndex.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/strokeIndex.ts"
+    },
+    {
+      "source": "src/multiplayer/worldSession.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/worldSession.ts"
+    }
+  ]
+}

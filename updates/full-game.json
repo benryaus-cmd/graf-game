@@ -30,6 +30,14 @@
       "target": "src/games/importedGame/upstream/src/components/GameHud.tsx"
     },
     {
+      "source": "src/components/GraffitiPieces.tsx",
+      "target": "src/games/importedGame/upstream/src/components/GraffitiPieces.tsx"
+    },
+    {
+      "source": "src/components/LookJoystick.tsx",
+      "target": "src/games/importedGame/upstream/src/components/LookJoystick.tsx"
+    },
+    {
       "source": "src/components/MovementJoystick.tsx",
       "target": "src/games/importedGame/upstream/src/components/MovementJoystick.tsx"
     },
@@ -44,6 +52,10 @@
     {
       "source": "src/components/PaintDock.tsx",
       "target": "src/games/importedGame/upstream/src/components/PaintDock.tsx"
+    },
+    {
+      "source": "src/components/PaintWorkspaceHud.tsx",
+      "target": "src/games/importedGame/upstream/src/components/PaintWorkspaceHud.tsx"
     },
     {
       "source": "src/components/PosterPlacementHud.tsx",
@@ -202,6 +214,14 @@
       "target": "src/games/importedGame/upstream/src/game/paintSurfaceLayer.ts"
     },
     {
+      "source": "src/game/paintTargeting.ts",
+      "target": "src/games/importedGame/upstream/src/game/paintTargeting.ts"
+    },
+    {
+      "source": "src/game/paintWorkspace.ts",
+      "target": "src/games/importedGame/upstream/src/game/paintWorkspace.ts"
+    },
+    {
       "source": "src/game/playerAvatar.ts",
       "target": "src/games/importedGame/upstream/src/game/playerAvatar.ts"
     },
@@ -220,6 +240,10 @@
     {
       "source": "src/game/playerPhysics.ts",
       "target": "src/games/importedGame/upstream/src/game/playerPhysics.ts"
+    },
+    {
+      "source": "src/game/pointerCoordinates.ts",
+      "target": "src/games/importedGame/upstream/src/game/pointerCoordinates.ts"
     },
     {
       "source": "src/game/posterCanvas.ts",
@@ -260,6 +284,14 @@
     {
       "source": "src/game/skyEffects.ts",
       "target": "src/games/importedGame/upstream/src/game/skyEffects.ts"
+    },
+    {
+      "source": "src/game/tagBrush.ts",
+      "target": "src/games/importedGame/upstream/src/game/tagBrush.ts"
+    },
+    {
+      "source": "src/game/tagLibrary.ts",
+      "target": "src/games/importedGame/upstream/src/game/tagLibrary.ts"
     },
     {
       "source": "src/game/textureMapping.ts",
@@ -342,6 +374,10 @@
       "target": "src/games/importedGame/upstream/src/multiplayer/paintSync.ts"
     },
     {
+      "source": "src/multiplayer/pieceSync.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/pieceSync.ts"
+    },
+    {
       "source": "src/multiplayer/playerSync.ts",
       "target": "src/games/importedGame/upstream/src/multiplayer/playerSync.ts"
     },
@@ -356,6 +392,10 @@
     {
       "source": "src/multiplayer/remotePlayers.ts",
       "target": "src/games/importedGame/upstream/src/multiplayer/remotePlayers.ts"
+    },
+    {
+      "source": "src/multiplayer/strokeIndex.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/strokeIndex.ts"
     },
     {
       "source": "src/multiplayer/surfaces.ts",

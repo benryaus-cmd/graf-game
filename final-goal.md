@@ -190,9 +190,9 @@ Count eligible distinct engagement server-side, deduplicate rewards and use one 
 
 A bounded basic painting area and ordinary handmade painting should be accessible to a newcomer. Tune starting allowance or introductory briefs so expansions/reuse are attainable. Recommend modest daily creative briefs later; repeated activity alone must not mint unlimited credits. Protect progression from trivial view-farming.
 
-## Current server integration blocker
+## Server movement validation fix
 
-The protocol-2 wire check found that player_state drops state.position, whether sent as an array or an x/y/z object. The existing server must retain and broadcast the documented numeric [x,y,z] array (also in snapshot player state). Other player metadata is forwarded. Until corrected, the current client cannot place/show remote avatars; do not fabricate movement coordinates or deploy a replacement backend.
+The protocol-2 wire check found that player_state drops state.position, whether sent as an array or an x/y/z object. The existing server must retain and broadcast the documented numeric [x,y,z] array (also in snapshot player state). Other player metadata is forwarded. On 6 October the owner confirmed the validation callback was corrected and is restarting the existing service. The client continues using the documented array. Do not fabricate movement coordinates or deploy a replacement backend.
 
 ## Inventory, collecting and trading
 
@@ -240,3 +240,14 @@ Do not add forced police chases, consumable-can scarcity, compulsory multiplayer
 6. Exercise late joins, reconnects, chunk changes, snapshots and 500 ms simulated latency. Local input must remain immediate; accepted shared paint must eventually converge without losing drafts.
 
 Aim for 60 FPS local drawing on chosen supported phones and measure it. Do not promise every device or VM capacity without evidence. Update HOW_I_DID_IT.md as actual systems are delivered. This brief is the destination; gameplay changes and server deployment are subsequent implementation work.
+
+
+## 6 October production pass and revised owner direction
+
+Multiplayer display identity is intentionally client-trusted for now. Keep Aippy `username` and `nickName` separately, plus the resolved `displayName`, across join and player records. Keep the server-generated connection playerId. Do not fetch tokens or invent a login/profile service during this pass. Owner/admin authority is a separate existing-server patch; a matching unverified username must not grant privileges.
+
+Daily cleanup is now part of the destination: a piece gets a 24-hour evaluation window and survives into another window only with at least 20 eligible distinct likes earned in that window. It must earn another 20 in every following window. Previous-window likes do not carry over. This expires artwork, not the VM, player inventory or the whole server. Schedule/count/removal must persist on the existing server. The server now groups strokes under stable piece IDs; poster association is not yet specified. Independent client deletion is not an implementation of this rule. See docs/server-client-handoff.md.
+
+This client pass adds a directly accessible Paint/Explore switch, compact top colour control, independent right-look input, portrait viewport rotation with corresponding pointer mapping, coalesced painting samples, close-range/obstruction targeting, and a handmade transparent tag workspace with undo/redo and a bounded browser-local design library. The AI poster creation interface is replaced by manual drawing. Saved tags use the existing persistent binary upload/placement path when multiplayer is connected.
+
+Performance work bounds remote image downloads, indexes artwork by loaded surfaces and budgets paint reconstruction across frames. These are targeted protections; they do not prove a phone frame-rate or unrestricted world capacity. The client now selects a bounded wall rectangle before painting and offers a front-on isolated view of the same live wall. This rectangle is explicitly unprotected: it is not a server claim. Handmade tag drawing has fine, marker, spray, roller and drip heads. World spray still uses its existing brush. Piece creation/completion, nearby piece inspection, likes/window display and server removal are integrated with protocol v2. Four-hour claims, paid expansions/overpainting, wall drizzle exceptions/layers, engagement credits, trading, collectibles and upgraded licensed character models remain unfinished. No AA/AAA production claim is made solely from a successful build.

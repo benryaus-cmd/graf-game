@@ -77,7 +77,7 @@ export const createZip = (entries: ZipEntry[]): Blob => {
   ev.setUint32(12, centralSize, true);
   ev.setUint32(16, offset, true);
 
-  return new Blob([...localParts, ...centralParts, end], {
+  return new Blob([...localParts, ...centralParts, end].map(part => Uint8Array.from(part).buffer), {
     type: 'application/zip',
   });
 };

@@ -7,6 +7,9 @@ import { attachKeyboardControls } from '@/game/worldKeyboard';
 import type { PosterPlacementSession } from '@/game/posterPlacement';
 import { commitPosterPlacement } from '@/game/posterCanvas';
 import { updatePosterPreview } from '@/game/posterPreview';
+import { elementPointerIsRotated, elementPointerPoint } from '@/game/pointerCoordinates';
+import { centeredPaintWorkspaceBounds, clearPaintWorkspace, selectPaintWorkspaceFace, updatePaintWorkspaceCamera } from '@/game/paintWorkspace';
+import { isPaintTargetReachable } from '@/game/paintTargeting';
 
 export function attachWorldControls(
   world: WorldEngine,
@@ -30,14 +33,19 @@ export function attachWorldControls(
   const lastBuzz = { current: 0 };
   const stroke: { current: PaintPoint | null } = { current: null };
   let pointerId: number | null = null;
-  let startX = 0;
-  let startY = 0;
+  let startPointer = { x: 0, y: 0 };
+  let startPointerWidth = 0;
+  let startPointerHeight = 0;
   let startYaw = 0;
   let startPitch = 0;
+  let selectingWorkspace = false;
   let paintRevision = world.paintRevision;
   const endStroke = () => { stroke.current = null; world.onPaintEnd?.(); };
 
   const refreshWalls = () => {
+    if (world.paintWorkspace?.selection && !world.walls.includes(world.paintWorkspace.selection.wall)) {
+      clearPaintWorkspace(world);
+    }
     const unchanged = cachedWalls.length === world.walls.length &&
       cachedWalls.every((wall, index) => wall === world.walls[index]);
     if (unchanged) return;
@@ -50,36 +58,80 @@ export function attachWorldControls(
     });
   };
   const paint = (event: PointerEvent) => {
+    if (!world.paintWorkspace?.selection) return;
     if (paintRevision !== world.paintRevision) { endStroke(); paintRevision = world.paintRevision; }
     refreshWalls();
+    if (!world.paintWorkspace?.selection) return;
     sprayOnWall(
       world, event, settings.current, raycaster, pointer, wallMeshes, wallLookup,
       onSpray, onPaint, lastBuzz, stroke,
     );
     if (!stroke.current) world.onPaintEnd?.();
   };
+  const selectPaintFaceAtPointer = (event: PointerEvent) => {
+    refreshWalls();
+    const rect = canvas.getBoundingClientRect();
+    if (!rect.width || !rect.height) return false;
+    const coordinates = elementPointerPoint(canvas, event);
+    pointer.set(coordinates.x * 2 - 1, 1 - coordinates.y * 2);
+    raycaster.setFromCamera(pointer, world.cameraMode === 'map' ? world.mapCamera : world.camera);
+    const intersections = raycaster.intersectObjects(wallMeshes, false);
+    const hit = intersections.find((candidate) => candidate.face && candidate.uv && isPaintTargetReachable(
+      raycaster.ray,
+      candidate.point,
+      candidate.distance,
+      world.playerPosition,
+      world.colliders,
+    ));
+    const wall = hit ? wallLookup.get(hit.object) : undefined;
+    if (!hit?.face || !hit.uv || !wall) return false;
+    const face = Number.isFinite(hit.face.materialIndex) ? hit.face.materialIndex : 0;
+    selectPaintWorkspaceFace(world, wall, face, centeredPaintWorkspaceBounds(wall, face, hit.uv));
+    return true;
+  };
+  const paintPointerMove = (event: PointerEvent) => {
+    const samples = event.getCoalescedEvents?.();
+    if (samples?.length) {
+      for (const sample of samples) paint(sample);
+    } else {
+      paint(event);
+    }
+  };
   const onPointerDown = (event: PointerEvent) => {
+    if (pointerId !== null || (event.pointerType === 'mouse' && (!event.isPrimary || event.button !== 0))) return;
     pointerId = event.pointerId;
-    startX = event.clientX;
-    startY = event.clientY;
+    const rect = canvas.getBoundingClientRect();
+    const rotated = elementPointerIsRotated(canvas);
+    startPointer = elementPointerPoint(canvas, event);
+    startPointerWidth = rotated ? rect.height : rect.width;
+    startPointerHeight = rotated ? rect.width : rect.height;
     startYaw = world.playerYaw;
     startPitch = world.playerPitch;
     endStroke();
-    canvas.setPointerCapture(event.pointerId);
-    if (settings.current.paintMode && !posterState.current) paint(event);
+    try { canvas.setPointerCapture(event.pointerId); } catch { pointerId = null; return; }
+    if (settings.current.paintMode && !posterState.current) {
+      selectingWorkspace = !world.paintWorkspace?.selection;
+      if (selectingWorkspace) selectPaintFaceAtPointer(event);
+      else paint(event);
+    }
   };
   const onPointerMove = (event: PointerEvent) => {
     if (pointerId !== event.pointerId) return;
     if (settings.current.paintMode && !posterState.current) {
-      paint(event);
+      if (selectingWorkspace) return;
+      paintPointerMove(event);
       return;
     }
     endStroke();
+    if (world.paintWorkspace?.active) return;
     if (world.cameraMode === 'map') return;
     const sensitivity = settings.current.lookSensitivity;
-    world.playerYaw = startYaw - (event.clientX - startX) * sensitivity;
+    const point = elementPointerPoint(canvas, event);
+    const dx = (point.x - startPointer.x) * startPointerWidth;
+    const dy = (point.y - startPointer.y) * startPointerHeight;
+    world.playerYaw = startYaw - dx * sensitivity;
     world.playerPitch = THREE.MathUtils.clamp(
-      startPitch - (event.clientY - startY) * sensitivity,
+      startPitch - dy * sensitivity,
       -1.24,
       1.18,
     );
@@ -87,6 +139,7 @@ export function attachWorldControls(
   const onPointerUp = (event: PointerEvent) => {
     if (pointerId !== event.pointerId) return;
     pointerId = null;
+    selectingWorkspace = false;
     endStroke();
     if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
   };
@@ -95,7 +148,20 @@ export function attachWorldControls(
   world.renderer.setAnimationLoop((time) => {
     timer.update(time);
     const delta = Math.min(timer.getDelta(), 0.045);
-    advanceWorld(world, delta, settings.current, keys);
+    const workspaceActive = !!world.paintWorkspace?.active;
+    if (!workspaceActive) {
+      const look = settings.current.lookInput;
+      if (look && world.cameraMode !== 'map') {
+        const turn = settings.current.lookSensitivity * 240 * delta;
+        world.playerYaw -= THREE.MathUtils.clamp(look.x, -1, 1) * turn;
+        world.playerPitch = THREE.MathUtils.clamp(
+          world.playerPitch + THREE.MathUtils.clamp(look.y, -1, 1) * turn,
+          -1.24,
+          1.18,
+        );
+      }
+      advanceWorld(world, delta, settings.current, keys);
+    }
     if (!settings.current.paintMode || posterState.current) endStroke();
     world.onMultiplayerFrame?.(delta, settings.current);
     advanceWeather(world, delta);
@@ -110,18 +176,36 @@ export function attachWorldControls(
       const placed = commitPosterPlacement(world, poster);
       if (placed !== null) onPosterPlaced(poster.sequence, placed);
     }
-    world.renderer.render(world.scene, world.cameraMode === 'map' ? world.mapCamera : world.camera);
+    const workspace = world.paintWorkspace;
+    if (workspace?.active) {
+      refreshWalls();
+      if (!world.paintWorkspace?.active) {
+        world.renderer.render(world.scene, world.cameraMode === 'map' ? world.mapCamera : world.camera);
+        return;
+      }
+      updatePaintWorkspaceCamera(workspace, canvas.clientWidth, canvas.clientHeight);
+      world.renderer.render(world.scene, workspace.camera);
+    } else {
+      world.renderer.render(world.scene, world.cameraMode === 'map' ? world.mapCamera : world.camera);
+    }
   });
   canvas.addEventListener('pointerdown', onPointerDown);
   canvas.addEventListener('pointermove', onPointerMove);
   canvas.addEventListener('pointerup', onPointerUp);
   canvas.addEventListener('pointercancel', onPointerUp);
-  const onBlur = () => { pointerId = null; keys.clear(); endStroke(); };
+  const onBlur = () => {
+    if (pointerId !== null && canvas.hasPointerCapture(pointerId)) canvas.releasePointerCapture(pointerId);
+    pointerId = null;
+    selectingWorkspace = false;
+    keys.clear();
+    endStroke();
+  };
   canvas.addEventListener('lostpointercapture', onPointerUp);
   window.addEventListener('blur', onBlur);
 
   return () => {
     endStroke();
+    clearPaintWorkspace(world);
     world.renderer.setAnimationLoop(null);
     stopKeyboardControls();
     canvas.removeEventListener('pointerdown', onPointerDown);

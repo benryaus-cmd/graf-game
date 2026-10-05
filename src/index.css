@@ -74,6 +74,27 @@ button { color: inherit; -webkit-tap-highlight-color: transparent; }
 .brand-lockup p span { color: var(--accent); }
 .brand-lockup h1 { margin-top: 2px; font-size: 17px; font-weight: 900; letter-spacing: 0.12em; line-height: 1; }
 .top-actions { gap: 8px; }
+.paint-quick-controls { display: flex; align-items: center; gap: 5px; pointer-events: auto; }
+.paint-mode-switch, .paint-color-trigger {
+  display: flex;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 10px;
+  border: 1px solid rgba(244, 242, 230, 0.28);
+  border-radius: 3px;
+  background: rgba(23, 24, 22, 0.72);
+  color: #f3f1e9;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  backdrop-filter: blur(10px);
+  pointer-events: auto;
+}
+.paint-mode-switch[aria-pressed="true"] { border-color: rgba(255, 92, 53, 0.72); color: #ffb19d; }
+.paint-color-trigger i { width: 15px; height: 15px; border: 1px solid rgba(255,255,255,0.65); border-radius: 50%; }
+.paint-color-trigger[aria-expanded="true"] { border-color: var(--accent); }
 .sound-status {
   display: flex;
   align-items: center;
@@ -840,6 +861,8 @@ button:active { transform: scale(0.97); }
   pointer-events: none;
 }
 .game-hud .paint-dock,
+.game-hud .paint-mode-switch,
+.game-hud .paint-color-trigger,
 .game-hud .avatar-panel,
 .game-hud .map-zoom-control,
 .game-hud .joystick,
@@ -954,6 +977,17 @@ button:active { transform: scale(0.97); }
 .game-menu-sky .menu-heading { align-items: center; }
 .game-menu-sky .sky-close { margin-left: auto; }
 @media (max-width: 370px) {
+  .top-hud { right: 8px; left: 8px; gap: 5px; }
+  .brand-lockup { gap: 6px; }
+  .brand-mark { width: 31px; height: 31px; font-size: 19px; }
+  .brand-lockup p { font-size: 6px; }
+  .brand-lockup h1 { font-size: 12px; }
+  .paint-quick-controls { gap: 3px; }
+  .paint-mode-switch, .paint-color-trigger { min-height: 36px; gap: 4px; padding: 0 6px; font-size: 7px; }
+  .paint-color-trigger i { width: 13px; height: 13px; }
+  .paint-color-trigger span, .sound-status { display: none; }
+  .paint-color-trigger { width: 30px; padding: 0; }
+  .top-actions { gap: 4px; }
   .game-menu-paint .paint-dock-expanded { width: calc(100vw - 12px); }
   .game-menu-bots .bot-panel { width: calc(100vw - 16px); padding: 9px; }
   .game-menu-sky .sky-menu { width: calc(100vw - 18px); }
@@ -1092,3 +1126,38 @@ button:active { transform: scale(0.97); }
 .multiplayer-chat span { display: block; white-space: pre-wrap; }
 .multiplayer-chat form { display: flex; gap: 5px; }
 .multiplayer-chat input { width: 0; min-width: 0; flex: 1; padding: 8px; border: 1px solid #718f7e; border-radius: 6px; background: #17231c; color: white; font-size: 16px; touch-action: manipulation; }
+
+/* Independent touch controls keep the jump button above the look pad. */
+.game-shell .jump-button { bottom: 285px; }
+.game-shell:has(.paint-dock-expanded) .jump-button { bottom: 430px; }
+.look-joystick { pointer-events: auto; }
+.portrait-toggle { position: absolute; top: 108px; right: 12px; z-index: 4;
+  min-height: 36px; padding: 6px 10px; font-size: 9px; border-radius: 8px;
+  border: 1px solid #718f7e; background: rgba(20,26,23,.88); }
+@media (max-width: 600px) {
+  .game-shell .jump-button { bottom: 258px; }
+  .game-shell:has(.paint-dock-expanded) .jump-button { bottom: 398px; }
+}
+@media (orientation: landscape) {
+  .game-shell.game-portrait { position: fixed; width: 100dvh; height: 100dvw;
+    min-height: 0; left: 50%; top: 50%; transform: translate(-50%, -50%) rotate(90deg); }
+  .game-portrait .top-hud { left: 8px; right: 8px; gap: 4px; }
+  .game-portrait .brand-lockup { display: none; }
+  .game-portrait .sound-status { display: none; }
+  .game-portrait .multiplayer-controls { top: 168px; right: 12px; }
+  .game-portrait .paint-dock { max-width: calc(100% - 16px); }
+}
+
+.paint-workspace-controls { position: absolute; z-index: 4; bottom: 98px; left: 50%; transform: translateX(-50%);
+  display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px; width: max-content;
+  max-width: calc(100% - 24px); padding: 7px 9px; border-radius: 8px; background: rgba(20,26,23,.9);
+  color: #f5f3eb; font-size: 10px; pointer-events: auto; }
+.paint-workspace-controls span { display: flex; flex-direction: column; gap: 3px; }
+.paint-workspace-controls small { font-size: 7px; color: #e5bc83; }
+.paint-workspace-controls button { min-height: 36px; padding: 6px 8px; border-radius: 6px; border: 1px solid #718f7e;
+  background: #354b3e; font-size: 9px; }
+.game-shell:has(.paint-dock-expanded) .paint-workspace-controls { display: none; }
+
+@media (orientation: landscape) {
+  .game-portrait .graffiti-pieces section { width: min(360px, calc(100dvh - 24px)) !important; }
+}

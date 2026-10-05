@@ -30,6 +30,32 @@ export interface PaintWall {
   dirty?: boolean;
 }
 
+export interface PaintWorkspaceBounds {
+  minU: number;
+  minV: number;
+  maxU: number;
+  maxV: number;
+}
+
+export interface PaintWorkspaceSelection {
+  wall: PaintWall;
+  face: number;
+  bounds: PaintWorkspaceBounds;
+  center: THREE.Vector3;
+  normal: THREE.Vector3;
+  up: THREE.Vector3;
+  width: number;
+  height: number;
+  preview: THREE.LineLoop;
+}
+
+export interface PaintWorkspaceState {
+  active: boolean;
+  camera: THREE.OrthographicCamera;
+  selection: PaintWorkspaceSelection | null;
+  savedLayers: Map<THREE.Object3D, boolean> | null;
+}
+
 export interface PosterArtwork {
   image: string;
   position: [number, number, number];
@@ -114,6 +140,8 @@ export interface WorldEngine {
   clearPaintCache: () => void;
   setPaintSession: (session: 'solo' | 'multiplayer') => void;
   paintRevision: number;
+  paintWorkspace?: PaintWorkspaceState;
+  onPaintWorkspaceChange?: (workspace: PaintWorkspaceState | undefined) => void;
   onPaintSample?: (wall: PaintWall, hit: THREE.Intersection, settings: LiveSettings, continues: boolean) => void;
   onPaintEnd?: () => void;
   onMultiplayerFrame?: (delta: number, settings: LiveSettings) => void;
@@ -129,12 +157,18 @@ export interface MovementInput {
   y: number;
 }
 
+export interface LookInput {
+  x: number;
+  y: number;
+}
+
 export interface LiveSettings {
   paintMode: boolean;
   eraseMode: boolean;
   color: string;
   opacity: number;
   movement: MovementInput;
+  lookInput?: LookInput;
   brushSize: number;
   moveSpeed: number;
   jumpPower: number;

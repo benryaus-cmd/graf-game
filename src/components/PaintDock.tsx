@@ -72,13 +72,13 @@ const PaintDock = (props: PaintDockProps) => {
       ) : (
         <>
           <div className="dock-topline">
-            <span>{posterMode ? 'POSTER LAB · CUSTOM WALL ART' : props.eraseMode ? 'ERASER READY' : `LAYER ${props.selectedLayer + 1} · YOUR PALETTE`}</span>
+            <span>{posterMode ? 'TAG STUDIO · HANDMADE WALL ART' : props.eraseMode ? 'ERASER READY' : `LAYER ${props.selectedLayer + 1} · YOUR PALETTE`}</span>
             <div className="dock-tools">
               {!posterMode && <span className="color-readout"><i style={{ backgroundColor: props.color }} />{props.color.toUpperCase()}</span>}
               <button
                 className="poster-page-toggle" type="button" onClick={() => setPosterMode((value) => !value)}
-                aria-label={posterMode ? 'Return to painting tools' : 'Open poster lab'}
-              >{posterMode ? '← PAINT' : 'POSTER →'}</button>
+                aria-label={posterMode ? 'Return to painting tools' : 'Open tag studio'}
+              >{posterMode ? '← PAINT' : 'TAGS →'}</button>
               {!posterMode && <button
                 className="tune-toggle" type="button" aria-expanded={tuningOpen}
                 onClick={() => setTuningOpen((value) => !value)}

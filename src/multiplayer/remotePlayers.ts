@@ -23,19 +23,26 @@ export class RemotePlayers {
     if (!remote) {
       const avatar = createPlayerAvatar(this.scene);
       avatar.visible = false;
+      const name = player.nickName || player.displayName || (player.username ? '@' + player.username : 'PLAYER');
+      const username = player.username?.replace(/^@/, '');
+      const showHandle = !!player.nickName && !!username && username.toLocaleLowerCase() !== player.nickName.replace(/^@/, '').toLocaleLowerCase();
       const labelCanvas = document.createElement('canvas');
-      labelCanvas.width = 512; labelCanvas.height = 96;
+      labelCanvas.width = 512; labelCanvas.height = 112;
       const context = labelCanvas.getContext('2d');
       if (context) {
-        context.fillStyle = 'rgba(12,18,16,0.8)'; context.fillRect(0, 0, 512, 96);
+        context.fillStyle = 'rgba(12,18,16,0.8)'; context.fillRect(0, 0, 512, 112);
         context.fillStyle = '#fff'; context.font = 'bold 30px sans-serif';
         context.textAlign = 'center'; context.textBaseline = 'middle';
-        context.fillText(player.displayName, 256, 48, 490);
+        context.fillText(name, 256, showHandle ? 38 : 56, 490);
+        if (showHandle) {
+          context.fillStyle = 'rgba(232,239,233,0.82)'; context.font = '22px sans-serif';
+          context.fillText('@' + username, 256, 80, 490);
+        }
       }
       const texture = new THREE.CanvasTexture(labelCanvas);
       const label = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, depthWrite: false }));
-      label.position.set(0, 2.65, 0); label.scale.set(2.4, 0.45, 1); avatar.add(label);
-      remote = { avatar, current: null, target: null, name: player.displayName };
+      label.position.set(0, 2.65, 0); label.scale.set(2.4, showHandle ? 0.53 : 0.45, 1); avatar.add(label);
+      remote = { avatar, current: null, target: null, name };
       this.players.set(player.playerId, remote);
     }
     if (player.state) this.state(player.playerId, player.state);

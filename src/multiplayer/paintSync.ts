@@ -1,8 +1,9 @@
+import { StrokeIndex } from './strokeIndex';
 import { readPoint, readStroke, type Message, type SharedStroke, type StrokePoint } from './protocol';
 
 export interface PaintSample {
   surfaceId: string; colour: string; tool: string; brushSize: number; point: StrokePoint;
-  operation?: 'paint' | 'erase'; opacity?: number; layerIndex?: number; face?: string;
+  operation?: 'paint' | 'erase'; opacity?: number; layerIndex?: number; face?: string; pieceId?: string;
 }
 interface PaintAdapter {
   send: (message: Message) => boolean;
@@ -10,10 +11,22 @@ interface PaintAdapter {
   reset: () => void;
 }
 interface PendingStroke { stroke: SharedStroke; sent: number; shared: boolean }
+const MAX_REJECTION_TOMBSTONES = 10_000;
+
+function rememberRejected(set: Set<string>, id: string): void {
+  set.delete(id);
+  set.add(id);
+  if (set.size > MAX_REJECTION_TOMBSTONES) set.delete(set.values().next().value!);
+}
 
 export class PaintSync {
   strokes = new Map<string, SharedStroke>();
+  private index = new StrokeIndex();
   private local = new Map<string, SharedStroke>();
+  /** Local IDs known to have been accepted by the server (or present in a full snapshot). */
+  private confirmedLocal = new Set<string>();
+  private rejectedStrokeIds = new Set<string>();
+  private rejectedPieceIds = new Set<string>();
   private active: PendingStroke | null = null;
   private gesture: string | null = null;
   private segment = 0;
@@ -24,7 +37,7 @@ export class PaintSync {
   sample(sample: PaintSample, continues: boolean): { stroke: SharedStroke; previous: StrokePoint | null } {
     const prior = this.active?.stroke;
     const same = prior && prior.surfaceId === sample.surfaceId && prior.colour === sample.colour &&
-      prior.tool === sample.tool && prior.brushSize === sample.brushSize && prior.opacity === sample.opacity;
+      prior.tool === sample.tool && prior.brushSize === sample.brushSize && prior.opacity === sample.opacity && prior.pieceId === sample.pieceId;
     if (!continues) this.end();
     else if (prior && !same) { this.finishActive(); this.segment++; }
     if (this.active && this.active.stroke.points.length >= 16_000) {
@@ -35,13 +48,15 @@ export class PaintSync {
       const stroke: SharedStroke = {
         strokeId: this.gesture + '.' + this.segment, surfaceId: sample.surfaceId,
         colour: sample.colour, tool: sample.tool, brushSize: sample.brushSize, points: [],
+        pieceId: typeof sample.pieceId === 'string' && sample.pieceId.length <= 100 ? sample.pieceId : undefined,
         operation: sample.operation ?? (sample.tool === 'eraser' ? 'erase' : 'paint'), opacity: sample.opacity,
         layerIndex: sample.layerIndex, face: sample.face,
       };
-      this.strokes.set(stroke.strokeId, stroke); this.local.set(stroke.strokeId, stroke);
+      this.strokes.set(stroke.strokeId, stroke); this.index.set(stroke); this.local.set(stroke.strokeId, stroke);
       const shared = this.adapter.send({
         type: 'stroke_begin', strokeId: stroke.strokeId, surfaceId: stroke.surfaceId,
         colour: stroke.colour, tool: stroke.tool, brushSize: stroke.brushSize,
+        ...(stroke.pieceId ? { pieceId: stroke.pieceId } : {}),
         operation: stroke.operation, opacity: stroke.opacity ?? 1, layerIndex: stroke.layerIndex ?? 0, face: stroke.face ?? '',
       });
       this.active = { stroke, sent: 0, shared };
@@ -92,21 +107,31 @@ export class PaintSync {
     if (message.type === 'stroke_begin') {
       const incoming = readStroke(message.stroke);
       if (!incoming) return;
+      if (this.rejectedStrokeIds.has(incoming.strokeId) || (incoming.pieceId && this.rejectedPieceIds.has(incoming.pieceId))) return;
       const existing = this.strokes.get(incoming.strokeId);
       if (existing) {
-        existing.sequence = incoming.sequence; existing.revision = incoming.revision;
+        const sequence = Number.isSafeInteger(incoming.sequence) ? incoming.sequence :
+          Number.isSafeInteger(message.sequence) ? message.sequence as number : undefined;
+        existing.sequence = sequence ?? existing.sequence;
+        existing.revision = incoming.revision;
         existing.playerId = incoming.playerId;
+        existing.pieceId = incoming.pieceId ?? existing.pieceId;
+        this.index.changed(existing);
+        if (sequence !== undefined) this.confirmLocal(incoming.strokeId);
         return;
       }
-      this.strokes.set(incoming.strokeId, incoming);
+      this.strokes.set(incoming.strokeId, incoming); this.index.set(incoming);
       if (incoming.points.length) this.adapter.draw(incoming, incoming.points, this.continuationPoint(incoming.strokeId));
       return;
     }
     if (typeof message.strokeId !== 'string') return;
+    if (this.rejectedStrokeIds.has(message.strokeId)) return;
     const stroke = this.strokes.get(message.strokeId);
     if (!stroke) return;
     if (Number.isSafeInteger(message.sequence)) stroke.sequence = message.sequence as number;
     if (Number.isSafeInteger(message.revision)) stroke.revision = message.revision as number;
+    if (Number.isSafeInteger(message.sequence)) this.confirmLocal(message.strokeId);
+    this.index.changed(stroke);
     if (this.local.has(message.strokeId)) return;
     if (message.type === 'stroke_points' && Array.isArray(message.points)) {
       const points = message.points.slice(0, 128).map(readPoint).filter((p): p is StrokePoint => !!p);
@@ -117,31 +142,80 @@ export class PaintSync {
     }
   }
   snapshot(values: unknown[], preserveActive = false): void {
+    const activeAtSnapshot = this.active?.stroke.strokeId ?? null;
     if (!preserveActive) { this.interrupted(); this.end(); }
-    this.strokes.clear();
+    this.strokes.clear(); this.index.clear();
     for (const value of values.slice(0, 10_000)) {
       let stroke = readStroke(value);
       if (!stroke) continue;
+      if (this.rejectedStrokeIds.has(stroke.strokeId) || (stroke.pieceId && this.rejectedPieceIds.has(stroke.pieceId))) continue;
       const local = this.local.get(stroke.strokeId);
       if (local && this.active?.stroke === local && preserveActive) {
         Object.assign(local, { ...stroke, points: local.points }); stroke = local;
       }
       // A disconnect can leave the server with only the beginning of our immediate local stroke.
       if (local && local.points.length > stroke.points.length) stroke.points = local.points;
+      if (local && stroke.points.length >= local.points.length &&
+          this.active?.stroke !== local && activeAtSnapshot !== local.strokeId) {
+        this.confirmLocal(local.strokeId);
+      }
       this.strokes.set(stroke.strokeId, stroke);
     }
     for (const [id, stroke] of this.local) {
-      if (!this.strokes.has(id)) this.strokes.set(id, stroke);
+      if (this.strokes.has(id)) continue;
+      // A complete snapshot is authoritative for an ended stroke once the server has
+      // confirmed that ID. Keep offline drafts and strokes interrupted mid-gesture.
+      if (this.confirmedLocal.has(id) && this.active?.stroke !== stroke && activeAtSnapshot !== id) {
+        this.local.delete(id);
+        this.confirmedLocal.delete(id);
+        continue;
+      }
+      this.strokes.set(id, stroke);
     }
+    for (const stroke of this.strokes.values()) this.index.set(stroke);
     this.adapter.reset();
     for (const stroke of [...this.strokes.values()].sort(strokeOrder)) {
       if (stroke.points.length) this.adapter.draw(stroke, stroke.points, this.continuationPoint(stroke.strokeId));
     }
   }
+  private confirmLocal(id: string): void {
+    if (this.local.has(id)) this.confirmedLocal.add(id);
+  }
   forWall(wallId: string): SharedStroke[] {
-    return [...this.strokes.values()].filter(s => s.surfaceId.startsWith(wallId + '/')).sort(strokeOrder);
+    return this.index.forWall(wallId);
   }
   replay(stroke: SharedStroke): void { this.adapter.draw(stroke, stroke.points, this.continuationPoint(stroke.strokeId)); }
+
+  /** Remove strokes named by an authoritative piece-removal broadcast. Returns affected surfaces for one rebuild each. */
+  removeStrokeIds(ids: readonly string[]): string[] {
+    const surfaces = new Set<string>();
+    const removed = new Set(ids.filter(id => typeof id === 'string' && id.length > 0 && id.length <= 120));
+    for (const id of removed) {
+      rememberRejected(this.rejectedStrokeIds, id);
+      const stroke = this.strokes.get(id) ?? this.local.get(id);
+      if (stroke) surfaces.add(stroke.surfaceId);
+      this.strokes.delete(id); this.index.delete(id);
+      this.local.delete(id);
+      this.confirmedLocal.delete(id);
+      if (this.active?.stroke.strokeId === id) {
+        // Do not flush or end a stroke the server has just removed with its piece.
+        this.active = null;
+        this.gesture = null;
+        this.segment = 0;
+      }
+    }
+    return [...surfaces];
+  }
+
+  /** Prevent delayed server echoes and stale snapshots from restoring a removed piece's paint. */
+  rejectPiece(pieceId: string): string[] {
+    if (typeof pieceId !== 'string' || !pieceId || pieceId.length > 100) return [];
+    rememberRejected(this.rejectedPieceIds, pieceId);
+    const ids = new Set<string>();
+    for (const [id, stroke] of this.strokes) if (stroke.pieceId === pieceId) ids.add(id);
+    for (const [id, stroke] of this.local) if (stroke.pieceId === pieceId) ids.add(id);
+    return this.removeStrokeIds([...ids]);
+  }
 }
 
 export function strokeOrder(a: SharedStroke, b: SharedStroke): number {

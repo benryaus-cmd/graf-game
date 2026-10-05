@@ -87,3 +87,12 @@ The captured live wire fixture is included in tests/fixtures/protocol2.json; reg
 Explicit app TypeScript checking reports the same six pre-existing errors in PosterStudio, dev/zip and generateBotArtwork; no new multiplayer errors. Build/lint/client tests pass.
 
 Aippy refresh uses updates/multiplayer-v2-features.json: download every listed source into its exact target, preserve all other files/saves/settings/shell/README, then run the normal build. The full-game manifest also includes the new modules for any future fresh import.
+
+
+## Production client pass — 6 October 2026
+
+Added direct Paint/Explore, compact colour selection, separate look joystick and portrait pointer mapping. First tap previews a bounded nearby unobstructed painting rectangle; subsequent strokes remain inside it. Front-on canvas mode uses the same wall textures and multiplayer strokes through an isolated orthographic camera, without exporting a second canvas. The rectangle is explicitly unprotected.
+
+Replaced AI creation UI with handmade transparent tags, bounded local design storage, gesture undo/redo and fine/marker/spray/roller/drip heads. Existing binary artwork upload supplies persistent multiplayer URLs. Current world spray retains its original brush.
+
+Protocol v2 retains Aippy username and nickname separately. Painting sessions create world-space pieces, complete them, display nearby server-owned engagement/window metadata and request likes. Server removals reconcile textures and ignore stale echoes. Replay is indexed and frame-budgeted; artwork download concurrency and stale loads are bounded. No new backend, account system or client-side shared economy was added. See docs/server-client-handoff.md for remaining contracts and verification limits.

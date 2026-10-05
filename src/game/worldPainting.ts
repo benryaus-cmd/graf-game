@@ -1,5 +1,8 @@
 import * as THREE from 'three';
 import type { LiveSettings, PaintWall, WorldEngine } from '@/game/worldTypes';
+import { isPaintTargetReachable } from '@/game/paintTargeting';
+import { elementPointerPoint } from '@/game/pointerCoordinates';
+import { isPaintWorkspaceHitAllowed } from '@/game/paintWorkspace';
 
 export interface PaintPoint {
   object: THREE.Object3D;
@@ -79,15 +82,34 @@ export function sprayOnWall(
 ): void {
   const rect = world.renderer.domElement.getBoundingClientRect();
   if (!rect.width || !rect.height) return;
-  pointer.set(((event.clientX - rect.left) / rect.width) * 2 - 1, -((event.clientY - rect.top) / rect.height) * 2 + 1);
-  raycaster.setFromCamera(pointer, world.cameraMode === 'map' ? world.mapCamera : world.camera);
-  const intersections = raycaster.intersectObjects(wallMeshes, false);
+  const coordinates = elementPointerPoint(world.renderer.domElement, event);
+  pointer.set(coordinates.x * 2 - 1, 1 - coordinates.y * 2);
+  raycaster.setFromCamera(pointer, world.paintWorkspace?.active ? world.paintWorkspace.camera : world.cameraMode === 'map' ? world.mapCamera : world.camera);
+  const intersections = raycaster.intersectObjects(world.paintWorkspace?.active && world.paintWorkspace.selection ? [world.paintWorkspace.selection.wall.mesh] : wallMeshes, false);
   const hit = intersections[0];
-  if (!hit || hit.distance > 160 || !hit.face || !hit.uv) { stroke.current = null; return; }
+  if (!hit || !hit.face || !hit.uv || (!world.paintWorkspace?.active && !isPaintTargetReachable(
+    raycaster.ray,
+    hit.point,
+    hit.distance,
+    world.playerPosition,
+    world.colliders,
+  ))) { stroke.current = null; return; }
   const wall = wallLookup.get(hit.object);
   if (!wall) { stroke.current = null; return; }
   const layerIndex = Math.max(0, settings.layerIndex);
   const face = Number.isFinite(hit.face.materialIndex) ? hit.face.materialIndex : 0;
+  const selection = world.paintWorkspace?.selection;
+  if (selection && !isPaintWorkspaceHitAllowed(selection, wall, face, hit.uv)) { stroke.current = null; return; }
+  if (selection) {
+    // Keep the entire brush inside the box; network replay uses the same unclipped stroke.
+    const dimensions = wall.faceDimensions[face] ?? { width: 1, height: 1 };
+    const scale = wall.uvScales[face] ?? { u: 1, v: 1 };
+    const radius = Math.max(0.025, settings.brushSize / 50);
+    const u = hit.uv.x / scale.u, v = hit.uv.y / scale.v;
+    const bounds = selection.bounds;
+    if (u < bounds.minU + radius / dimensions.width || u > bounds.maxU - radius / dimensions.width ||
+        v < bounds.minV + radius / dimensions.height || v > bounds.maxV - radius / dimensions.height) { stroke.current = null; return; }
+  }
   const previous = stroke.current?.object === hit.object && stroke.current.face === face && stroke.current.layer === layerIndex
     ? stroke.current : null;
   const point = stampPaintHit(

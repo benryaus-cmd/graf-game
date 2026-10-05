@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { PaintWall, WorldEngine } from '@/game/worldTypes';
 import type { PosterPlacementSession } from '@/game/posterPlacement';
+import { isPaintTargetReachable } from '@/game/paintTargeting';
 import { createPosterPreview } from '@/game/posterPreviewMesh';
 
 const POSTER_GREEN = new THREE.Color('#55ff91');
@@ -57,7 +58,13 @@ export function updatePosterPreview(
       const fits = session.size <= dimensions.width && posterHeight <= dimensions.height &&
         centerX >= session.size / 2 && centerX <= dimensions.width - session.size / 2 &&
         centerY >= posterHeight / 2 && centerY <= dimensions.height - posterHeight / 2;
-      valid = upright && fits && hit.distance <= 18;
+      const selection = world.paintWorkspace?.selection;
+      const insideArea = !selection || (selection.wall === wall && selection.face === face &&
+        centerX - session.size / 2 >= selection.bounds.minU * dimensions.width &&
+        centerX + session.size / 2 <= selection.bounds.maxU * dimensions.width &&
+        centerY - posterHeight / 2 >= (1 - selection.bounds.maxV) * dimensions.height &&
+        centerY + posterHeight / 2 <= (1 - selection.bounds.minV) * dimensions.height);
+      valid = upright && fits && insideArea && isPaintTargetReachable(raycaster.ray, hit.point, hit.distance, world.playerPosition, world.colliders);
       if (valid) {
         wall.mesh.updateWorldMatrix(true, false);
         TARGET_POINT.copy(hit.point).addScaledVector(FACE_NORMAL, 0.035);
