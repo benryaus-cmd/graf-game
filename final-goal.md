@@ -18,11 +18,28 @@ Preserve the existing Three.js world, paint tools, layers, posters, avatars and 
 
 ## Evidence and limits of this review
 
-The live page was opened and its SIDESTREET welcome screen observed. Clicking ENTER THE WORLD produced a black game area. The cloud browser reported WebGL disabled and Three.js failed to create its renderer. Therefore movement, spraying, frame rate and the in-world layout could not be directly playtested in this review. This is an environment limitation, not evidence that the game fails on the owner's device.
+The initial cloud-browser attempt opened the live SIDESTREET welcome screen, but clicking ENTER THE WORLD produced a black game area. That browser reported WebGL disabled and Three.js failed to create its renderer. This was an environment limitation, not evidence that the game fails on the owner's device. A subsequent session in a different browser service successfully rendered the world; its findings are recorded below.
 
-At the owner's request, the project snapshot verified against GitHub commit `3bc73839c0a5ccd081e17474462466c77113c20c` was also built locally. Dependency installation and `npm run build` succeeded (1,195 modules transformed). The preview server started successfully on `127.0.0.1:8080` after binding it explicitly to localhost. The cloud browser rejected the preview address with `ERR_BLOCKED_BY_CLIENT`; this route therefore did not enable gameplay either. A successful build is verified, but live control feel is still unverified. No gameplay code was changed for this review.
+At the owner's request, the project snapshot verified against GitHub commit `3bc73839c0a5ccd081e17474462466c77113c20c` was also built locally. Dependency installation and `npm run build` succeeded (1,195 modules transformed). The preview server started successfully on `127.0.0.1:8080` after binding it explicitly to localhost. The original cloud browser rejected the preview address with `ERR_BLOCKED_BY_CLIENT`; this local route did not enable gameplay. The separate live-site session below provides partial interaction evidence, while full control feel remains unverified. No gameplay code was changed for this review.
 
-The following findings come from the GitHub source, not successful live gameplay:
+### Follow-up live session in a different browser
+
+At the owner's request, a separate browser service tested the exact live Aippy URL on 5 October 2026. Its completed session reported:
+
+- ENTER THE WORLD successfully opened the 3D urban scene, with concrete walls, an archway, walkways/railings and the existing bunny character. WebGL worked in this browser.
+- The Paint Station opened and closed. Selecting green (`#46D38B`) updated the colour display; activating SPRAY changed its active state, which remained active after closing the panel.
+- The expanded paint panel obscured a substantial part of the world. The visible HUD includes brand/district/gesture text, weather/music, view/bots/avatar actions, left MOVE, right JUMP and the paint-station trigger.
+- There was no surface-box selection step before activating spray.
+- Several reported canvas clicks near concrete walls did not produce visible paint marks. No useful error or explanation appeared. This is an inconclusive input/targeting result, not a confirmed claim that painting is generally broken: the report does not establish valid ray hits, pointer drags or an authenticated paint path.
+- The Aippy sign-in toast did not prevent world entry or paint-menu interaction. Do not assume it caused the unsuccessful paint clicks without evidence.
+
+The service reported before/after screenshots, but did not return image attachments in its result. [Session report/recording](https://agent.tinyfish.ai/runs/3afe04a0-d9d0-4c37-9ff6-e6429ec844c2).
+
+World rendering and paint-menu interaction now have live evidence. Successful paint deposition, simultaneous movement/look/spray, jumping, doorway spill and measured frame rate still need positive gameplay checks. In particular, the session's comparison of keyboard and joystick controls does not test the source-level drag-to-look versus spray conflict.
+
+### Source inspection
+
+The following findings come from GitHub source inspection:
 
 - `GameHud.tsx` combines a brand header, music/weather controls, district text, gesture hint, view/bot/avatar actions, jump, a movement joystick and a paint dock. The owner reports the resulting UI is messy.
 - There is a dedicated movement joystick, but looking is a canvas drag. `worldControls.ts` makes that same drag paint when spray mode is active, so looking and spraying compete for the same input.
