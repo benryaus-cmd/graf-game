@@ -1,7 +1,7 @@
 <state_snapshot>
   <planning>
     <overall_goal>
-      Add a hidden developer utility for inspecting and extracting project source code.
+      Successfully integrated the hidden developer utility into the main application flow.
     </overall_goal>
 
     <active_constraints>
@@ -32,6 +32,7 @@
     </key_knowledge>
 
     <artifact_trail>
+      - src/App.tsx: Integrated `ProjectFileViewer` with lazy loading and conditional rendering based on the unlock state.
       - src/components/ProjectFileViewer.tsx: Main UI for file exploration and management.
       - src/components/SettingsModal.tsx: Added secret tap detection and password gate.
       - vite.config.ts: Added `projectFileManifestPlugin` to scan and expose project files.
@@ -41,17 +42,10 @@
     </artifact_trail>
 
     <file_system_state>
-      - CREATED: src/types/projectFiles.ts, src/types/virtual-manifest.d.ts, src/dev/projectFileDiscovery.ts, src/dev/projectTree.ts, src/dev/zip.ts, src/components/SettingsModal.tsx, src/components/ProjectFileViewer.tsx
-      - MODIFIED: vite.config.ts, src/App.tsx
+      - MODIFIED: src/App.tsx
     </file_system_state>
 
     <recent_actions>
-      - write_file src/types/projectFiles.ts → defined interfaces
-      - write_file src/dev/projectFileDiscovery.ts → added search/copy logic
-      - write_file src/dev/projectTree.ts → added tree generation
-      - write_file src/components/SettingsModal.tsx → added secret trigger
-      - write_file src/components/ProjectFileViewer.tsx → added viewer UI
-      - replace_file_content vite.config.ts → added manifest plugin
       - write_file src/App.tsx → integrated viewer and settings
     </recent_actions>
   </engineering>
