@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { LiveRadioController, type LiveRadioAudio } from '../src/game/liveRadio';
+import { RADIO_STATIONS, RADIO_STREAM_URL } from '../src/config/radio';
 
 class FakeAudio extends EventTarget implements LiveRadioAudio {
   volume = 1;
@@ -8,6 +9,8 @@ class FakeAudio extends EventTarget implements LiveRadioAudio {
   loop = false;
   paused = true;
   source = 'stream';
+  get src() { return this.source; }
+  set src(value: string) { this.source = value; }
   pauseCalls = 0;
   loadCalls = 0;
   listeners = new Map<string, Set<EventListener>>();
@@ -134,4 +137,43 @@ test('dispose pauses, removes listeners and releases the stream source', () => {
   assert.equal(notifications, beforeDispose);
   controller.play();
   assert.equal(notifications, beforeDispose);
+});
+
+test('channel cycling reuses one audio element, preserves volume, and does not autoplay while paused', () => {
+  let creations = 0;
+  const audio = new FakeAudio();
+  const controller = new LiveRadioController(RADIO_STREAM_URL, 0.4, () => {
+    creations += 1;
+    return audio;
+  });
+
+  controller.setVolume(0.63);
+  controller.prepare();
+  controller.nextStation();
+  assert.equal(controller.getState().stationId, RADIO_STATIONS[1].id);
+  assert.equal(controller.getState().stationName, RADIO_STATIONS[1].name);
+  assert.equal(audio.source, RADIO_STATIONS[1].url);
+  assert.equal(audio.volume, 0.63);
+  assert.equal(audio.paused, true);
+  assert.equal(creations, 1);
+
+  controller.nextStation();
+  assert.equal(controller.getState().stationId, RADIO_STATIONS[2].id);
+  assert.equal(audio.source, RADIO_STATIONS[2].url);
+  assert.equal(audio.paused, true);
+  assert.equal(creations, 1);
+  controller.dispose();
+});
+
+test('channel cycling keeps playback intent through a pending browser play request', () => {
+  const audio = new FakeAudio();
+  audio.playResult = new Promise<void>(() => undefined);
+  const controller = new LiveRadioController(RADIO_STREAM_URL, 0.4, () => audio);
+  controller.play();
+  audio.paused = true;
+  controller.nextStation();
+  assert.equal(audio.source, RADIO_STATIONS[1].url);
+  assert.equal(audio.paused, false);
+  assert.equal(controller.getState().buffering, true);
+  controller.dispose();
 });

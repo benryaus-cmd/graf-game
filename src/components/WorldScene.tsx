@@ -99,7 +99,7 @@ const WorldScene = (props: WorldSceneProps) => {
     if (!container) return;
     const world = createWorld(container, liveRef.current.fogDensity);
     worldRef.current = world;
-    world.onPaintWorkspaceChange = workspace => workspaceCallbackRef.current({ selected: !!workspace?.selection, active: !!workspace?.active, width: workspace?.selection?.width ?? 0, height: workspace?.selection?.height ?? 0, zoom: workspace?.camera.zoom ?? 1, sizeLinked: workspace?.selection?.sizeLinked ?? true, hasPaint: !!workspace?.selection?.hasPaint, editableUntil: workspace?.editableUntil });
+    world.onPaintWorkspaceChange = workspace => workspaceCallbackRef.current({ selected: !!workspace?.selection, active: !!workspace?.active, width: workspace?.selection?.width ?? 0, height: workspace?.selection?.height ?? 0, zoom: workspace?.camera.zoom ?? 1, sizeLinked: workspace?.selection?.sizeLinked ?? true, started: !!workspace?.selection?.started, hasPaint: !!workspace?.selection?.hasPaint, editableUntil: workspace?.editableUntil });
     world.onColorPick = colour => colorPickCallbackRef.current(colour);
     const multiplayer = new WorldMultiplayerSession(world, status => multiplayerStatusRef.current(status), view => multiplayerViewRef.current(view));
     multiplayerRef.current = multiplayer;
@@ -167,7 +167,12 @@ const WorldScene = (props: WorldSceneProps) => {
     if (!world || !request) return;
     editGrace.current.resume();
     world.onPaintEnd?.();
-    if (request.action === 'enter') {
+    if (request.action === 'start') {
+      if (world.paintWorkspace?.selection) world.paintWorkspace.selection.started = true;
+      world.onPaintWorkspaceChange?.(world.paintWorkspace);
+    }
+    else if (request.action === 'enter') {
+      if (world.paintWorkspace?.selection) world.paintWorkspace.selection.started = true;
       if (world.paintWorkspace) world.paintWorkspace.editableUntil = undefined;
       if (world.paintWorkspace?.selection) world.paintWorkspace.selection.preview.visible = true;
       enterPaintWorkspace(world);

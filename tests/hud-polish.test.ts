@@ -48,3 +48,25 @@ test('paint tools show every default colour and five layers without MORE; closed
   assert.ok(html.includes('Load saved palette'));
   assert.equal(renderToStaticMarkup(createElement(PaintDock, { ...props, open: false })), '');
 });
+
+test('canvas actions show only the preparation pair or painting pair', async () => {
+  const { default: Hud } = await import('../src/components/PaintWorkspaceHud');
+  const view = { selected: true, active: false, width: 2, height: 2 };
+  const render = (started: boolean) => renderToStaticMarkup(createElement(Hud, { view: { ...view, started }, painting: true, onAction: () => {} }));
+  const preparing = render(false);
+  assert.ok(preparing.includes('START PAINTING'));
+  assert.ok(preparing.includes('CANCEL'));
+  assert.ok(!preparing.includes('ENTER CANVAS'));
+  const painting = render(true);
+  assert.ok(painting.includes('ENTER CANVAS'));
+  assert.ok(painting.includes('FINISH PIECE'));
+  assert.ok(!painting.includes('CANCEL'));
+});
+
+test('settings exposes the current shared radio volume', async () => {
+  const { default: Settings } = await import('../src/components/SettingsModal');
+  const html = renderToStaticMarkup(createElement(Settings, { radioVolume: .65, onClose: () => {}, onUnlock: () => {} }));
+  assert.ok(html.includes('65%'));
+  assert.ok(html.includes('value="65"'));
+  assert.ok(html.includes('Radio volume in settings'));
+});

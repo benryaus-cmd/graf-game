@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { PaintSync } from '../src/multiplayer/paintSync';
-import { PieceSync } from '../src/multiplayer/pieceSync';
+import { choosePieceAtWorldPoint, PieceSync } from '../src/multiplayer/pieceSync';
 
 const bounds = { min: [1, 2, 3], max: [4, 5, 6] };
 const metadata = (pieceId: string, overrides: Record<string, unknown> = {}) => ({
@@ -53,6 +53,17 @@ test('piece snapshots parse bounded metadata and ISO timestamps; known updates m
   assert.equal(sync.pieces.get('piece-a')?.bounds.max[2], 6);
   sync.accept({ type: 'piece_like_result', piece: metadata('piece-a', { currentWindowLikes: 99 }) });
   assert.equal(sync.pieces.get('piece-a')?.currentWindowLikes, 5, 'unknown event names are ignored');
+});
+
+test('world-space piece picking uses bounds tolerance and picks the newest overlap', () => {
+  const sync = new PieceSync(() => true);
+  sync.snapshot([
+    metadata('older', { createdAt: 100, sequence: 10 }),
+    metadata('newer', { createdAt: 200, sequence: 11 }),
+  ]);
+  assert.equal(choosePieceAtWorldPoint(sync.pieces.values(), [4.05, 5, 6])?.pieceId, 'newer');
+  assert.equal(choosePieceAtWorldPoint(sync.pieces.values(), [4.11, 5, 6]), null, 'points farther than the 0.1m tolerance do not select');
+  assert.equal(choosePieceAtWorldPoint(sync.pieces.values(), [4, 5, 6], 0)?.pieceId, 'newer');
 });
 
 test('piece metadata rejects invalid bounds, timestamps and unreasonable counts', () => {

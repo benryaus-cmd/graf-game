@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import { LiveRadioController, type LiveRadioState } from '@/game/liveRadio';
+import { RADIO_STATIONS } from '@/config/radio';
 
 export interface RadioControlProps {
   url: string;
@@ -16,6 +17,8 @@ const RadioControl = ({ url, initialVolume, controller: externalController }: Ra
     buffering: false,
     error: false,
     volume: Math.max(0, Math.min(1, initialVolume)),
+    stationId: RADIO_STATIONS.find(station => station.url === url)?.id ?? 'custom',
+    stationName: RADIO_STATIONS.find(station => station.url === url)?.name ?? 'Live radio',
   });
   const [volumeOpen, setVolumeOpen] = useState(false);
 
@@ -58,6 +61,17 @@ const RadioControl = ({ url, initialVolume, controller: externalController }: Ra
       >
         {radioState.buffering ? <span className="radio-status-dot is-buffering" /> : <span className={`radio-status-dot${radioState.playing ? ' is-playing' : ''}`} />}
         <span>RADIO</span>
+      </button>
+      <button
+        className="radio-channel-button"
+        type="button"
+        aria-label={`Change radio channel, currently ${radioState.stationName}`}
+        title={`Current channel: ${radioState.stationName}. Press to change.`}
+        onClick={() => radio?.nextStation()}
+        style={{ '--radio-station-color': RADIO_STATIONS.find((station) => station.id === radioState.stationId)?.color ?? '#7ee1aa' } as CSSProperties}
+      >
+        <i aria-hidden="true" />
+        <span>{radioState.stationName.toUpperCase()}</span>
       </button>
       <button
         className="radio-volume-button"

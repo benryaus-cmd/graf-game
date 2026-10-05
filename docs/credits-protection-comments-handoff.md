@@ -15,3 +15,7 @@ No backend code or infrastructure was changed in this client pass.
 ## Admin additions requested
 
 The supplied `permissions`, `admin_delete_piece`, `admin_delete_piece_complete`, and `piece_removed` contracts are now integrated. Client controls use server permissions and wait for shared removal. Contextual player management uses `admin_set_role`, its acknowledgement and `player_role_changed`; admins cannot assign or change owners. Server role persistence remains the owner's separate work. Protected-area enforcement and any independent poster-deletion contract remain server work; nickname matching grants no client privileges.
+
+## Concrete canvas economy proposal (not a live server contract)
+
+Use separate canvas credits: 1 credit per square metre, rounded up with minimum 1. A medium 2 × 2 m canvas costs 4; an ultra 8 × 8 m canvas costs 64. Give 128 starter credits once, then accrue 4 per 300 connected seconds (0.8 per minute). Solo costs nothing. Charge once when Start Painting accepts a piece reservation, not on individual strokes. Balance, starter entitlement, elapsed connected time, reservations, expansion costs, overlap rejection and admin bypass must be server-owned and included in reconnect snapshots. Keep drawing immediate after admission. Supply exact message envelopes before client wiring.

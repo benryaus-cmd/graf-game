@@ -62,6 +62,7 @@ export function attachWorldControls(
   };
   const paint = (event: PointerEvent) => {
     if (!world.paintWorkspace?.selection) return;
+    if (!world.paintWorkspace.selection.started) return;
     if (paintRevision !== world.paintRevision) { endStroke(); paintRevision = world.paintRevision; }
     refreshWalls();
     if (!world.paintWorkspace?.selection) return;
@@ -120,6 +121,7 @@ export function attachWorldControls(
       return;
     }
     if (!settings.current.paintMode && !posterState.current && !world.paintWorkspace?.active && world.onPlayerPick?.(event)) return;
+    if (!settings.current.paintMode && !posterState.current && !world.paintWorkspace?.active && world.onPiecePick?.(event)) return;
     pointerId = event.pointerId;
     heldPaintPointer = event;
     lastHeldPaintAt = performance.now();

@@ -1146,15 +1146,13 @@ button:active { transform: scale(0.97); }
   .game-shell .jump-button { bottom: 258px; }
   .game-shell:has(.paint-dock-expanded) .jump-button { bottom: 398px; }
 }
-@media (orientation: landscape) {
   .game-shell.game-portrait { position: fixed; width: 100dvh; height: 100dvw;
-    min-height: 0; left: 50%; top: 50%; transform: translate(-50%, -50%) rotate(90deg); }
+    min-height: 0; left: 50%; top: 50%; transform: translate(-50%, -50%) rotate(-90deg); }
   .game-portrait .top-hud { left: 8px; right: 8px; gap: 4px; }
   .game-portrait .brand-lockup { display: none; }
   .game-portrait .sound-status { display: none; }
   .game-portrait .multiplayer-controls { top: 168px; right: 12px; }
   .game-portrait .paint-dock { max-width: calc(100% - 16px); }
-}
 
 .paint-workspace-controls { position: absolute; z-index: 4; bottom: 98px; left: 50%; transform: translateX(-50%);
   display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px; width: max-content;
@@ -1273,7 +1271,8 @@ button:active { transform: scale(0.97); }
 }
 
 .radio-control { position: relative; display: flex; align-items: center; gap: 2px; order: -2; pointer-events: auto; }
-.radio-button, .radio-volume-button { display: flex; align-items: center; justify-content: center; gap: 5px; min-height: 36px; padding: 0 7px; border: 1px solid #ffffff40; border-radius: 5px; background: #171816b8; color: #f3f1e9; font-size: 8px; font-weight: 800; }
+.radio-button, .radio-volume-button, .radio-channel-button { display: flex; align-items: center; justify-content: center; gap: 5px; min-height: 36px; padding: 0 7px; border: 1px solid #ffffff40; border-radius: 5px; background: #171816b8; color: #f3f1e9; font-size: 8px; font-weight: 800; }
+.radio-channel-button { color: var(--radio-station-color, #63db8e); border-color: var(--radio-station-color, #63db8e); }
 .radio-button[aria-pressed='true'] { color: #9ee5ba; border-color: #7ee1aa; }
 .radio-status-dot { width: 6px; height: 6px; border-radius: 50%; background: #a8ada6; }
 .radio-status-dot.is-playing { background: #7ee1aa; }
@@ -1283,3 +1282,15 @@ button:active { transform: scale(0.97); }
 .radio-volume-popover input { width: 100%; accent-color: var(--accent); touch-action: pan-x; }
 .radio-sr-status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .cover-content h1 { font-size: clamp(36px, 12vw, 82px); letter-spacing: -.03em; text-transform: none; }
+
+/* Canvas actions sit below the compact view/avatar toolbar. */
+.game-shell .paint-workspace-controls {
+  top: calc(var(--hud-height, 90px) + 12px); right: 10px; bottom: auto;
+  left: auto; transform: none; max-width: min(310px, calc(100% - 20px));
+  justify-content: flex-end; font-size: 9px;
+}
+.game-shell:has(.paint-dock-expanded) .paint-workspace-controls { display: none; }
+.settings-radio-volume { display: grid; gap: 14px; margin-top: 24px; }
+.settings-radio-volume > span { display: flex; justify-content: space-between; font-size: 11px; letter-spacing: .08em; }
+.settings-radio-volume input { width: 100%; accent-color: #c5e6b4; cursor: pointer; }
+.radio-channel-button i { display: block; flex: 0 0 6px; width: 6px; height: 6px; border-radius: 50%; background: var(--radio-station-color, #63db8e); }

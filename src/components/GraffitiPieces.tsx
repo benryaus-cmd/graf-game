@@ -10,6 +10,8 @@ interface GraffitiPiecesProps {
   role?: string;
   canDeletePieces?: boolean;
   onDelete?: (pieceId: string) => boolean;
+  selectedPieceId?: string | null;
+  piecePickSequence?: number;
 }
 
 type PendingLikes = Record<string, number>;
@@ -24,13 +26,24 @@ const formatTimeLeft = (milliseconds: number) => {
 const statusLabel = (status?: string) => ['complete', 'completed'].includes(status?.toLowerCase() ?? '') ? 'COMPLETE' : 'ACTIVE';
 const pendingKey = (piece: PieceMetadata) => piece.currentWindowStartedAt ?? 0;
 
-const GraffitiPieces = ({ pieces, connected, onLike, onResync, onView, role, canDeletePieces = false, onDelete }: GraffitiPiecesProps) => {
-  const [open, setOpen] = useState(false);
+const GraffitiPieces = ({ pieces, connected, onLike, onResync, onView, role, canDeletePieces = false, onDelete, selectedPieceId, piecePickSequence }: GraffitiPiecesProps) => {
+  const [open, setOpen] = useState(true);
+  const [viewingPieceId, setViewingPieceId] = useState<string | null>(selectedPieceId ?? null);
   const [now, setNow] = useState(() => Date.now());
   const [pendingLikes, setPendingLikes] = useState<PendingLikes>({});
   const [sendError, setSendError] = useState<string | null>(null);
   const [deleteNotice, setDeleteNotice] = useState<string | null>(null);
   const visiblePieces = pieces.slice(0, 20);
+  const viewingPiece = pieces.find(piece => piece.pieceId === viewingPieceId);
+
+  useEffect(() => {
+    if (selectedPieceId === undefined) return;
+    setViewingPieceId(selectedPieceId);
+    if (selectedPieceId) setOpen(true);
+  }, [selectedPieceId, piecePickSequence]);
+  useEffect(() => {
+    if (viewingPieceId && !pieces.some(piece => piece.pieceId === viewingPieceId)) setViewingPieceId(null);
+  }, [pieces, viewingPieceId]);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -84,13 +97,13 @@ const GraffitiPieces = ({ pieces, connected, onLike, onResync, onView, role, can
       >ART <span aria-hidden="true">{pieces.length ? ` ${pieces.length}` : ''}</span></button>
       {open && (
         <section
-          id="graffiti-pieces-panel" aria-label="Nearby graffiti pieces"
+          id="graffiti-pieces-panel" aria-label={viewingPiece ? 'Selected graffiti piece' : 'Nearby graffiti pieces'}
           style={{ position: 'absolute', top: '100%', left: 0, width: 'min(360px, 100%)', maxHeight: 'min(70dvh, 520px)', overflowY: 'auto', padding: 12, border: '1px solid rgba(245,241,229,.2)', borderRadius: 5, background: 'rgba(23,24,22,.96)', color: '#f3f1e9', boxShadow: '0 18px 50px rgba(0,0,0,.48)', backdropFilter: 'blur(18px)' }}
         >
           <header style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
             <div style={{ display: 'grid', flex: 1, gap: 3 }}>
               <small style={{ color: '#a5a8a2', fontSize: 8, fontWeight: 900, letterSpacing: '.16em' }}>COMMUNITY WALLS</small>
-              <b style={{ fontSize: 12, letterSpacing: '.08em' }}>NEARBY ART</b>
+              <b style={{ fontSize: 12, letterSpacing: '.08em' }}>{viewingPiece ? 'ARTWORK' : 'NEARBY ART'}</b>
               {role && <small style={{ color: '#c4c7bd', fontSize: 8, letterSpacing: '.1em' }}>SERVER ROLE: {role.toUpperCase()}</small>}
             </div>
             <button type="button" onClick={onResync} disabled={!connected} style={smallButtonStyle}>RESYNC</button>
@@ -99,7 +112,21 @@ const GraffitiPieces = ({ pieces, connected, onLike, onResync, onView, role, can
           {!connected && <p style={noteStyle} role="status">Connect to see shared pieces and send likes.</p>}
           {sendError && <p style={{ ...noteStyle, color: '#ffc0b2' }} role="alert">{sendError}</p>}
           {deleteNotice && <p style={{ ...noteStyle, color: deleteNotice.startsWith('Delete request could not') ? '#ffc0b2' : '#c4c7bd' }} role="status">{deleteNotice}</p>}
-          {visiblePieces.length === 0 ? (
+          {viewingPiece ? (
+            <article aria-label="Graffiti artwork details" style={{ padding: 10, border: '1px solid rgba(255,255,255,.13)', borderRadius: 4, background: 'rgba(255,255,255,.045)' }}>
+              <button type="button" onClick={() => setViewingPieceId(null)} style={{ ...smallButtonStyle, marginBottom: 8 }}>BACK TO NEARBY ART</button>
+              <div style={{ display: 'grid', gap: 6 }}>
+                <b style={{ fontSize: 12 }}>Graffiti piece</b>
+                <span style={{ color: '#aeb2aa', fontSize: 9 }}>X {Math.round(viewingPiece.anchor[0])} · Z {Math.round(viewingPiece.anchor[2])}</span>
+                <span style={{ color: '#b8bcb4', fontSize: 9 }}>{statusLabel(viewingPiece.status)} · GENERATION {viewingPiece.survivalGeneration ?? 0}</span>
+                <span style={{ color: '#aeb2aa', fontSize: 9 }}>{viewingPiece.currentWindowLikes ?? 0}/20 survival threshold this window · {viewingPiece.lifetimeLikes ?? 0} lifetime likes</span>
+                <button type="button" onClick={() => requestLike(viewingPiece)} disabled={!connected || pendingLikes[viewingPiece.pieceId] === pendingKey(viewingPiece)} style={{ ...smallButtonStyle, color: '#ffb19d' }}>
+                  {pendingLikes[viewingPiece.pieceId] === pendingKey(viewingPiece) ? 'REQUESTED' : 'LIKE'}
+                </button>
+                {canDeletePieces && onDelete && <button type="button" onClick={() => requestDelete(viewingPiece)} disabled={!connected} style={{ ...smallButtonStyle, color: '#ffc0b2' }}>DELETE</button>}
+              </div>
+            </article>
+          ) : visiblePieces.length === 0 ? (
             <p style={noteStyle} role="status">No shared pieces nearby yet.</p>
           ) : (
             <ul style={{ display: 'grid', gap: 8, margin: 0, padding: 0, listStyle: 'none' }}>
@@ -116,7 +143,7 @@ const GraffitiPieces = ({ pieces, connected, onLike, onResync, onView, role, can
                         <span style={{ color: '#aeb2aa', fontSize: 9 }}>X {Math.round(piece.anchor[0])} · Z {Math.round(piece.anchor[2])}</span>
                         <span style={{ color: '#b8bcb4', fontSize: 9 }}>{statusLabel(piece.status)} · GENERATION {piece.survivalGeneration ?? 0}</span>
                       </div>
-                      {onView && <button type="button" onClick={() => onView(piece.pieceId)} style={smallButtonStyle}>VIEW</button>}
+                      <button type="button" onClick={() => { setViewingPieceId(piece.pieceId); onView?.(piece.pieceId); }} style={smallButtonStyle}>VIEW</button>
                       {canDeletePieces && onDelete && <button type="button" onClick={() => requestDelete(piece)} disabled={!connected} style={{ ...smallButtonStyle, color: '#ffc0b2', opacity: connected ? 1 : .62 }}>DELETE</button>}
                       <button
                         type="button" onClick={() => requestLike(piece)} disabled={!connected || pending}

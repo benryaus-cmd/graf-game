@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-export interface PaintWorkspaceView { selected: boolean; active: boolean; width: number; height: number; zoom?: number; sizeLinked?: boolean; hasPaint?: boolean; editableUntil?: number }
-export type PaintWorkspaceAction = 'enter' | 'exit' | 'clear' | 'finish' | 'resize' | 'zoom' | 'fit' | 'link';
+export interface PaintWorkspaceView { selected: boolean; active: boolean; width: number; height: number; zoom?: number; sizeLinked?: boolean; started?: boolean; hasPaint?: boolean; editableUntil?: number }
+export type PaintWorkspaceAction = 'start' | 'enter' | 'exit' | 'clear' | 'finish' | 'resize' | 'zoom' | 'fit' | 'link';
 interface Props { view: PaintWorkspaceView; painting: boolean; onAction: (action: PaintWorkspaceAction, size?: number, height?: number) => void }
 export default function PaintWorkspaceHud({ view, painting, onAction }: Props) {
   const [now, setNow] = useState(Date.now);
@@ -24,7 +24,7 @@ export default function PaintWorkspaceHud({ view, painting, onAction }: Props) {
     <aside className="paint-workspace-controls" aria-label="Painting area">
     {!view.selected ? <span>Tap a nearby wall to select your painting area.</span> : <>
       <span>{view.width.toFixed(1)} × {view.height.toFixed(1)} m <small>UNPROTECTED</small></span>
-      {!view.hasPaint && <div className="paint-workspace-size-controls">
+      {!view.started && !view.hasPaint && <div className="paint-workspace-size-controls">
         <button type="button" aria-pressed={view.sizeLinked !== false} onClick={() => onAction('link', view.sizeLinked === false ? 1 : 0)}>
           {view.sizeLinked === false ? 'UNLOCKED' : 'LOCKED'}
         </button>
@@ -35,9 +35,13 @@ export default function PaintWorkspaceHud({ view, painting, onAction }: Props) {
           value={Math.max(.5, Math.min(8, view.height))} aria-label="Painting box height"
           onChange={event => onAction('resize', view.width, Number(event.target.value))} /></label>}
       </div>}
-      <button type="button" onClick={() => onAction(view.active ? 'exit' : 'enter')}>{view.active ? 'BACK TO WALL' : 'ENTER CANVAS'}</button>
-      <button type="button" onClick={() => onAction('finish')}>FINISH PIECE</button>
-      <button type="button" onClick={() => onAction('clear')}>NEW AREA</button>
+      {view.started || view.hasPaint || view.active ? <>
+        <button type="button" onClick={() => onAction(view.active ? 'exit' : 'enter')}>{view.active ? 'BACK TO WALL' : 'ENTER CANVAS'}</button>
+        <button type="button" onClick={() => onAction('finish')}>FINISH PIECE</button>
+      </> : <>
+        <button type="button" onClick={() => onAction('start')}>START PAINTING</button>
+        <button type="button" onClick={() => onAction('clear')}>CANCEL</button>
+      </>}
     </>}
   </aside></>;
 }

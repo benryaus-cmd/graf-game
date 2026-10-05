@@ -1,4 +1,7 @@
+import { RADIO_STATIONS, type RadioStation } from '@/config/radio';
+
 export interface LiveRadioAudio extends EventTarget {
+  src: string;
   volume: number;
   preload: string;
   loop: boolean;
@@ -14,6 +17,8 @@ export interface LiveRadioState {
   buffering: boolean;
   error: boolean;
   volume: number;
+  stationId: string;
+  stationName: string;
 }
 
 type AudioFactory = (url: string) => LiveRadioAudio;
@@ -30,15 +35,25 @@ export class LiveRadioController {
   private playRequested = false;
   private state: LiveRadioState;
   private readonly factory: AudioFactory;
+  private readonly stations: RadioStation[];
+  private activeStation: RadioStation;
   private readonly eventHandlers: Array<[string, EventListener]>;
 
   constructor(
-    private readonly url: string,
+    url: string,
     initialVolume: number,
     factory: AudioFactory = (source) => new Audio(source),
+    stations: RadioStation[] = RADIO_STATIONS,
   ) {
     this.factory = factory;
-    this.state = { playing: false, buffering: false, error: false, volume: clampVolume(initialVolume) };
+    this.stations = stations;
+    this.activeStation = stations.find((station) => station.url === url) ?? {
+      id: 'custom', name: 'Live radio', color: '#7ee1aa', url,
+    };
+    this.state = {
+      playing: false, buffering: false, error: false, volume: clampVolume(initialVolume),
+      stationId: this.activeStation.id, stationName: this.activeStation.name,
+    };
     this.eventHandlers = [
       ['playing', () => { if (this.playRequested && !this.audio?.paused) this.update({ playing: true, buffering: false, error: false }); }],
       ['waiting', () => { if (this.playRequested) this.update({ buffering: true }); }],
@@ -64,6 +79,41 @@ export class LiveRadioController {
   toggle(): void {
     if (this.state.playing || this.state.buffering) this.pause();
     else this.play();
+  }
+
+  nextStation(): void {
+    if (this.disposed || this.stations.length < 2) return;
+    const currentIndex = this.stations.findIndex((station) => station.id === this.activeStation.id);
+    const next = this.stations[(currentIndex + 1 + this.stations.length) % this.stations.length];
+    this.selectStation(next.id);
+  }
+
+  selectStation(stationId: string): void {
+    if (this.disposed) return;
+    const station = this.stations.find((candidate) => candidate.id === stationId);
+    if (!station || station.id === this.activeStation.id) return;
+    const shouldResume = this.playRequested;
+    this.playRequested = false;
+    this.playRequest += 1;
+    if (this.audio) {
+      this.audio.pause();
+      this.audio.src = station.url;
+      this.audio.preload = 'none';
+    }
+    this.activeStation = station;
+    this.update({
+      stationId: station.id, stationName: station.name,
+      playing: false, buffering: false, error: false,
+    });
+    if (this.audio) {
+      try {
+        this.audio.load();
+        if (shouldResume) this.play();
+      } catch {
+        this.playRequested = false;
+        this.update({ playing: false, buffering: false, error: true });
+      }
+    }
   }
 
   /** Fetches stream metadata early without starting playback. */
@@ -126,7 +176,7 @@ export class LiveRadioController {
 
   private getAudio(): LiveRadioAudio {
     if (this.audio) return this.audio;
-    const audio = this.factory(this.url);
+    const audio = this.factory(this.activeStation.url);
     audio.preload = 'none';
     audio.loop = true;
     audio.volume = this.state.volume;

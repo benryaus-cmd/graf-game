@@ -54,6 +54,7 @@ const App = () => {
   const lookSensitivity = tweaks.lookSensitivity.useState();
   const musicVolume = tweaks.musicVolume.useState();
   const [radioController, setRadioController] = useState<LiveRadioController | null>(null);
+  const [radioVolume, setRadioVolume] = useState(musicVolume);
   const initialRadioVolume = useRef(musicVolume);
   const fogDensity = tweaks.fogDensity.useState();
   const showCrosshair = tweaks.showCrosshair.useState();
@@ -66,11 +67,18 @@ const App = () => {
   const [sky, setSky] = useState<SkyMode>('day');
   const [paintMode, setPaintMode] = useState(false);
   const [portrait, setPortrait] = useState(false);
+  const [screenPortrait, setScreenPortrait] = useState(() => window.innerHeight >= window.innerWidth);
+  const rotatedPortrait = portrait ? !screenPortrait : screenPortrait;
+  useEffect(() => {
+    const update = () => setScreenPortrait(window.innerHeight >= window.innerWidth);
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, []);
   const [workspaceView, setWorkspaceView] = useState<PaintWorkspaceView>({ selected: false, active: false, width: 0, height: 0 });
   const [workspaceRequest, setWorkspaceRequest] = useState<{ action: PaintWorkspaceAction; size?: number; height?: number; sequence: number } | null>(null);
   const requestWorkspace = (action: PaintWorkspaceAction, size?: number, height?: number) => {
     setMovement({ x: 0, y: 0 }); setLookInput({ x: 0, y: 0 });
-    if (action === 'enter') { setPaintMode(true); closeMenu(); }
+    if (action === 'enter' || action === 'start') { setPaintMode(true); closeMenu(); }
     if (action === 'finish' || action === 'clear') setPaintMode(false);
     setWorkspaceRequest(previous => ({ action, size, height, sequence: (previous?.sequence ?? 0) + 1 }));
   };
@@ -100,8 +108,9 @@ const App = () => {
   useEffect(() => {
     const radio = new LiveRadioController(RADIO_STREAM_URL, initialRadioVolume.current);
     setRadioController(radio);
+    const unsubscribe = radio.subscribe(state => setRadioVolume(state.volume));
     radio.prepare();
-    return () => radio.dispose();
+    return () => { unsubscribe(); radio.dispose(); };
   }, []);
   useEffect(() => {
     const shell = shellRef.current;
@@ -258,12 +267,12 @@ const App = () => {
             onMovement={setMovement} onJump={() => setJumpSignal(signal => signal + 1)}
             onBotsToggle={() => setBotsEnabled(enabled => !enabled)}
             topControls={<>
-              <button type="button" className="portrait-toggle" aria-pressed={portrait} title={portrait ? 'Switch to landscape' : 'Switch to portrait'}
-                aria-label={portrait ? 'Switch to landscape' : 'Switch to portrait'}
-                onClick={() => { setMovement({ x: 0, y: 0 }); setLookInput({ x: 0, y: 0 }); setPortrait(value => !value); }}>↻ <span>{portrait ? 'LANDSCAPE' : 'PORTRAIT'}</span></button>
+              <button type="button" className="portrait-toggle" aria-pressed={portrait} title={rotatedPortrait ? 'Rotate left to landscape' : 'Rotate left to portrait'}
+                aria-label={rotatedPortrait ? 'Rotate left to landscape' : 'Rotate left to portrait'}
+                onClick={() => { setMovement({ x: 0, y: 0 }); setLookInput({ x: 0, y: 0 }); setPortrait(value => !value); }}>↶ <span>{rotatedPortrait ? 'LANDSCAPE' : 'PORTRAIT'}</span></button>
               <button type="button" className="settings-trigger" aria-label="Settings" onClick={() => setSettingsOpen(true)}>⚙</button>
               <div className="top-network-controls" hidden={activeMenu === 'paint'}>
-                {multiplayerStatus.phase !== 'solo' && <GraffitiPieces pieces={multiplayerView.pieces ?? []} connected={multiplayerStatus.phase === 'connected'} role={multiplayerStatus.role} canDeletePieces={multiplayerStatus.canDeletePieces} onDelete={pieceId => { if (multiplayerStatus.phase !== 'connected' || !multiplayerStatus.canDeletePieces) return false; requestMultiplayer('delete-piece', pieceId); return true; }} onLike={pieceId => { if (multiplayerStatus.phase !== 'connected') return false; requestMultiplayer('like', pieceId); return true; }} onResync={() => requestMultiplayer('resync')} onView={pieceId => requestMultiplayer('inspect', pieceId)} />}
+                {<GraffitiPieces selectedPieceId={multiplayerView.selectedPieceId} piecePickSequence={multiplayerView.piecePickSequence} pieces={multiplayerView.pieces ?? []} connected={multiplayerStatus.phase === 'connected'} role={multiplayerStatus.role} canDeletePieces={multiplayerStatus.canDeletePieces} onDelete={pieceId => { if (multiplayerStatus.phase !== 'connected' || !multiplayerStatus.canDeletePieces) return false; requestMultiplayer('delete-piece', pieceId); return true; }} onLike={pieceId => { if (multiplayerStatus.phase !== 'connected') return false; requestMultiplayer('like', pieceId); return true; }} onResync={() => requestMultiplayer('resync')} onView={pieceId => requestMultiplayer('inspect', pieceId)} />}
                 <MultiplayerControls status={multiplayerStatus} displayName={displayName} avatar={aippyUser.avatar} profileLoading={aippyUser.isLoading}
                   onJoin={() => requestMultiplayer('join')} onLeave={() => requestMultiplayer('leave')}
                   messages={multiplayerView.chat} onChat={text => requestMultiplayer('chat', text)} onResync={() => requestMultiplayer('resync')} />
@@ -285,6 +294,7 @@ const App = () => {
             <SettingsModal
               onClose={() => setSettingsOpen(false)}
               onUnlock={() => setDevViewerOpen(true)}
+              radioVolume={radioVolume} onRadioVolume={volume => radioController?.setVolume(volume)}
             />
           )}
           {devViewerOpen && (

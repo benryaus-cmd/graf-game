@@ -21,6 +21,17 @@ export interface PieceMetadata {
   sequence?: number;
 }
 
+export function choosePieceAtWorldPoint(
+  pieces: Iterable<PieceMetadata>,
+  point: readonly [number, number, number],
+  tolerance = 0.1,
+): PieceMetadata | null {
+  const matches = [...pieces].filter(piece => piece.bounds.min.every((minimum, axis) =>
+    point[axis] >= minimum - tolerance && point[axis] <= piece.bounds.max[axis] + tolerance));
+  matches.sort((a, b) => (b.createdAt ?? b.sequence ?? 0) - (a.createdAt ?? a.sequence ?? 0));
+  return matches[0] ?? null;
+}
+
 const MAX_COORDINATE = 1_000_000;
 const MAX_EXTENT = 10_000;
 const MAX_COUNT = 1_000_000_000;

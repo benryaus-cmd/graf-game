@@ -66,7 +66,7 @@ const GameHud = (props: GameHudProps) => (
             aria-pressed={props.paintMode}
             aria-label={props.paintMode ? 'Switch to explore mode' : 'Switch to paint mode'}
             onClick={() => props.onToolChange(props.paintMode ? 'off' : 'paint')}
-          >{props.paintMode ? 'PAINT' : 'EXPLORE'}</button>
+          >{props.paintMode ? 'EXPLORE' : 'PAINT'}</button>
           <button
             type="button" className="paint-color-trigger"
             onClick={() => props.onMenuToggle('paint')}

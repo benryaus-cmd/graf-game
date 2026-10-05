@@ -26,7 +26,7 @@ export interface SharedPlayer {
 export type ConnectionPhase = 'solo' | 'connecting' | 'connected' | 'disconnected';
 export interface MultiplayerStatus { phase: ConnectionPhase; playerCount: number; notice?: string; role?: ServerRole; canDeletePieces?: boolean }
 export interface ChatMessage { id: string; playerId: string; displayName: string; text: string; timestamp: number }
-export interface MultiplayerView { chat: ChatMessage[]; revision: number; accountFeaturesAvailable: boolean; worldItemCount: number; pieces?: PieceMetadata[]; selectedPlayer?: { playerId: string; username: string; nickName: string; role?: ServerRole } | null; roleChange?: { targetUsername: string; previousRole: ServerRole; role: ServerRole; serverTime: number } }
+export interface MultiplayerView { chat: ChatMessage[]; revision: number; accountFeaturesAvailable: boolean; worldItemCount: number; pieces?: PieceMetadata[]; selectedPieceId?: string | null; piecePickSequence?: number; selectedPlayer?: { playerId: string; username: string; nickName: string; role?: ServerRole } | null; roleChange?: { targetUsername: string; previousRole: ServerRole; role: ServerRole; serverTime: number } }
 export type Message = Record<string, unknown> & { type: string };
 
 export function readPoint(value: unknown): StrokePoint | null {

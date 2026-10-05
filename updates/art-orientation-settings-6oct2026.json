@@ -1,0 +1,69 @@
+{
+  "baseUrl": "https://raw.githubusercontent.com/benryaus-cmd/graf-game/main/",
+  "files": [
+    {
+      "source": "src/App.tsx",
+      "target": "src/games/importedGame/upstream/src/App.tsx"
+    },
+    {
+      "source": "src/components/GameHud.tsx",
+      "target": "src/games/importedGame/upstream/src/components/GameHud.tsx"
+    },
+    {
+      "source": "src/components/GraffitiPieces.tsx",
+      "target": "src/games/importedGame/upstream/src/components/GraffitiPieces.tsx"
+    },
+    {
+      "source": "src/components/PaintWorkspaceHud.tsx",
+      "target": "src/games/importedGame/upstream/src/components/PaintWorkspaceHud.tsx"
+    },
+    {
+      "source": "src/components/RadioControl.tsx",
+      "target": "src/games/importedGame/upstream/src/components/RadioControl.tsx"
+    },
+    {
+      "source": "src/components/SettingsModal.tsx",
+      "target": "src/games/importedGame/upstream/src/components/SettingsModal.tsx"
+    },
+    {
+      "source": "src/components/WorldScene.tsx",
+      "target": "src/games/importedGame/upstream/src/components/WorldScene.tsx"
+    },
+    {
+      "source": "src/config/radio.ts",
+      "target": "src/games/importedGame/upstream/src/config/radio.ts"
+    },
+    {
+      "source": "src/game/liveRadio.ts",
+      "target": "src/games/importedGame/upstream/src/game/liveRadio.ts"
+    },
+    {
+      "source": "src/game/pointerCoordinates.ts",
+      "target": "src/games/importedGame/upstream/src/game/pointerCoordinates.ts"
+    },
+    {
+      "source": "src/game/worldControls.ts",
+      "target": "src/games/importedGame/upstream/src/game/worldControls.ts"
+    },
+    {
+      "source": "src/game/worldTypes.ts",
+      "target": "src/games/importedGame/upstream/src/game/worldTypes.ts"
+    },
+    {
+      "source": "src/index.css",
+      "target": "src/games/importedGame/upstream/src/index.css"
+    },
+    {
+      "source": "src/multiplayer/pieceSync.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/pieceSync.ts"
+    },
+    {
+      "source": "src/multiplayer/protocol.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/protocol.ts"
+    },
+    {
+      "source": "src/multiplayer/worldSession.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/worldSession.ts"
+    }
+  ]
+}

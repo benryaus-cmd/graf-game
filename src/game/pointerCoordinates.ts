@@ -11,18 +11,15 @@ export function viewportPoint(
   const screenX = rect.width ? (clientX - rect.left) / rect.width : 0;
   const screenY = rect.height ? (clientY - rect.top) / rect.height : 0;
   if (rotated) {
-    // Invert the clockwise quarter-turn: local (x, y) maps to screen (1 - y, x).
-    return { x: screenY, y: 1 - screenX };
+    // Invert the counter-clockwise quarter-turn: local (x, y) maps to screen (y, 1 - x).
+    return { x: 1 - screenY, y: screenX };
   }
   return { x: screenX, y: screenY };
 }
 
 export function elementPointerIsRotated(element: Element): boolean {
   return Boolean(
-    typeof element.closest === 'function' && element.closest('.game-portrait') &&
-    typeof window !== 'undefined' &&
-    typeof window.matchMedia === 'function' &&
-    window.matchMedia('(orientation: landscape)').matches,
+    typeof element.closest === 'function' && element.closest('.game-portrait'),
   );
 }
 

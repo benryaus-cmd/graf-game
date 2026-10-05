@@ -12,8 +12,10 @@ import { ChatSync } from './chat';
 import { ArtworkSync } from './artworkSync';
 import { WorldOrder } from './worldOrder';
 import { AccountFeatures } from './accountFeatures';
-import { PieceSync } from './pieceSync';
+import { choosePieceAtWorldPoint, PieceSync } from './pieceSync';
 import { clearPaintWorkspace } from '../game/paintWorkspace';
+import { elementPointerPoint } from '../game/pointerCoordinates';
+import { isPaintTargetReachable } from '../game/paintTargeting';
 import type { Message, MultiplayerStatus, MultiplayerView, PlayerCosmetics } from './protocol';
 import { canManageRole, canDeletePieces, readPermissions, type ServerPermissions, type ServerRole } from './permissions';
 
@@ -28,6 +30,8 @@ export class WorldMultiplayerSession {
   private pieces: PieceSync;
   private selectedPieceId: string | null = null;
   private selectedPiece: object | null = null;
+  private selectedPieceForView: string | null = null;
+  private piecePickSequence = 0;
   private removalWalls = new Set<string>();
   private pieceChunk = '';
   private order: WorldOrder;
@@ -57,6 +61,7 @@ export class WorldMultiplayerSession {
       if (status.phase === 'disconnected' || status.phase === 'connecting') {
         this.serverPermissions = null;
         this.selectedPlayer = null; this.roleChange = undefined;
+        this.selectedPieceForView = null;
         this.paint.interrupted(); this.artworks.interrupted(); this.players.clear(); this.serverPlayerCount = null;
         this.emitView();
       }
@@ -115,6 +120,23 @@ export class WorldMultiplayerSession {
       if (!picked) { this.selectedPlayer = null; this.emitView(); return false; }
       this.selectedPlayer = picked; this.emitView(); return true;
     };
+    world.onPiecePick = event => {
+      if (!this.multiplayer) return false;
+      const canvas = this.world.renderer.domElement;
+      const normalized = elementPointerPoint(canvas, event);
+      const pointer = new THREE.Vector2(normalized.x * 2 - 1, 1 - normalized.y * 2);
+      const raycaster = new THREE.Raycaster();
+      raycaster.setFromCamera(pointer, this.world.cameraMode === 'map' ? this.world.mapCamera : this.world.camera);
+      const wallMeshes = this.world.walls.filter(wall => wall.mesh.visible).map(wall => wall.mesh);
+      const hit = raycaster.intersectObjects(wallMeshes, false).find(candidate => candidate.face && isPaintTargetReachable(
+        raycaster.ray, candidate.point, candidate.distance, this.world.playerPosition, this.world.colliders,
+      ));
+      const piece = hit ? choosePieceAtWorldPoint(this.pieces.pieces.values(), [hit.point.x, hit.point.y, hit.point.z]) : null;
+      this.selectedPieceForView = piece?.pieceId ?? null;
+      this.piecePickSequence++;
+      this.emitView();
+      return !!piece;
+    };
     world.onPaintEnd = () => this.paint.end();
     world.onMultiplayerFrame = (delta, settings) => this.update(delta, settings);
   }
@@ -147,6 +169,7 @@ export class WorldMultiplayerSession {
   join(displayName: string, roomId = DEFAULT_ROOM_ID, identity?: PlayerIdentity): void {
     this.serverPermissions = null;
     this.selectedPlayer = null; this.roleChange = undefined;
+    this.selectedPieceForView = null;
     this.completePiece(); this.pieces.clear(); clearPaintWorkspace(this.world);
     this.paint.interrupted(); this.artworks.interrupted(); this.players.clear(); this.playerSync.reset(); this.serverPlayerCount = null;
     this.connection.connect(displayName, roomId, identity);
@@ -154,6 +177,7 @@ export class WorldMultiplayerSession {
   leave(): void {
     this.serverPermissions = null;
     this.selectedPlayer = null; this.roleChange = undefined;
+    this.selectedPieceForView = null;
     this.completePiece(); clearPaintWorkspace(this.world); this.connection.disconnect(); this.players.clear(); this.replay.cancel(); this.artworks.clear(); this.pieces.clear();
     this.multiplayer = false; this.world.multiplayerActive = false; this.walls.clear(); this.recompose.clear();
     this.chat.clear(); this.accounts.snapshotWorldItems([]); this.order.snapshot({}); this.emitView();
@@ -163,9 +187,10 @@ export class WorldMultiplayerSession {
   dispose(): void {
     this.serverPermissions = null;
     this.selectedPlayer = null; this.roleChange = undefined;
+    this.selectedPieceForView = null;
     this.completePiece(); clearPaintWorkspace(this.world); this.connection.disconnect(); this.players.clear(); this.replay.cancel(); this.artworks.clear(); this.pieces.clear();
     this.world.multiplayerActive = false;
-    this.world.onPaintSample = this.world.onPaintEnd = this.world.onMultiplayerFrame = this.world.onArtworkPlaced = this.world.onPlayerPick = undefined;
+    this.world.onPaintSample = this.world.onPaintEnd = this.world.onMultiplayerFrame = this.world.onArtworkPlaced = this.world.onPlayerPick = this.world.onPiecePick = undefined;
   }
   sendChat(text: string): boolean { return this.chat.send(text); }
   resync(): boolean {
@@ -205,6 +230,7 @@ export class WorldMultiplayerSession {
       this.paint.snapshot(message.strokes as unknown[], sameConnection);
       this.chat.snapshot(Array.isArray(message.chatHistory) ? message.chatHistory : []);
       this.pieces.snapshot(Array.isArray(message.graffitiPieces) ? message.graffitiPieces : []);
+      if (this.selectedPieceForView && !this.pieces.pieces.has(this.selectedPieceForView)) this.selectedPieceForView = null;
       this.artworks.snapshot(Array.isArray(message.artworks) ? message.artworks : []);
       this.accounts.snapshotWorldItems(Array.isArray(message.worldItems) ? message.worldItems : []);
       this.artworks.refresh(this.walls); this.playerSync.reset(); this.emitView();
@@ -233,6 +259,7 @@ export class WorldMultiplayerSession {
       if (message.type === 'piece_removed' && message.pieceId === this.selectedPieceId) {
         this.selectedPieceId = null; this.selectedPiece = null; this.world.paintRevision++;
       }
+      if (message.type === 'piece_removed' && message.pieceId === this.selectedPieceForView) this.selectedPieceForView = null;
       this.pieces.accept(message);
     }
     else if (message.type.startsWith('item_')) this.accounts.worldItemEvent(message);
@@ -295,9 +322,13 @@ export class WorldMultiplayerSession {
     if (chunk !== this.pieceChunk) { this.pieceChunk = chunk; this.emitView(); }
   }
   private emitView(): void {
-    const view: MultiplayerView = { chat: this.chat.messages, revision: this.order.revision, selectedPlayer: this.selectedPlayer, roleChange: this.roleChange,
+    const nearbyPieces = [...this.pieces.pieces.values()].filter(piece => this.world.playerPosition.distanceToSquared(new THREE.Vector3(...piece.anchor)) <= 96 * 96).sort((a, b) => this.world.playerPosition.distanceToSquared(new THREE.Vector3(...a.anchor)) - this.world.playerPosition.distanceToSquared(new THREE.Vector3(...b.anchor)));
+    const pieces = nearbyPieces.slice(0, 20);
+    const selectedPiece = this.selectedPieceForView ? this.pieces.pieces.get(this.selectedPieceForView) : undefined;
+    if (selectedPiece && !pieces.some(piece => piece.pieceId === selectedPiece.pieceId)) pieces.push(selectedPiece);
+    const view: MultiplayerView = { chat: this.chat.messages, revision: this.order.revision, selectedPlayer: this.selectedPlayer, selectedPieceId: this.selectedPieceForView, piecePickSequence: this.piecePickSequence, roleChange: this.roleChange,
       accountFeaturesAvailable: this.accounts.available, worldItemCount: this.accounts.worldItems.size,
-      pieces: [...this.pieces.pieces.values()].filter(piece => this.world.playerPosition.distanceToSquared(new THREE.Vector3(...piece.anchor)) <= 96 * 96).sort((a, b) => this.world.playerPosition.distanceToSquared(new THREE.Vector3(...a.anchor)) - this.world.playerPosition.distanceToSquared(new THREE.Vector3(...b.anchor))).slice(0, 20) };
+      pieces };
     const serial = JSON.stringify(view);
     if (serial === this.lastView) return;
     this.lastView = serial; this.reportView(view);

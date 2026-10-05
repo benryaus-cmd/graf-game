@@ -3,9 +3,11 @@ import { useRef, useState } from 'react';
 interface SettingsModalProps {
   onClose: () => void;
   onUnlock: () => void;
+  radioVolume?: number;
+  onRadioVolume?: (volume: number) => void;
 }
 
-const SettingsModal = ({ onClose, onUnlock }: SettingsModalProps) => {
+const SettingsModal = ({ onClose, onUnlock, radioVolume = .32, onRadioVolume }: SettingsModalProps) => {
   const secretTapTimesRef = useRef<number[]>([]);
   const [passwordOpen, setPasswordOpen] = useState(false);
   const [password, setPassword] = useState('');
@@ -94,6 +96,12 @@ const SettingsModal = ({ onClose, onUnlock }: SettingsModalProps) => {
             >
               SETTINGS
             </h2>
+            <label className="settings-radio-volume">
+              <span>RADIO VOLUME <b>{Math.round(Math.max(0, Math.min(1, Number.isFinite(radioVolume) ? radioVolume : 0)) * 100)}%</b></span>
+              <input type="range" min="0" max="100" step="1" aria-label="Radio volume in settings"
+                value={Math.round(Math.max(0, Math.min(1, Number.isFinite(radioVolume) ? radioVolume : 0)) * 100)}
+                onChange={event => onRadioVolume?.(Number(event.target.value) / 100)} />
+            </label>
             <div className="mt-5 flex justify-end">
               <button
                 type="button"
