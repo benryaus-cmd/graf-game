@@ -19,6 +19,7 @@ const GREETINGS = [
 interface Message { who: 'bot' | 'you'; text: string }
 interface BotControlsProps {
   enabled: boolean;
+  drawingDisabled?: boolean;
   panelColor: string;
   nearbyBotIndex: number | null;
   open: boolean;
@@ -29,7 +30,7 @@ interface BotControlsProps {
 }
 
 const BotControls = ({
-  enabled, panelColor, nearbyBotIndex, open, onToggle, onClose, onBotsToggle, onDrawRequest,
+  enabled, drawingDisabled, panelColor, nearbyBotIndex, open, onToggle, onClose, onBotsToggle, onDrawRequest,
 }: BotControlsProps) => {
   const [selected, setSelected] = useState(0);
   const [draft, setDraft] = useState('');
@@ -44,6 +45,7 @@ const BotControls = ({
   }, [nearbyBotIndex]);
 
   const requestMural = async (prompt: string, botIndex: number) => {
+    if (drawingDisabled) return;
     setWorking(true);
     setError('');
     setLastPrompt(prompt);
@@ -69,7 +71,7 @@ const BotControls = ({
     event.preventDefault();
     const text = draft.trim();
     if (!text || working) return;
-    if (nearby) {
+    if (nearby && !drawingDisabled) {
       void requestMural(text, selected);
       return;
     }
@@ -99,7 +101,7 @@ const BotControls = ({
                 type="button" className={`bot-enable ${enabled ? 'bot-enable-on' : ''}`}
                 aria-pressed={enabled} onClick={onBotsToggle}
               >
-                {enabled ? 'PAINTING · ON' : 'ENABLE BOTS'}
+                {enabled ? drawingDisabled ? 'LOCAL BOTS · ON' : 'PAINTING · ON' : 'ENABLE BOTS'}
               </button>
               <button type="button" className="bot-close" aria-label="Close painter menu" onClick={onClose}>×</button>
             </div>
@@ -117,7 +119,7 @@ const BotControls = ({
           </div>
           <div className="bot-chat-heading">CHAT WITH {BOT_NAMES[selected]}</div>
           <div className={`bot-range-status ${nearby ? 'bot-range-nearby' : ''}`}>
-            {nearby ? `IN RANGE · ${BOT_NAMES[selected]} CAN PAINT FOR YOU` : 'WALK UP TO A PAINTER TO PLACE A MURAL'}
+            {drawingDisabled ? 'BOT MURALS ARE SOLO ONLY' : nearby ? `IN RANGE · ${BOT_NAMES[selected]} CAN PAINT FOR YOU` : 'WALK UP TO A PAINTER TO PLACE A MURAL'}
           </div>
           <div className="bot-messages" aria-live="polite">
             {messages.map((message, index) => (
@@ -129,7 +131,7 @@ const BotControls = ({
           {error && (
             <div className="bot-draw-error" role="alert">
               <span>{error}</span>
-              <button type="button" disabled={working || !lastPrompt} onClick={() => void requestMural(lastPrompt, selected)}>
+              <button type="button" disabled={drawingDisabled || working || !lastPrompt} onClick={() => void requestMural(lastPrompt, selected)}>
                 RETRY
               </button>
             </div>
@@ -142,10 +144,10 @@ const BotControls = ({
               onChange={(event) => setDraft(event.target.value)}
             />
             <button type="submit" disabled={!draft.trim() || working}>
-              {working ? 'PAINTING' : nearby ? 'DRAW' : 'SEND'}
+              {working ? 'PAINTING' : nearby && !drawingDisabled ? 'DRAW' : 'SEND'}
             </button>
           </form>
-          <p className="bot-footnote">They roam and paint while enabled. Stand close to ask for your own wall art.</p>
+          <p className="bot-footnote">{drawingDisabled ? 'These are local NPCs. Open PUBLIC CHAT to talk to real players.' : 'They roam and paint while enabled. Stand close to ask for your own wall art.'}</p>
         </section>
       )}
     </div>

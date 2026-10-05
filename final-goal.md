@@ -1,6 +1,6 @@
 # Final goal: SIDESTREET — a premium graffiti world
 
-Updated: 5 October 2026.
+Updated: 6 October 2026 (Australia/Sydney).
 
 Repository: https://github.com/benryaus-cmd/graf-game  
 Live reference: https://aippy.ai/@PinkYyyy/street-art-canvas-aV7b
@@ -165,9 +165,9 @@ Mirror only chosen licensed files into the project for reliable Aippy imports. K
 
 Use the existing secure endpoint: wss://24.144.88.205/multiplayer. Health: https://24.144.88.205/health. The owner reports the service is separate from Studio, already deployed and persistent, with publicly trusted TLS. No infrastructure or database changes are part of this work.
 
-The deployed protocol is version 1. Wait for hello with its server-generated playerId, then send join with roomId public and the Aippy display name. world_snapshot contains stored strokes and current players. Handle player_state, player_joined, player_left, stroke_begin, stroke_points and stroke_end. Keep the room selection modular without adding private-room UI yet.
+The deployed protocol is version 2. Wait for hello with its server-generated playerId, then send join with protocol 2, roomId public and the default Aippy nickname/username. world_snapshot includes revisions, sequences, strokes, artwork, players, chat history and world items. Keep the room selection modular without adding private-room UI yet. The current integration retains the existing world/controller/paint renderer, adds public chat, shares existing cosmetics/emotes, and uploads posters as binary to the existing /artwork-upload endpoint. References are shared through artwork_place; base64 images never go through WebSocket.
 
-Initial scope is connection/public join, visible/interpolated players, shared strokes, persisted replay and reconnect. Do not add accounts, matchmaking, chat, clans, moderation, claims or credit endpoints now. Existing protocol support must be established before later features use it. There is no capacity metadata in the supplied protocol; show actual observed occupancy rather than invented free-slot numbers.
+Current scope includes connection/public join, player count, visible/interpolated players, shared paint/eraser metadata, persisted reconstruction, reconnect/resync, public chat, persistent posters and shared visual appearance/actions. Inventory/economy/trading authority remains disabled because the server runs AIPPY_AUTH_MODE=disabled. Do not bypass verified_account_required with username, uid, localStorage identity or a custom auth service. Do not invent capacity/free-slot numbers, account verification, claims or credit APIs. Solo remains the default and solo currency/saves are separate from shared data.
 
 Configure the URL once through VITE_MULTIPLAYER_URL with a production fallback in src/multiplayer/config.ts. Do not scatter endpoint literals in game modules. Stay below 64 KB/messages, 128 points/batch, 20,000 points/stroke, 10,000 persisted strokes/room and approximately 120 messages/second. The thin client uses 96-point batches around 100 ms, splits long gestures at 16,000 points and sends changed player state around 100 ms. Saved stroke objects use id; normalise it to client strokeId. Send the game's brush slider units, since the server clamps brushSize to at least 1; divide by 50 only when reproducing the existing local world-radius renderer.
 
@@ -189,6 +189,16 @@ Give each piece a stable ID, author, bounds, versions and engagement. Inspect wi
 Count eligible distinct engagement server-side, deduplicate rewards and use one active like per viewer/piece. Do not reward repeated unlike/re-like loops. Keep awards/spending in an idempotent ledger. Comments persist but are not a requested credit source.
 
 A bounded basic painting area and ordinary handmade painting should be accessible to a newcomer. Tune starting allowance or introductory briefs so expansions/reuse are attainable. Recommend modest daily creative briefs later; repeated activity alone must not mint unlimited credits. Protect progression from trivial view-farming.
+
+## Current server integration blocker
+
+The protocol-2 wire check found that player_state drops state.position, whether sent as an array or an x/y/z object. The existing server must retain and broadcast the documented numeric [x,y,z] array (also in snapshot player state). Other player metadata is forwarded. Until corrected, the current client cannot place/show remote avatars; do not fabricate movement coordinates or deploy a replacement backend.
+
+## Inventory, collecting and trading
+
+The owner explicitly wants collectible tags around the map, special paints, consumable items, unique collectibles to show off or trade, stackable quantities, dropping items and picking up other players’ drops. These are part of the destination. Ownership, purchases, currency, consumption, pickups/drops and atomic trades must be validated by the existing server against a genuinely verified Aippy account. Trade offers need ownership/quantity revalidation, locks, cancellation and timeout so items cannot be duplicated or spent twice. No fake local multiplayer economy.
+
+The protocol is present, but these interactions are unavailable until verified Aippy identity is connected. Current client structures retain world item snapshots/events and gate inventory/trade sends; current solo closet and coins remain solo data. Club/faction membership and restricted clubhouses may follow later; do not build them in this integration.
 
 ## Research and what is worth reusing
 

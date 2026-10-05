@@ -117,6 +117,8 @@ export interface WorldEngine {
   onPaintSample?: (wall: PaintWall, hit: THREE.Intersection, settings: LiveSettings, continues: boolean) => void;
   onPaintEnd?: () => void;
   onMultiplayerFrame?: (delta: number, settings: LiveSettings) => void;
+  multiplayerActive?: boolean;
+  onArtworkPlaced?: (wall: PaintWall, face: number, artwork: PosterArtwork) => void;
   groundLevel: number;
   velocityY: number;
   jumpSignal: number;

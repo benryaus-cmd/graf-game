@@ -44,6 +44,7 @@ export function commitPosterPlacement(
   target.wall.posters.push(artwork);
   layer.textures[target.face].needsUpdate = true;
   target.wall.dirty = true;
+  world.onArtworkPlaced?.(target.wall, target.face, artwork);
   world.savePaint();
   return true;
 }

@@ -15,11 +15,12 @@ import type { AvatarAppearance } from '@/game/progression';
 import type { BotArtworkRequest } from '@/game/useBotArtwork';
 import type { AvatarEmote, CameraMode, LiveSettings, MovementInput, SkyMode, WorldEngine } from '@/game/worldTypes';
 import { WorldMultiplayerSession } from '@/multiplayer/worldSession';
-import type { MultiplayerStatus } from '@/multiplayer/protocol';
+import type { MultiplayerStatus, MultiplayerView, PlayerCosmetics } from '@/multiplayer/protocol';
 
 interface WorldSceneProps {
-  multiplayerRequest: { action: 'join' | 'leave'; sequence: number } | null;
+  multiplayerRequest: { action: 'join' | 'leave' | 'chat' | 'resync'; text?: string; sequence: number } | null;
   displayName: string; onMultiplayerStatus: (status: MultiplayerStatus) => void;
+  cosmetics: PlayerCosmetics; onMultiplayerView: (view: MultiplayerView) => void;
   sky: SkyMode; paintMode: boolean; eraseMode: boolean; color: string;
   movement: MovementInput; brushSize: number; opacity: number;
   moveSpeed: number; jumpPower: number; lookSensitivity: number; fogDensity: number;
@@ -38,6 +39,7 @@ const WorldScene = (props: WorldSceneProps) => {
   const worldRef = useRef<WorldEngine | null>(null);
   const multiplayerRef = useRef<WorldMultiplayerSession | null>(null);
   const multiplayerStatusRef = useRef(props.onMultiplayerStatus);
+  const multiplayerViewRef = useRef(props.onMultiplayerView);
   const posterRef = useRef<PosterPlacementSession | null>(null);
   const posterSizeRef = useRef(props.posterSize);
   const posterCommitRef = useRef(props.posterCommitSignal);
@@ -57,6 +59,7 @@ const WorldScene = (props: WorldSceneProps) => {
 
   useEffect(() => {
     multiplayerStatusRef.current = props.onMultiplayerStatus;
+    multiplayerViewRef.current = props.onMultiplayerView;
     liveRef.current = {
       paintMode: props.paintMode, eraseMode: props.eraseMode, color: props.color,
       opacity: props.opacity, movement: props.movement, brushSize: props.brushSize,
@@ -83,7 +86,7 @@ const WorldScene = (props: WorldSceneProps) => {
     if (!container) return;
     const world = createWorld(container, liveRef.current.fogDensity);
     worldRef.current = world;
-    const multiplayer = new WorldMultiplayerSession(world, status => multiplayerStatusRef.current(status));
+    const multiplayer = new WorldMultiplayerSession(world, status => multiplayerStatusRef.current(status), view => multiplayerViewRef.current(view));
     multiplayerRef.current = multiplayer;
     world.setPaintVisibility(liveRef.current.layerVisibility);
     const stopControls = attachWorldControls(
@@ -132,8 +135,12 @@ const WorldScene = (props: WorldSceneProps) => {
     const request = props.multiplayerRequest;
     if (!request) return;
     if (request.action === 'join') multiplayerRef.current?.join(props.displayName);
-    else multiplayerRef.current?.leave();
+    else if (request.action === 'leave') multiplayerRef.current?.leave();
+    else if (request.action === 'chat') multiplayerRef.current?.sendChat(request.text ?? '');
+    else multiplayerRef.current?.resync();
   }, [props.multiplayerRequest]);
+
+  useEffect(() => { multiplayerRef.current?.setCosmetics(props.cosmetics); }, [props.cosmetics]);
 
   useEffect(() => loadPosterImage(
     props.posterPlacement, worldRef, posterRef, posterSizeRef, posterCommitRef, posterValidityRef,
@@ -189,6 +196,7 @@ const WorldScene = (props: WorldSceneProps) => {
     const world = worldRef.current;
     if (!world || !props.emoteSignal) return;
     triggerAvatarEmote(world.playerAvatar, props.emoteSignal.emote);
+    multiplayerRef.current?.emote(props.emoteSignal.emote);
   }, [props.emoteSignal]);
 
   return <div ref={mountRef} className="world-mount" />;

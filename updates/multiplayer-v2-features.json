@@ -1,0 +1,113 @@
+{
+  "baseUrl": "https://raw.githubusercontent.com/benryaus-cmd/graf-game/main/",
+  "files": [
+    {
+      "source": "src/App.tsx",
+      "target": "src/games/importedGame/upstream/src/App.tsx"
+    },
+    {
+      "source": "src/components/AvatarMenu.tsx",
+      "target": "src/games/importedGame/upstream/src/components/AvatarMenu.tsx"
+    },
+    {
+      "source": "src/components/BotControls.tsx",
+      "target": "src/games/importedGame/upstream/src/components/BotControls.tsx"
+    },
+    {
+      "source": "src/components/GameHud.tsx",
+      "target": "src/games/importedGame/upstream/src/components/GameHud.tsx"
+    },
+    {
+      "source": "src/components/MultiplayerChat.tsx",
+      "target": "src/games/importedGame/upstream/src/components/MultiplayerChat.tsx"
+    },
+    {
+      "source": "src/components/MultiplayerControls.tsx",
+      "target": "src/games/importedGame/upstream/src/components/MultiplayerControls.tsx"
+    },
+    {
+      "source": "src/components/WorldScene.tsx",
+      "target": "src/games/importedGame/upstream/src/components/WorldScene.tsx"
+    },
+    {
+      "source": "src/game/cityBots.ts",
+      "target": "src/games/importedGame/upstream/src/game/cityBots.ts"
+    },
+    {
+      "source": "src/game/posterCanvas.ts",
+      "target": "src/games/importedGame/upstream/src/game/posterCanvas.ts"
+    },
+    {
+      "source": "src/game/worldKeyboard.ts",
+      "target": "src/games/importedGame/upstream/src/game/worldKeyboard.ts"
+    },
+    {
+      "source": "src/game/worldSceneRequests.ts",
+      "target": "src/games/importedGame/upstream/src/game/worldSceneRequests.ts"
+    },
+    {
+      "source": "src/game/worldTypes.ts",
+      "target": "src/games/importedGame/upstream/src/game/worldTypes.ts"
+    },
+    {
+      "source": "src/index.css",
+      "target": "src/games/importedGame/upstream/src/index.css"
+    },
+    {
+      "source": "src/multiplayer/accountFeatures.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/accountFeatures.ts"
+    },
+    {
+      "source": "src/multiplayer/artworkAssets.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/artworkAssets.ts"
+    },
+    {
+      "source": "src/multiplayer/artworkSync.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/artworkSync.ts"
+    },
+    {
+      "source": "src/multiplayer/artworkUpload.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/artworkUpload.ts"
+    },
+    {
+      "source": "src/multiplayer/chat.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/chat.ts"
+    },
+    {
+      "source": "src/multiplayer/config.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/config.ts"
+    },
+    {
+      "source": "src/multiplayer/connection.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/connection.ts"
+    },
+    {
+      "source": "src/multiplayer/paintReplay.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/paintReplay.ts"
+    },
+    {
+      "source": "src/multiplayer/paintSync.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/paintSync.ts"
+    },
+    {
+      "source": "src/multiplayer/playerSync.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/playerSync.ts"
+    },
+    {
+      "source": "src/multiplayer/protocol.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/protocol.ts"
+    },
+    {
+      "source": "src/multiplayer/remotePlayers.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/remotePlayers.ts"
+    },
+    {
+      "source": "src/multiplayer/worldOrder.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/worldOrder.ts"
+    },
+    {
+      "source": "src/multiplayer/worldSession.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/worldSession.ts"
+    }
+  ]
+}

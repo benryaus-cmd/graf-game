@@ -7,7 +7,7 @@ import WorldScene from '@/components/WorldScene';
 import MultiplayerControls from '@/components/MultiplayerControls';
 import { useUserInfo } from '@aippy/runtime/user';
 import { aippyDisplayName } from '@/multiplayer/profile';
-import type { MultiplayerStatus } from '@/multiplayer/protocol';
+import type { MultiplayerStatus, MultiplayerView } from '@/multiplayer/protocol';
 import SettingsModal from '@/components/SettingsModal';
 import { useSprayAudio } from '@/components/useSprayAudio';
 import { useBotArtwork } from '@/game/useBotArtwork';
@@ -34,10 +34,11 @@ const App = () => {
   const aippyUser = useUserInfo();
   const displayName = aippyDisplayName(aippyUser);
   const [multiplayerStatus, setMultiplayerStatus] = useState<MultiplayerStatus>({ phase: 'solo', playerCount: 0 });
-  const [multiplayerRequest, setMultiplayerRequest] = useState<{ action: 'join' | 'leave'; sequence: number } | null>(null);
-  const requestMultiplayer = (action: 'join' | 'leave') => {
-    poster.cancel();
-    setMultiplayerRequest(previous => ({ action, sequence: (previous?.sequence ?? 0) + 1 }));
+  const [multiplayerView, setMultiplayerView] = useState<MultiplayerView>({ chat: [], revision: 0, accountFeaturesAvailable: false, worldItemCount: 0 });
+  const [multiplayerRequest, setMultiplayerRequest] = useState<{ action: 'join' | 'leave' | 'chat' | 'resync'; text?: string; sequence: number } | null>(null);
+  const requestMultiplayer = (action: 'join' | 'leave' | 'chat' | 'resync', text?: string) => {
+    if (action === 'join' || action === 'leave') poster.cancel();
+    setMultiplayerRequest(previous => ({ action, text, sequence: (previous?.sequence ?? 0) + 1 }));
   };
   const accentColor = tweaks.accentColor.useState();
   const panelColor = tweaks.panelColor.useState();
@@ -105,12 +106,14 @@ const App = () => {
     closeMenu();
   };
   const earnPaintCoin = () => {
+    if (multiplayerStatus.phase !== 'solo') return;
     const now = performance.now();
     if (now - lastCoinAtRef.current < 800) return;
     lastCoinAtRef.current = now;
     setProgress(current => ({ ...current, coins: current.coins + 1 }));
   };
   const purchaseItem = (item: ShopItem) => {
+    if (multiplayerStatus.phase !== 'solo') return;
     if (progress.owned.includes(item.id) || progress.coins < item.cost) return;
     const value = item.id.slice(item.id.indexOf(':') + 1);
     setProgress(current => {
@@ -149,6 +152,7 @@ const App = () => {
     setEmoteSignal(current => ({ emote, sequence: (current?.sequence ?? 0) + 1 }));
   };
   const appearance = useMemo(() => getAvatarAppearance(progress), [progress]);
+  const cosmetics = useMemo(() => ({ outfit: progress.outfit, top: progress.top, bottom: progress.bottom, accessory: progress.accessory }), [progress.outfit, progress.top, progress.bottom, progress.accessory]);
   const layerVisibility = useMemo(() => layers.map(layer => layer.visible), [layers]);
   const jumpLabel = progress.outfit === 'jax' ? 'FLY' : progress.outfit === 'ringmaster' ? 'LEVITATE'
     : progress.outfit === 'pomni' ? 'HIGH JUMP' : 'JUMP';
@@ -177,6 +181,7 @@ const App = () => {
         <>
           <WorldScene
             multiplayerRequest={multiplayerRequest} displayName={displayName} onMultiplayerStatus={setMultiplayerStatus}
+            cosmetics={cosmetics} onMultiplayerView={setMultiplayerView}
             sky={sky} paintMode={paintMode} eraseMode={eraseMode} color={color}
             movement={movement} brushSize={brushSize} opacity={opacity} moveSpeed={moveSpeed}
             jumpPower={jumpPower} lookSensitivity={lookSensitivity} fogDensity={fogDensity}
@@ -195,6 +200,7 @@ const App = () => {
             showCrosshair={showCrosshair} color={color} brushSize={brushSize} opacity={opacity}
             layers={layers} selectedLayer={selectedLayer} cameraLabel={CAMERA_LABELS[viewMode]}
             viewMode={viewMode} mapZoom={mapZoom} progress={progress}
+            purchasesDisabled={multiplayerStatus.phase !== 'solo'}
             jumpLabel={jumpLabel} botsEnabled={botsEnabled} nearbyBotIndex={nearbyBotIndex}
             posterPlacement={poster.placement} posterSize={poster.size} posterValid={poster.valid}
             onPosterSizeChange={poster.changeSize} onPosterCommit={poster.requestCommit}
@@ -211,6 +217,7 @@ const App = () => {
           <MultiplayerControls
             status={multiplayerStatus} displayName={displayName} avatar={aippyUser.avatar} profileLoading={aippyUser.isLoading}
             onJoin={() => requestMultiplayer('join')} onLeave={() => requestMultiplayer('leave')}
+            messages={multiplayerView.chat} onChat={text => requestMultiplayer('chat', text)} onResync={() => requestMultiplayer('resync')}
           />
           <button
             type="button"

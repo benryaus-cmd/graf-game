@@ -196,7 +196,7 @@ export function advanceCityBots(world: WorldEngine, delta: number): void {
     bot.paintTimer -= delta;
     if (bot.paintTimer <= 0) {
       bot.paintTimer = 1.5 + (bot.index % 5) * 0.42;
-      paintNearbyWall(world, bot, time);
+      if (!world.multiplayerActive) paintNearbyWall(world, bot, time);
     }
   });
 }

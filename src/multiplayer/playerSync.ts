@@ -23,7 +23,9 @@ export class PlayerSync {
     const changed = !previous ||
       state.position.some((v, i) => Math.abs(v - previous.position[i]) > 0.015) ||
       state.rotation.some((v, i) => Math.abs(v - previous.rotation[i]) > 0.01) ||
-      state.movement !== previous.movement || state.tool !== previous.tool || state.jumping !== previous.jumping;
+      state.movement !== previous.movement || state.tool !== previous.tool || state.jumping !== previous.jumping ||
+      state.animation !== previous.animation || state.emote !== previous.emote || state.visibleHeldItem !== previous.visibleHeldItem ||
+      state.flightState !== previous.flightState || JSON.stringify(state.cosmetics) !== JSON.stringify(previous.cosmetics);
     if (!changed && now - this.lastAt < 2000) return;
     if (this.send({ type: 'player_state', state })) { this.last = state; this.lastAt = now; }
   }

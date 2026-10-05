@@ -34,6 +34,10 @@
       "target": "src/games/importedGame/upstream/src/components/MovementJoystick.tsx"
     },
     {
+      "source": "src/components/MultiplayerChat.tsx",
+      "target": "src/games/importedGame/upstream/src/components/MultiplayerChat.tsx"
+    },
+    {
       "source": "src/components/MultiplayerControls.tsx",
       "target": "src/games/importedGame/upstream/src/components/MultiplayerControls.tsx"
     },
@@ -302,6 +306,26 @@
       "target": "src/games/importedGame/upstream/src/main.tsx"
     },
     {
+      "source": "src/multiplayer/accountFeatures.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/accountFeatures.ts"
+    },
+    {
+      "source": "src/multiplayer/artworkAssets.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/artworkAssets.ts"
+    },
+    {
+      "source": "src/multiplayer/artworkSync.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/artworkSync.ts"
+    },
+    {
+      "source": "src/multiplayer/artworkUpload.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/artworkUpload.ts"
+    },
+    {
+      "source": "src/multiplayer/chat.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/chat.ts"
+    },
+    {
       "source": "src/multiplayer/config.ts",
       "target": "src/games/importedGame/upstream/src/multiplayer/config.ts"
     },
@@ -336,6 +360,10 @@
     {
       "source": "src/multiplayer/surfaces.ts",
       "target": "src/games/importedGame/upstream/src/multiplayer/surfaces.ts"
+    },
+    {
+      "source": "src/multiplayer/worldOrder.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/worldOrder.ts"
     },
     {
       "source": "src/multiplayer/worldSession.ts",

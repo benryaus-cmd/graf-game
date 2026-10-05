@@ -17,6 +17,7 @@ interface GameHudProps {
   brushSize: number; opacity: number; layers: PaintLayerControl[]; selectedLayer: number;
   cameraLabel: string; viewMode: CameraMode; mapZoom: number;
   progress: GameProgress; jumpLabel: string; botsEnabled: boolean; nearbyBotIndex: number | null;
+  purchasesDisabled: boolean;
   posterPlacement: PosterPlacementRequest | null; posterSize: number; posterValid: boolean;
   onPosterSizeChange: (size: number) => void; onPosterCommit: () => void; onPosterCancel: () => void;
   onPosterStart: (dataUrl: string, size: number) => void;
@@ -71,6 +72,7 @@ const GameHud = (props: GameHudProps) => (
       </button>
       <BotControls
         enabled={props.botsEnabled} panelColor={props.panelColor}
+        drawingDisabled={props.purchasesDisabled}
         nearbyBotIndex={props.nearbyBotIndex} open={props.activeMenu === 'bots'}
         onToggle={() => props.onMenuToggle('bots')} onClose={props.onMenuClose}
         onBotsToggle={props.onBotsToggle} onDrawRequest={props.onDrawRequest}
@@ -97,6 +99,7 @@ const GameHud = (props: GameHudProps) => (
       <AvatarMenu
         progress={props.progress} panelColor={props.panelColor} onClose={props.onMenuClose}
         onPurchase={props.onPurchase} onEquip={props.onEquip} onEmote={props.onEmote}
+        purchasesDisabled={props.purchasesDisabled}
       />
     )}
     {props.posterPlacement && (

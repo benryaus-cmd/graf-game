@@ -1081,3 +1081,14 @@ button:active { transform: scale(0.97); }
   .multiplayer-controls { top: 12px; right: 118px; }
   .multiplayer-profile-image, .multiplayer-profile-fallback, .multiplayer-identity span { display: none; }
 }
+
+.multiplayer-chat { width: min(320px, calc(100vw - 44px)); margin-top: 8px; }
+.multiplayer-chat header { display: flex; align-items: center; gap: 6px; font-size: 10px; }
+.multiplayer-chat header b { flex: 1; }
+.multiplayer-chat header button { min-height: 32px; }
+.multiplayer-chat-messages { max-height: min(230px, 32vh); min-height: 70px; margin: 8px 0; padding: 6px; overflow-y: auto; background: #17231c; border-radius: 6px; }
+.multiplayer-chat p { margin: 5px 0; font-size: 12px; line-height: 1.4; overflow-wrap: anywhere; }
+.multiplayer-chat time { margin-left: 5px; color: #a9b6ae; font-size: 9px; }
+.multiplayer-chat span { display: block; white-space: pre-wrap; }
+.multiplayer-chat form { display: flex; gap: 5px; }
+.multiplayer-chat input { width: 0; min-width: 0; flex: 1; padding: 8px; border: 1px solid #718f7e; border-radius: 6px; background: #17231c; color: white; font-size: 16px; touch-action: manipulation; }

@@ -1,15 +1,19 @@
 import * as THREE from 'three';
 import { createPlayerAvatar } from '../game/playerAvatar';
-import { updatePlayerAvatar } from '../game/playerAvatarAppearance';
+import { updatePlayerAvatar, applyAvatarAppearance, triggerAvatarEmote } from '../game/playerAvatarAppearance';
+import { SHOP_ITEMS } from '../game/shopCatalog';
+import type { AvatarEmote } from '../game/worldTypes';
 import { EYE_HEIGHT } from '../game/playerPhysics';
 import { interpolatePlayer } from './playerSync';
-import { readPlayer, readPlayerState, type PlayerState } from './protocol';
+import { readPlayer, readPlayerState, type PlayerState, type Message } from './protocol';
 
 interface RemotePlayer {
   avatar: THREE.Group; current: PlayerState | null; target: PlayerState | null; name: string;
+  appearance?: string; lastEmote?: string;
 }
 export class RemotePlayers {
   private players = new Map<string, RemotePlayer>();
+  private actions = new Set<string>();
   constructor(private scene: THREE.Scene) {}
   get count(): number { return this.players.size; }
   joined(value: unknown, ownId: string | null): void {
@@ -41,6 +45,10 @@ export class RemotePlayers {
     const remote = this.players.get(playerId);
     if (!remote || !state) return;
     remote.target = state;
+    if (state.emote !== remote.lastEmote) {
+      remote.lastEmote = state.emote;
+      if (isEmote(state.emote)) triggerAvatarEmote(remote.avatar, state.emote);
+    }
     if (!remote.current) remote.current = { ...state, position: [...state.position], rotation: [...state.rotation] };
   }
   update(delta: number): void {
@@ -48,10 +56,26 @@ export class RemotePlayers {
       if (!remote.current || !remote.target) continue;
       remote.current = interpolatePlayer(remote.current, remote.target, delta);
       const state = remote.current;
+      if (state.cosmetics && remote.appearance !== JSON.stringify(state.cosmetics)) {
+        const cosmetics = state.cosmetics;
+        const known = (slot: string, value: string, fallback: string) => SHOP_ITEMS.some(i => i.id === slot + ':' + value) ? value : fallback;
+        const outfit = known('outfit', cosmetics.outfit, 'street');
+        const accessory = known('accessory', cosmetics.accessory, 'none');
+        const top = SHOP_ITEMS.find(i => i.id === 'top:' + cosmetics.top);
+        const bottom = SHOP_ITEMS.find(i => i.id === 'bottom:' + cosmetics.bottom);
+        applyAvatarAppearance(remote.avatar, { outfit, accessory, topColor: top?.color ?? '#e87851', bottomColor: bottom?.color ?? '#353a40' });
+        remote.appearance = JSON.stringify(cosmetics);
+      }
+      const parts = remote.avatar.userData.parts;
+      if (parts?.accessories) {
+        for (const held of ['sprayCan', 'basketball']) {
+          parts.accessories[held].visible = state.visibleHeldItem === held || state.cosmetics?.accessory === held;
+        }
+      }
       remote.avatar.visible = true;
       remote.avatar.position.set(state.position[0], state.position[1] - EYE_HEIGHT, state.position[2]);
       remote.avatar.rotation.y = state.rotation[1];
-      updatePlayerAvatar(remote.avatar, delta, state.movement !== 'idle', state.jumping === true);
+      updatePlayerAvatar(remote.avatar, delta, state.movement !== 'idle', state.jumping === true || state.flightState === 'flying' || state.flightState === 'levitating');
     }
   }
   left(playerId: string): void {
@@ -70,5 +94,18 @@ export class RemotePlayers {
     geometry.forEach(g => g.dispose()); materials.forEach(m => m.dispose()); textures.forEach(t => t.dispose());
     this.players.delete(playerId);
   }
-  clear(): void { for (const id of [...this.players.keys()]) this.left(id); }
+  action(message: Message): void {
+    if (typeof message.playerId !== 'string' || typeof message.actionId !== 'string' || this.actions.has(message.actionId)) return;
+    const remote = this.players.get(message.playerId);
+    if (!remote) return;
+    this.actions.add(message.actionId);
+    if (this.actions.size > 1000) this.actions.delete(this.actions.values().next().value!);
+    const emote = (message.data as { emote?: unknown } | undefined)?.emote;
+    if (message.action === 'emote' && isEmote(emote)) {
+      remote.lastEmote = emote; triggerAvatarEmote(remote.avatar, emote);
+    }
+  }
+  clear(): void { for (const id of [...this.players.keys()]) this.left(id); this.actions.clear(); }
 }
+
+function isEmote(value: unknown): value is AvatarEmote { return typeof value === 'string' && ['joy','cry','think','sleepy','spin'].includes(value); }

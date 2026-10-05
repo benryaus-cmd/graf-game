@@ -13,6 +13,15 @@ import { PaintReplay, renderNetworkPoint } from '../src/multiplayer/paintReplay'
 import { WorldMultiplayerSession } from '../src/multiplayer/worldSession';
 import { sprayOnWall } from '../src/game/worldPainting';
 import { restorePersistentChunkPaint } from '../src/game/paintPersistence';
+import { readCosmetics, readPlayer, readPlayerState, readStroke } from '../src/multiplayer/protocol';
+import { ArtworkUpload, posterBlob } from '../src/multiplayer/artworkUpload';
+import { ArtworkSync, readArtwork } from '../src/multiplayer/artworkSync';
+import liveContract from './fixtures/protocol2.json';
+import { addPosterOverlay } from '../src/game/posterOverlay';
+import { RemotePlayers } from '../src/multiplayer/remotePlayers';
+import { ChatSync } from '../src/multiplayer/chat';
+import { WorldOrder } from '../src/multiplayer/worldOrder';
+import { AccountFeatures } from '../src/multiplayer/accountFeatures';
 
 // Minimal browser canvas fixture. Geometry/session tests do not need a GPU.
 function canvasFixture() {
@@ -80,7 +89,7 @@ test('upgraded protocol 2 joins using the existing messages and accepts its expa
   connection.connect('Aippy nickname', 'public'); socket.readyState = 1;
   socket.receive({ type: 'hello', playerId: 'server-v2-id', protocol: 2, serverTime: 123,
     capabilities: ['presence', 'movement', 'paint', 'eraser', 'chat', 'artwork', 'world_items', 'inventory', 'trading', 'reports', 'resync'] });
-  assert.deepEqual(socket.sent[0], { type: 'join', roomId: 'public', displayName: 'Aippy nickname' });
+  assert.deepEqual(socket.sent[0], { type: 'join', protocol: 2, roomId: 'public', displayName: 'Aippy nickname' });
   socket.receive({ type: 'world_snapshot', protocol: 2, roomId: 'public', playerId: 'server-v2-id',
     revision: 5, sequence: 10, serverTime: 124, playerCount: 1, strokes: [], players: [],
     artworks: [], worldItems: [], graffitiPieces: [], chatHistory: [] });
@@ -391,7 +400,7 @@ for (const storageFails of [false, true]) test(`partial solo PNG decoding preser
   (globalThis as any).window = { localStorage: { getItem: () => null, setItem: () => {}, removeItem: () => {} } };
 });
 
-test('existing brush renders before network send; session integrates remote avatars and preserves offline controls', () => {
+for (const protocol of [1,2]) test(`protocol ${protocol}: brush renders before network, remote avatars and offline controls survive`, () => {
   const sockets: Socket[] = [];
   const previousSocket = globalThis.WebSocket;
   (globalThis as any).WebSocket = class extends Socket { constructor() { super(); sockets.push(this); } };
@@ -410,7 +419,7 @@ test('existing brush renders before network send; session integrates remote avat
     assert.equal(sockets.length, 0);
     session.join('Aippy Nick');
     const socket = sockets[0]; socket.readyState = 1;
-    socket.receive({ type: 'hello', playerId: 'server-only-id', protocol: 1 });
+    socket.receive({ type: 'hello', playerId: 'server-only-id', protocol });
     assert.equal(socket.sent[0].displayName, 'Aippy Nick');
     socket.receive({ type: 'world_snapshot', playerId: 'server-only-id', roomId: 'public', strokes: [], players: [] });
     scene.updateMatrixWorld(true);
@@ -427,7 +436,9 @@ test('existing brush renders before network send; session integrates remote avat
       new THREE.Vector2(), [wall.mesh], new Map([[wall.mesh, wall]]), () => {}, () => {}, { current: 0 }, { current: null });
     assert.equal(renderedBeforeSend, true);
     assert.equal(socket.sent.find(m => m.type === 'stroke_begin').brushSize, 5);
+    assert.equal(socket.sent.find(m => m.type === 'stroke_begin').opacity, protocol === 1 ? 1 : 0.88);
     world.onPaintEnd();
+    assert.equal(socket.sent.find(m => m.type === 'stroke_points').points[0].pressure, protocol === 1 ? 0.88 : 1);
     socket.receive({ type: 'player_joined', player: { id: 'remote', displayName: 'Other Aippy User', state: {} } });
     socket.receive({ type: 'player_state', playerId: 'remote', state: { position: [3,1.72,-4], rotation: [0,0,0], movement: 'walking', jumping: false } });
     world.onMultiplayerFrame(0.016, settings);
@@ -450,4 +461,244 @@ test('existing brush renders before network send; session integrates remote avat
     assert.equal(statuses[statuses.length - 1].phase, 'solo');
     assert.ok(world.walls[0] === wall, 'same world survives joining and leaving');
   } finally { session.dispose(); globalThis.WebSocket = previousSocket; }
+});
+
+
+test('protocol 2 paint metadata survives capture and replay, including erase operation and opacity', () => {
+  const sent: any[] = [];
+  const sync = new PaintSync({ send: m => { sent.push(m); return true; }, draw: () => {}, reset: () => {} });
+  sync.sample({ ...sample(0), operation: 'erase', opacity: 0.4, layerIndex: 2, face: '4', tool: 'eraser' } as any, false);
+  assert.equal(sent[0].operation, 'erase');
+  assert.equal(sent[0].opacity, 0.4);
+  assert.equal(sent[0].layerIndex, 2);
+  assert.equal(sent[0].face, '4');
+  const stroke = readStroke({ id: 's', surfaceId: 'ss1:0:0:wall/f4/l2', operation: 'erase', opacity: 0.4,
+    colour: '#ffffff', tool: 'spray', brushSize: 3, layerIndex: 2, face: '4', sequence: 10, revision: 8, points: [point(0)] });
+  assert.equal((stroke as any).operation, 'erase');
+  assert.equal((stroke as any).opacity, 0.4);
+  assert.equal((stroke as any).sequence, 10);
+  sync.end();
+});
+
+test('protocol 2 retains remote cosmetics, emotes and equipped visual state', () => {
+  const state = readPlayerState({ position: [0, 1.72, 0], rotation: [0,0,0], movement: 'walking', jumping: true,
+    tool: 'spray', animation: 'walking', emote: 'think', visibleHeldItem: 'sprayCan', flightState: 'flying',
+    cosmetics: { outfit: 'jax', top: 'teal', bottom: 'denim', accessory: 'sprayCan' } });
+  assert.equal((state as any).cosmetics.outfit, 'jax');
+  assert.equal((state as any).emote, 'think');
+  assert.equal((state as any).visibleHeldItem, 'sprayCan');
+  assert.equal((state as any).flightState, 'flying');
+});
+
+
+test('chat snapshot/live messages deduplicate by server ID and retain plain text', () => {
+  const sent: any[] = []; const updates: any[] = [];
+  const chat = new ChatSync(m => { sent.push(m); return true; }, m => updates.push(m));
+  const message = { id: 'chat-1', playerId: 'p', displayName: 'Aippy Name', text: '<img onerror=alert(1)>', timestamp: 123 };
+  chat.snapshot([message]); chat.accept({ type: 'chat_message', message });
+  assert.equal(chat.messages.length, 1);
+  assert.equal(chat.messages[0].text, message.text);
+  assert.equal(chat.send('  hello  '), true);
+  assert.deepEqual(sent[0], { type: 'chat_message', text: 'hello' });
+  assert.equal(chat.send('  '), false);
+  chat.clear(); assert.equal(chat.messages.length, 0);
+});
+
+test('world order ignores duplicates and accepts gaps from excluded own broadcasts', () => {
+  const order = new WorldOrder(); order.snapshot({ sequence: 7, revision: 3 });
+  assert.equal(order.accept({ sequence: 6 }), false);
+  assert.equal(order.accept({ sequence: 8, revision: 4 }), true);
+  assert.equal(order.accept({ sequence: 8 }), false);
+  assert.equal(order.accept({ sequence: 10 }), true);
+  assert.equal(order.accept({ sequence: 11 }), true);
+  order.snapshot({ sequence: 11, revision: 6 });
+  assert.equal(order.accept({ sequence: 12, revision: 7 }), true);
+  assert.equal(order.revision, 7);
+});
+
+test('account-backed inventory and trade actions never send while verification is unavailable', () => {
+  const sent: any[] = [];
+  const accounts = new AccountFeatures(m => { sent.push(m); return true; });
+  assert.equal(accounts.available, false);
+  assert.equal(accounts.requestInventory(), false);
+  assert.equal(accounts.trade({ type: 'trade_request', playerId: 'p' }), false);
+  assert.equal(accounts.itemAction({ type: 'item_pickup', itemId: 'i' }), false);
+  assert.equal(sent.length, 0);
+  accounts.snapshotWorldItems([{ id: 'item', position: [1,2,3] }]);
+  accounts.worldItemEvent({ type: 'item_remove', itemId: 'item' });
+  assert.equal(accounts.worldItems.size, 0);
+});
+
+test('poster upload sends binary once for concurrent reuse, then uses the persistent asset URL', async () => {
+  const png = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jLQAAAABJRU5ErkJggg==';
+  const calls: any[] = [];
+  const upload = new ArtworkUpload(async (url, options) => {
+    calls.push({ url, options });
+    return new Response(JSON.stringify({ ok: true, assetRef: 'https://24.144.88.205/artwork/test.png' }), { status: 200 });
+  });
+  const refs = await Promise.all([upload.assetRef(png), upload.assetRef(png)]);
+  assert.deepEqual(refs, ['https://24.144.88.205/artwork/test.png', 'https://24.144.88.205/artwork/test.png']);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].options.method, 'POST');
+  assert.ok(calls[0].options.body instanceof Blob);
+  assert.equal(calls[0].options.body.type, 'image/png');
+  assert.equal(new Uint8Array(await calls[0].options.body.arrayBuffer())[0], 137);
+  await upload.assetRef(png); assert.equal(calls.length, 1);
+  await upload.assetRef(refs[0]); assert.equal(calls.length, 1);
+  assert.throws(() => posterBlob('data:image/gif;base64,eA=='), /PNG, JPEG or WebP/);
+  assert.throws(() => posterBlob('data:image/png;base64,' + 'A'.repeat(7_000_000)), /5 MB/);
+});
+
+test('poster snapshot mounts once, orders overlapping images by server sequence and cancels late loads on leave', () => {
+  const images: any[] = [], notices: string[] = [];
+  const sync = new ArtworkSync(() => true, value => notices.push(value), () => { const image: any = {}; images.push(image); return image; });
+  const chunk = createCityChunk(0, 0, materials()); const wall = chunk.walls[0];
+  const saved = (id: string, sequence: number) => ({ id, assetRef: 'https://example.test/' + id + '.png', surfaceId: encodeSurface(wall.surfaceId!,0,0), face:'0', position:[0,0,0], rotation:[0,0,0,1], width:1, height:1, sequence });
+  sync.snapshot([saved('older',10), saved('newer',20)]); const walls = new Map([[wall.surfaceId!,wall]]);
+  sync.refresh(walls); sync.refresh(walls); assert.equal(images.length,2);
+  images[1].onload(); images[0].onload();
+  const overlays = (wall.layers[0]?.mesh ?? wall.mesh).children.filter(c=>c.userData.posterArtwork);
+  assert.deepEqual(overlays.map(c=>c.renderOrder),[110,100]);
+  sync.accept({type:'artwork_placed',artwork:saved('older',10)});sync.refresh(walls);assert.equal(images.length,2);
+  sync.snapshot([saved('older',10), saved('newer',20), saved('late',30)]);sync.refresh(walls);
+  sync.clear(); images[2].onload();
+  assert.equal((wall.layers[0]?.mesh ?? wall.mesh).children.filter(c=>c.userData.posterArtwork).length,0);
+  assert.equal(notices.length,0);
+});
+
+test('local poster renders immediately; upload completion shares only its URL and own echo does not mount twice', async () => {
+  let release!: (response: Response) => void;
+  const upload = new ArtworkUpload(async () => new Promise<Response>(resolve=> { release=resolve; }));
+  const sent: any[] = [], images: any[] = [];
+  const sync = new ArtworkSync(message=> {sent.push(message);return true;},()=>{},()=> {const image:any={};images.push(image);return image;},upload);
+  const chunk = createCityChunk(0,0,materials()); const wall=chunk.walls[0];
+  const artwork:any={image:'data:image/png;base64,eA==',position:[0,0,0],quaternion:[0,0,0,1],width:1,height:1};
+  addPosterOverlay(wall,artwork,{} as HTMLImageElement);
+  const pending=sync.placed(wall,0,artwork); assert.equal(sent.length,0); assert.equal((wall.layers[0]?.mesh ?? wall.mesh).children.filter(c=>c.userData.posterArtwork).length,1);
+  while (!release) await new Promise(resolve=>setTimeout(resolve,0));
+  release(new Response(JSON.stringify({ok:true,assetRef:'https://example.test/saved.png'})));
+  await pending; assert.equal(sent.length,1); assert.equal(sent[0].assetRef,'https://example.test/saved.png');
+  assert.equal(JSON.stringify(sent[0]).includes('base64'),false);
+  sync.accept({type:'artwork_placed',artwork:{...sent[0],id:sent[0].artworkId,sequence:50}});
+  sync.refresh(new Map([[wall.surfaceId!,wall]])); assert.equal(images.length,0);
+  assert.equal((wall.layers[0]?.mesh ?? wall.mesh).children.find(c=>c.userData.posterArtwork)!.renderOrder,140);
+  sync.clear();
+});
+
+test('remote cosmetics and emotes reuse the existing avatar; repeated action IDs do not restart animation', () => {
+  const scene = new THREE.Scene(), players = new RemotePlayers(scene);
+  players.joined({id:'other',displayName:'Other'},'self');
+  players.state('other',{position:[1,1.72,2],rotation:[0,0,0],movement:'idle',cosmetics:{outfit:'jax',top:'coral',bottom:'charcoal',accessory:'sprayCan'},visibleHeldItem:'sprayCan',emote:''});
+  players.update(0.016); const avatar=scene.children.find(c=>c.userData.parts)!;
+  assert.equal(avatar.userData.parts.jaxDetails.visible,true);
+  assert.equal(avatar.userData.parts.accessories.sprayCan.visible,true);
+  players.action({type:'player_action',actionId:'once',playerId:'other',action:'emote',data:{emote:'think'}});
+  players.update(0.1); const elapsed=avatar.userData.activeEmote.elapsed;
+  players.action({type:'player_action',actionId:'once',playerId:'other',action:'emote',data:{emote:'think'}});
+  assert.equal(avatar.userData.activeEmote.elapsed,elapsed);
+  players.clear();assert.equal(scene.children.length,0);
+});
+
+test('a delayed poster upload cannot publish after connection interruption, and offline placement never uploads', async () => {
+  let release!:(response:Response)=>void; let uploads=0;
+  const upload=new ArtworkUpload(async()=> {uploads++;return new Promise<Response>(resolve=>{release=resolve;});});
+  const sent:any[]=[];
+  const sync=new ArtworkSync(message=>{sent.push(message);return true;},()=>{},()=>({} as HTMLImageElement),upload);
+  const chunk=createCityChunk(0,0,materials()), wall=chunk.walls[0];
+  const poster:any={image:'data:image/png;base64,eA==',position:[0,0,0],quaternion:[0,0,0,1],width:1,height:1};
+  addPosterOverlay(wall,poster,{} as HTMLImageElement);
+  const pending=sync.placed(wall,0,poster);
+  while(!release) await new Promise(resolve=>setTimeout(resolve,0));
+  sync.interrupted();sync.snapshot([]);
+  release(new Response(JSON.stringify({ok:true,assetRef:'https://example.test/uploaded.png'})));
+  await pending;assert.equal(sent.length,0);assert.equal(uploads,1);
+  assert.equal((wall.layers[0]?.mesh??wall.mesh).children.filter(c=>c.userData.posterArtwork).length,1);
+  addPosterOverlay(wall,poster,{} as HTMLImageElement);
+  await sync.placed(wall,0,poster,false);assert.equal(uploads,1);assert.equal(sent.length,0);
+  sync.clear();
+});
+
+test('nested stroke sequence participates in ordering and duplicate begins retain own accepted metadata', () => {
+  const order=new WorldOrder();order.snapshot({sequence:10,revision:10});
+  assert.equal(order.accept({type:'stroke_begin',stroke:{sequence:11,revision:11}}),true);
+  assert.equal(order.accept({type:'stroke_points',sequence:12,revision:12}),true);
+  const sync=new PaintSync({send:()=>true,draw:()=>assert.fail('own echo redrawn'),reset:()=>{}});
+  const local=sync.sample(sample(1),false);
+  sync.accept({type:'stroke_begin',stroke:{...local.stroke,sequence:11,revision:11,playerId:'server-id'}});
+  assert.equal(sync.strokes.get(local.stroke.strokeId)?.sequence,11);
+});
+
+test('session reconstructs chat/items, handles explicit resync and keeps identity account features locked', () => {
+  const sockets:Socket[]=[], previousSocket=globalThis.WebSocket;
+  (globalThis as any).WebSocket=class extends Socket {constructor(){super();sockets.push(this);}};
+  const scene=new THREE.Scene(), stream=createCityChunkStream(scene,materials());stream.updateAt(0,0);
+  const world:any={scene,walls:stream.walls,setPaintSession:stream.setPaintSession,playerPosition:new THREE.Vector3(),playerYaw:0,playerPitch:0,paintRevision:0};
+  const views:any[]=[],statuses:any[]=[];
+  const session=new WorldMultiplayerSession(world,s=>statuses.push(s),v=>views.push(v));
+  try {
+    session.join('Aippy Default');const socket=sockets[0];socket.readyState=1;
+    socket.receive({type:'hello',protocol:2,playerId:'assigned'});
+    const snapshot:any={type:'world_snapshot',protocol:2,roomId:'public',playerId:'assigned',sequence:10,revision:10,playerCount:4,strokes:[],players:[],artworks:[],worldItems:[{id:'drop'}],chatHistory:[{id:'old',playerId:'other',displayName:'Other',text:'saved',timestamp:100}]};
+    socket.receive(snapshot);assert.equal(world.multiplayerActive,true);assert.equal(views.at(-1).chat[0].text,'saved');
+    assert.equal(views.at(-1).worldItemCount,1);assert.equal(views.at(-1).accountFeaturesAvailable,false);assert.equal(statuses.at(-1).playerCount,4);
+    session.sendChat('test transport only');assert.equal(socket.sent.at(-1).type,'chat_message');
+    socket.receive({type:'chat_message',sequence:11,revision:11,message:{id:'new',playerId:'other',displayName:'Other',text:'live',timestamp:200}});
+    assert.equal(views.at(-1).chat.length,2);
+    socket.receive({type:'stroke_points',strokeId:'missing',sequence:13,revision:13,points:[]});
+    socket.receive({type:'stroke_points',strokeId:'missing',sequence:14,revision:14,points:[]});
+    assert.equal(socket.sent.filter(m=>m.type==='resync_request').length,0,'own broadcasts can create valid sequence gaps');
+    session.resync();assert.equal(socket.sent.filter(m=>m.type==='resync_request').length,1);
+    socket.receive({...snapshot,sequence:14,revision:14});assert.equal(views.at(-1).revision,14);
+    session.emote('think');assert.deepEqual(socket.sent.at(-1).data,{emote:'think'});
+    const sent=socket.sent.length;session.accounts.requestInventory();session.accounts.trade({type:'trade_request'});assert.equal(socket.sent.length,sent);
+    session.leave();assert.equal(world.multiplayerActive,false);assert.equal(views.at(-1).chat.length,0);
+  } finally {session.dispose();globalThis.WebSocket=previousSocket;}
+});
+
+test('frequent stroke endings do not restart a wall snapshot replay indefinitely', () => {
+  const sockets:Socket[]=[], previousSocket=globalThis.WebSocket;
+  (globalThis as any).WebSocket=class extends Socket {constructor(){super();sockets.push(this);}};
+  const scene=new THREE.Scene(), stream=createCityChunkStream(scene,materials());stream.updateAt(0,0);
+  const world:any={scene,walls:stream.walls,setPaintSession:stream.setPaintSession,playerPosition:new THREE.Vector3(),playerYaw:0,playerPitch:0,paintRevision:0,velocityY:0,abilityActive:false};
+  const session=new WorldMultiplayerSession(world,()=>{});
+  try {
+    session.join('Tester');const socket=sockets[0];socket.readyState=1;socket.receive({type:'hello',protocol:2,playerId:'assigned'});
+    const wall=world.walls[0],position=wall.mesh.localToWorld(new THREE.Vector3(0.2,0.2,0));
+    const point={x:position.x,y:position.y,z:position.z,pressure:1};
+    const stroke={id:'history',surfaceId:encodeSurface(wall.surfaceId!,0,0),colour:'#ff0000',brushSize:5,opacity:1,points:Array.from({length:800},()=>({...point}))};
+    const real:any=wall.layers[0].ensureFace(0);
+    socket.receive({type:'world_snapshot',protocol:2,roomId:'public',playerId:'assigned',strokes:[stroke],players:[]});
+    const settings:any={layerVisibility:[true],paintMode:false,eraseMode:false};
+    for(let frame=0;frame<20&&real.draws.length===0;frame++) {
+      socket.receive({type:'stroke_end',strokeId:'history'});world.onMultiplayerFrame(0.016,settings);
+    }
+    assert.ok(real.draws.length>=800,'the in-progress replay commits despite repeated stroke endings');
+  } finally {session.dispose();globalThis.WebSocket=previousSocket;}
+});
+
+test('same-connection resync preserves a held stroke and keeps sending only its new points', () => {
+  const sent:any[]=[],draws:any[]=[];
+  const sync=new PaintSync({send:m=>{sent.push(m);return true;},reset:()=>{},draw:(...args)=>draws.push(args)});
+  const local=sync.sample({...sample(1),opacity:0.88},false);sync.flush(100);
+  sync.snapshot([{...local.stroke,id:local.stroke.strokeId,points:[point(1)],sequence:10}],true);
+  assert.equal(sync.drawing,true);
+  assert.equal(sync.sample({...sample(2),opacity:0.88},true).stroke.strokeId,local.stroke.strokeId);
+  sync.flush(200);sync.end();
+  assert.equal(sent.filter(m=>m.type==='stroke_begin').length,1);
+  assert.deepEqual(sent.filter(m=>m.type==='stroke_points').map(m=>m.points.length),[1,1]);
+  assert.equal(sync.strokes.get(local.stroke.strokeId)?.points.length,2);
+  assert.equal(draws.length,1,'snapshot stages the already rendered stroke once');
+});
+
+test('live metadata/artwork packets decode and a server movement packet missing position is rejected', () => {
+  assert.equal(readPlayer(liveContract.joined.player)?.playerId,liveContract.joined.player.id);
+  assert.equal(readCosmetics(liveContract.state.state.cosmetics)?.outfit,'jax');
+  assert.equal(readPlayerState(liveContract.state.state),null,'live server currently drops position: documented backend blocker, never invent a spawn position');
+  const rendered:any[]=[];const paint=new PaintSync({send:()=>true,reset:()=>{},draw:(...args)=>rendered.push(args)});
+  paint.accept(liveContract.begin);paint.accept(liveContract.points);paint.accept(liveContract.end);
+  const stroke=paint.strokes.get(liveContract.begin.stroke.id)!;
+  assert.equal(stroke.operation,'erase');assert.equal(stroke.opacity,0.05);assert.equal(stroke.sequence,liveContract.end.sequence);
+  assert.equal(rendered.length,1);assert.deepEqual(stroke.points,liveContract.points.points);
+  const artwork=readArtwork(liveContract.artwork.artwork)!;
+  assert.deepEqual(artwork.quaternion,[0,0,0,1]);assert.equal(artwork.sequence,liveContract.artwork.sequence);
 });

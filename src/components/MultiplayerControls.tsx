@@ -1,10 +1,14 @@
-import type { MultiplayerStatus } from '@/multiplayer/protocol';
+import { useState } from 'react';
+import type { ChatMessage, MultiplayerStatus } from '@/multiplayer/protocol';
+import MultiplayerChat from './MultiplayerChat';
 
 interface Props {
   status: MultiplayerStatus; displayName: string; avatar?: string; profileLoading: boolean;
   onJoin: () => void; onLeave: () => void;
+  messages: ChatMessage[]; onChat: (text: string) => void; onResync: () => void;
 }
-export default function MultiplayerControls({ status, displayName, avatar, profileLoading, onJoin, onLeave }: Props) {
+export default function MultiplayerControls({ status, displayName, avatar, profileLoading, onJoin, onLeave, messages, onChat, onResync }: Props) {
+  const [chatOpen, setChatOpen] = useState(false);
   const solo = status.phase === 'solo';
   const joining = status.phase === 'connecting';
   return (
@@ -23,12 +27,14 @@ export default function MultiplayerControls({ status, displayName, avatar, profi
           <button type="button" onClick={onJoin} disabled={profileLoading}>JOIN MULTIPLAYER</button>
         ) : (
           <div className="multiplayer-buttons">
+            {status.phase === 'connected' && <button type="button" onClick={() => setChatOpen(open => !open)} aria-expanded={chatOpen}>CHAT</button>}
             {status.phase === 'disconnected' && <button type="button" onClick={onJoin} disabled={profileLoading}>RECONNECT</button>}
             <button type="button" onClick={onLeave}>{joining ? 'CANCEL' : 'SOLO'}</button>
           </div>
         )}
       </div>
       {status.notice && !solo && <p className="multiplayer-notice">{status.notice}</p>}
+      {chatOpen && !solo && <MultiplayerChat messages={messages} connected={status.phase === 'connected'} onSend={onChat} onClose={() => setChatOpen(false)} onResync={onResync} />}
     </aside>
   );
 }

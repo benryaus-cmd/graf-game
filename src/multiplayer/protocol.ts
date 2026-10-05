@@ -2,13 +2,19 @@ export interface StrokePoint { x: number; y: number; z: number; pressure: number
 export interface SharedStroke {
   strokeId: string; playerId?: string; surfaceId: string;
   colour: string; tool: string; brushSize: number; points: StrokePoint[];
+  operation?: 'paint' | 'erase'; opacity?: number; layerIndex?: number; face?: string;
+  sequence?: number; revision?: number;
 }
+export interface PlayerCosmetics { outfit: string; top: string; bottom: string; accessory: string }
 export interface PlayerState {
   position: number[]; rotation: number[]; movement?: string; tool?: string; jumping?: boolean;
+  animation?: string; emote?: string; visibleHeldItem?: string; flightState?: string; cosmetics?: PlayerCosmetics;
 }
 export interface SharedPlayer { playerId: string; displayName: string; state?: PlayerState }
 export type ConnectionPhase = 'solo' | 'connecting' | 'connected' | 'disconnected';
 export interface MultiplayerStatus { phase: ConnectionPhase; playerCount: number; notice?: string }
+export interface ChatMessage { id: string; playerId: string; displayName: string; text: string; timestamp: number }
+export interface MultiplayerView { chat: ChatMessage[]; revision: number; accountFeaturesAvailable: boolean; worldItemCount: number }
 export type Message = Record<string, unknown> & { type: string };
 
 export function readPoint(value: unknown): StrokePoint | null {
@@ -25,6 +31,12 @@ export function readStroke(value: unknown): SharedStroke | null {
     strokeId: s.strokeId ?? s.id!, playerId: s.playerId, surfaceId: s.surfaceId,
     colour: s.colour, tool: typeof s.tool === 'string' ? s.tool : 'spray',
     brushSize: s.brushSize,
+    operation: s.operation === 'erase' || s.tool === 'eraser' ? 'erase' : 'paint',
+    opacity: Number.isFinite(s.opacity) ? Math.max(0.05, Math.min(1, s.opacity!)) : 1,
+    layerIndex: Number.isInteger(s.layerIndex) ? Math.max(0, Math.min(7, s.layerIndex!)) : undefined,
+    face: typeof s.face === 'string' ? s.face.slice(0, 40) : undefined,
+    sequence: Number.isSafeInteger(s.sequence) ? s.sequence : undefined,
+    revision: Number.isSafeInteger(s.revision) ? s.revision : undefined,
     points: Array.isArray(s.points) ? s.points.slice(0, 20_000).map(readPoint).filter((p): p is StrokePoint => !!p) : [],
   };
 }
@@ -37,7 +49,19 @@ export function readPlayerState(value: unknown): PlayerState | null {
     position: s.position.slice(0, 3), rotation: s.rotation.slice(0, 3),
     movement: typeof s.movement === 'string' ? s.movement : 'idle',
     tool: typeof s.tool === 'string' ? s.tool : 'off', jumping: s.jumping === true,
+    animation: typeof s.animation === 'string' ? s.animation.slice(0, 40) : 'idle',
+    emote: typeof s.emote === 'string' ? s.emote.slice(0, 40) : '',
+    visibleHeldItem: typeof s.visibleHeldItem === 'string' ? s.visibleHeldItem.slice(0, 40) : 'none',
+    flightState: typeof s.flightState === 'string' ? s.flightState.slice(0, 40) : 'grounded',
+    cosmetics: readCosmetics(s.cosmetics),
   };
+}
+
+export function readCosmetics(value: unknown): PlayerCosmetics | undefined {
+  if (!value || typeof value !== 'object') return undefined;
+  const v = value as Record<string, unknown>;
+  if (!['outfit','top','bottom','accessory'].every(k => typeof v[k] === 'string' && (v[k] as string).length <= 40)) return undefined;
+  return { outfit: v.outfit as string, top: v.top as string, bottom: v.bottom as string, accessory: v.accessory as string };
 }
 export function readPlayer(value: unknown): SharedPlayer | null {
   const p = value as SharedPlayer & { id?: string };

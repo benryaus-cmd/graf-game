@@ -1,0 +1,145 @@
+{
+  "hello": {
+    "type": "hello",
+    "playerId": "ab51fbbe-e704-4bb3-ad9c-e806623f5d2e",
+    "protocol": 2,
+    "serverTime": 1791209274560,
+    "capabilities": [
+      "presence",
+      "movement",
+      "paint",
+      "eraser",
+      "chat",
+      "artwork",
+      "world_items",
+      "inventory",
+      "trading",
+      "reports",
+      "resync"
+    ]
+  },
+  "joined": {
+    "type": "player_joined",
+    "player": {
+      "id": "76bc2a5b-8dfb-4da3-99cc-c0956e1c9d3d",
+      "displayName": "Protocol integration check B",
+      "state": {},
+      "accountBound": false
+    },
+    "serverTime": 1791209283790
+  },
+  "state": {
+    "type": "player_state",
+    "playerId": "ab51fbbe-e704-4bb3-ad9c-e806623f5d2e",
+    "state": {
+      "rotation": [
+        0,
+        0.2,
+        0
+      ],
+      "movement": "idle",
+      "tool": "spray",
+      "animation": "think",
+      "emote": "think",
+      "visibleHeldItem": "sprayCan",
+      "flightState": "flying",
+      "jumping": true,
+      "cosmetics": {
+        "outfit": "jax",
+        "top": "coral",
+        "bottom": "charcoal",
+        "accessory": "sprayCan"
+      }
+    },
+    "serverTime": 1791209283852
+  },
+  "action": {
+    "type": "player_action",
+    "actionId": "dd12e2e4-5397-4bf3-b8d8-f52c540e5bf7",
+    "playerId": "ab51fbbe-e704-4bb3-ad9c-e806623f5d2e",
+    "action": "emote",
+    "data": {
+      "emote": "think"
+    },
+    "serverTime": 1791209283944
+  },
+  "begin": {
+    "type": "stroke_begin",
+    "stroke": {
+      "id": "07745523-b221-4af1-95f6-13d28530543d.0",
+      "playerId": "ab51fbbe-e704-4bb3-ad9c-e806623f5d2e",
+      "accountId": null,
+      "surfaceId": "ss1:0:0:1ijbp2q-1hzh76g/f0/l0",
+      "operation": "erase",
+      "colour": "#8b8982",
+      "tool": "eraser",
+      "brushSize": 1,
+      "opacity": 0.05,
+      "layerIndex": 0,
+      "face": "0",
+      "points": [],
+      "startedAt": 1791209284006,
+      "endedAt": null,
+      "revision": 5,
+      "sequence": 5
+    },
+    "revision": 5,
+    "sequence": 5,
+    "serverTime": 1791209284006
+  },
+  "points": {
+    "type": "stroke_points",
+    "strokeId": "07745523-b221-4af1-95f6-13d28530543d.0",
+    "playerId": "ab51fbbe-e704-4bb3-ad9c-e806623f5d2e",
+    "points": [
+      {
+        "x": 1,
+        "y": 1.887379141862766e-16,
+        "z": -0.7,
+        "pressure": 1
+      }
+    ],
+    "revision": 6,
+    "sequence": 6,
+    "serverTime": 1791209284068
+  },
+  "end": {
+    "type": "stroke_end",
+    "strokeId": "07745523-b221-4af1-95f6-13d28530543d.0",
+    "playerId": "ab51fbbe-e704-4bb3-ad9c-e806623f5d2e",
+    "revision": 7,
+    "sequence": 7,
+    "serverTime": 1791209284127
+  },
+  "artwork": {
+    "type": "artwork_placed",
+    "artwork": {
+      "id": "3ce6dd24-38fe-4fb9-b5e2-df788a7929e3",
+      "actionId": "a4684044-b317-4eda-9431-ebc1e14e29a7",
+      "ownerPlayerId": "ab51fbbe-e704-4bb3-ad9c-e806623f5d2e",
+      "ownerAccountId": null,
+      "assetRef": "https://24.144.88.205/artwork/780163d9-cba3-4385-a317-ef7d4514c9bc.png",
+      "surfaceId": "ss1:0:0:1ijbp2q-1hzh76g/f0/l0",
+      "face": "0",
+      "position": [
+        0.7,
+        0.7,
+        0.003
+      ],
+      "rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "width": 0.05,
+      "height": 0.05,
+      "createdAt": 1791209284190,
+      "revision": 8,
+      "sequence": 8
+    },
+    "revision": 8,
+    "sequence": 8,
+    "serverTime": 1791209284190
+  }
+}

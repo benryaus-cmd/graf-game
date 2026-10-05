@@ -7,7 +7,7 @@ export function attachKeyboardControls(
   keys: Set<string>,
 ): () => void {
   const onKeyDown = (event: KeyboardEvent) => {
-    if (event.target instanceof HTMLElement && event.target.closest('button, input, [role="button"]')) return;
+    if (event.target instanceof HTMLElement && event.target.closest('button, input, textarea, select, [contenteditable="true"], [role="button"]')) return;
     if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(event.code)) {
       event.preventDefault();
     }

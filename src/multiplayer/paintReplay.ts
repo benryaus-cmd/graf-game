@@ -12,6 +12,7 @@ interface WallReplay { original: PaintWall; target: PaintWall; jobs: PaintJob[];
 export class PaintReplay {
   private replays = new Map<string, WallReplay>();
   constructor(private visibility: () => boolean[]) {}
+  get rebuilding(): boolean { return [...this.replays.values()].some(replay => replay.staging); }
   cancel(): void {
     for (const replay of this.replays.values()) this.dispose(replay);
     this.replays.clear();
@@ -114,5 +115,5 @@ export function renderNetworkPoint(
       y: (1 - THREE.MathUtils.clamp(previousHit.uv.y / scale.v, 0, 1)) * context.canvas.height,
     };
   }
-  return stampPaintHit(wall, hit, stroke.colour, point.pressure, Math.max(0.025, stroke.brushSize / 50), layer, prior, visibility[layer] ?? true, stroke.tool === 'eraser');
+  return stampPaintHit(wall, hit, stroke.colour, point.pressure * (stroke.opacity ?? 1), Math.max(0.025, stroke.brushSize / 50), layer, prior, visibility[layer] ?? true, stroke.operation === 'erase' || stroke.tool === 'eraser');
 }

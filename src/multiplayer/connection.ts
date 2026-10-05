@@ -10,6 +10,8 @@ export interface SocketLike {
 
 export class MultiplayerConnection {
   playerId: string | null = null;
+  protocol = 1;
+  capabilities: string[] = [];
   connected = false;
   private socket: SocketLike | null = null;
   private generation = 0;
@@ -44,7 +46,9 @@ export class MultiplayerConnection {
           this.fail(`Unsupported multiplayer protocol (${String(message.protocol)}).`); return;
         }
         this.playerId = message.playerId;
-        this.sendRaw({ type: 'join', roomId, displayName: displayName.trim().slice(0, 40) || 'PLAYER' });
+        this.protocol = message.protocol as number;
+        this.capabilities = Array.isArray(message.capabilities) ? message.capabilities.filter((v): v is string => typeof v === 'string') : [];
+        this.sendRaw({ type: 'join', ...(this.protocol === 2 ? { protocol: 2 } : {}), roomId, displayName: displayName.trim().slice(0, 40) || 'PLAYER' });
       } else if (message.type === 'world_snapshot') {
         if (!this.playerId || message.playerId !== this.playerId || message.roomId !== this.roomId) return;
         if (!Array.isArray(message.strokes) || !Array.isArray(message.players)) return;
@@ -53,9 +57,19 @@ export class MultiplayerConnection {
         this.onMessage(message);
         this.onStatus({ phase: 'connected', playerCount: message.players.length + 1 });
       } else if (message.type === 'error') {
-        const notice = typeof message.message === 'string' ? message.message.slice(0, 160) : 'Server rejected an update.';
+        const notices: Record<string, string> = {
+          room_full: 'The public room is full. Try again later.', verified_account_required: 'Verified Aippy accounts are required for inventory and trading.',
+          maintenance: 'Multiplayer is temporarily unavailable.', protocol_mismatch: 'This game needs a multiplayer update.',
+          rate_limited: 'Too many updates. Please wait a moment.', invalid_artwork: 'This artwork could not be shared.',
+        };
+        const notice = typeof message.message === 'string' ? message.message.slice(0, 160) :
+          typeof message.code === 'string' ? notices[message.code] ?? ('Server rejected an update: ' + message.code.slice(0, 80)) : 'Server rejected an update.';
         if (!this.connected) this.fail(notice);
         else this.onStatus({ phase: 'connected', playerCount: -1, notice });
+      } else if (message.type === 'kicked' || message.type === 'maintenance') {
+        this.fail(typeof message.message === 'string' ? message.message.slice(0, 160) : 'Multiplayer session ended.');
+      } else if (message.type === 'ping') {
+        this.sendRaw({ type: 'pong', ...(message.timestamp !== undefined ? { timestamp: message.timestamp } : {}) });
       } else if (this.connected) this.onMessage(message);
     };
     socket.onerror = () => { if (generation === this.generation) this.fail('Connection lost. Offline paint stays local; Reconnect to resync.'); };

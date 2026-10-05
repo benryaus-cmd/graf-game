@@ -5,6 +5,7 @@ import { SHOP_ITEMS, type GameProgress, type ShopCategory, type ShopItem } from 
 interface AvatarMenuProps {
   progress: GameProgress;
   panelColor: string;
+  purchasesDisabled: boolean;
   onClose: () => void;
   onPurchase: (item: ShopItem) => void;
   onEquip: (item: ShopItem) => void;
@@ -26,7 +27,7 @@ const EMOTES: Array<{ id: AvatarEmote; icon: string; label: string }> = [
   { id: 'spin', icon: '⟳', label: 'SPIN' },
 ];
 
-const AvatarMenu = ({ progress, panelColor, onClose, onPurchase, onEquip, onEmote }: AvatarMenuProps) => {
+const AvatarMenu = ({ progress, panelColor, purchasesDisabled, onClose, onPurchase, onEquip, onEmote }: AvatarMenuProps) => {
   const [category, setCategory] = useState<ShopCategory | 'emote'>('outfit');
   const items = category === 'emote' ? [] : SHOP_ITEMS.filter((item) => item.category === category);
   const equipped = category === 'emote' ? '' : progress[category];
@@ -40,7 +41,8 @@ const AvatarMenu = ({ progress, panelColor, onClose, onPurchase, onEquip, onEmot
         </div>
         <button type="button" className="avatar-close" onClick={onClose} aria-label="Close closet">×</button>
       </header>
-      <div className="closet-balance"><span>🪙</span> {progress.coins} COINS <small>EARN BY PAINTING</small></div>
+      <div className="closet-balance"><span>🪙</span> {progress.coins} SOLO COINS <small>{purchasesDisabled ? 'SOLO SHOP PAUSED' : 'EARN BY PAINTING'}</small></div>
+      {purchasesDisabled && <p className="closet-footnote">Inventory, purchases, pickups and trading are unavailable until verified Aippy accounts are connected. You can still wear your existing solo looks.</p>}
       <nav className="closet-tabs" aria-label="Closet categories">
         {TABS.map((tab) => (
           <button
@@ -74,7 +76,7 @@ const AvatarMenu = ({ progress, panelColor, onClose, onPurchase, onEquip, onEmot
                 key={item.id}
                 type="button"
                 className={`closet-item ${item.exclusive ? 'closet-item-exclusive' : ''} ${selected ? 'closet-item-selected' : ''}`}
-                disabled={owned && selected}
+                disabled={(owned && selected) || (!owned && purchasesDisabled)}
                 onClick={() => (owned ? onEquip : onPurchase)(item)}
               >
                 <span

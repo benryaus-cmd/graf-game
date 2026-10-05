@@ -54,7 +54,7 @@ export function loadBotArtwork(
   const finish = (placed: boolean) => placedRef.current(request.sequence, placed);
   image.onload = () => {
     if (!active) return;
-    const placed = paintArtworkNearBot(world, request.botIndex, image);
+    const placed = !world.multiplayerActive && paintArtworkNearBot(world, request.botIndex, image);
     if (placed) world.savePaint();
     finish(placed);
   };

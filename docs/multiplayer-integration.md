@@ -1,6 +1,6 @@
 # Existing-server multiplayer integration plan
 
-**Goal:** Add opt-in multiplayer around the existing game using the owner's deployed protocol-1 server.
+**Goal:** Add opt-in multiplayer around the existing game using the owner's deployed protocol-2 server.
 
 **Architecture:** A client connection joins public after hello. Existing local rendering emits stroke samples afterwards. A stroke journal replays server snapshots onto the existing paint canvases; remote characters interpolate in the existing render loop. Solo paint storage stays separate.
 
@@ -14,7 +14,7 @@
 - No socket in solo. Movement/camera/brush run locally before network work.
 - Use VITE_MULTIPLAYER_URL through one config module.
 - Stay below 64 KB/message, 128 points/batch, 20,000 points/stroke and 120 messages/second.
-- Reuse current avatars and paint renderer. Chat/accounts/claims/economy are later work.
+- Reuse current avatars and paint renderer. Public chat, artwork upload/placement and existing cosmetics/emotes are in scope. Verified accounts, ownership, claims and economy remain unavailable.
 
 ## Files and tasks
 
@@ -35,3 +35,14 @@
 ## Verification
 
 Automated checks use a controlled transport and the actual client classes, plus Three.js geometry and recorded canvas draw calls. Live tests use the existing deployed WSS endpoint, not a new server. Browser/WebGL visual verification is recorded separately if available; a passing build is not a claim of measured phone performance.
+
+## Protocol 2 extension — accepted handover
+
+- Accept protocol 2 and explicitly include protocol in join. Keep solo opt-in, Aippy profile defaults and configurable endpoints.
+- Send operation/opacity/face/layer with paint; pressure remains an independent point value. Protocol-1 compatibility retains its opacity-through-pressure convention.
+- Handle sequence/revision monotonic ordering. The actual server excludes the originating client from stroke events; sequence gaps are expected. Reconcile own accepted metadata using a coalesced idle full resync, preserve held input on same-connection snapshots, and retain offline drafts across reconnect.
+- Render plaintext room chat/history, existing remote cosmetics/held gear/emotes/flight and player counts. Typing must not move the player.
+- Upload PNG/JPEG/WebP binary once per image content to the existing artwork-upload endpoint, <=5 MB. Place immediately locally, then transmit only assetRef/placement metadata. Guard late uploads across disconnects; sort overlapping meshes by accepted sequence, independent of image-load order.
+- Keep bots’ private painting out of the shared world. No account identity substitution; inventory/pickup/purchase/trade structures stay disabled while authMode is disabled.
+- Tests cover the current client and existing geometry/canvas renderer. Live two-peer protocol checks cover state/actions/eraser/artwork/late joins/resync and departure; no public test chat is posted.
+- Publish only changed source files plus required new modules in the incremental Aippy manifest. Update the full manifest for future full imports, without changing GitHub structure or Aippy integration.
