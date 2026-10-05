@@ -58,6 +58,10 @@
       "target": "src/games/importedGame/upstream/src/components/PaintWorkspaceHud.tsx"
     },
     {
+      "source": "src/components/PlayerInteractionCard.tsx",
+      "target": "src/games/importedGame/upstream/src/components/PlayerInteractionCard.tsx"
+    },
+    {
       "source": "src/components/PosterPlacementHud.tsx",
       "target": "src/games/importedGame/upstream/src/components/PosterPlacementHud.tsx"
     },
@@ -222,6 +226,10 @@
       "target": "src/games/importedGame/upstream/src/game/paintWorkspace.ts"
     },
     {
+      "source": "src/game/pieceEditGrace.ts",
+      "target": "src/games/importedGame/upstream/src/game/pieceEditGrace.ts"
+    },
+    {
       "source": "src/game/playerAvatar.ts",
       "target": "src/games/importedGame/upstream/src/game/playerAvatar.ts"
     },
@@ -284,6 +292,10 @@
     {
       "source": "src/game/skyEffects.ts",
       "target": "src/games/importedGame/upstream/src/game/skyEffects.ts"
+    },
+    {
+      "source": "src/game/sprayHeads.ts",
+      "target": "src/games/importedGame/upstream/src/game/sprayHeads.ts"
     },
     {
       "source": "src/game/tagBrush.ts",
@@ -372,6 +384,10 @@
     {
       "source": "src/multiplayer/paintSync.ts",
       "target": "src/games/importedGame/upstream/src/multiplayer/paintSync.ts"
+    },
+    {
+      "source": "src/multiplayer/permissions.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/permissions.ts"
     },
     {
       "source": "src/multiplayer/pieceSync.ts",

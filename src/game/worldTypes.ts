@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import type { BrushHead } from './sprayHeads';
 
 export type SkyMode = 'day' | 'sunset' | 'pastel' | 'rain' | 'night';
 export type CameraMode = 'first' | 'third' | 'map';
@@ -38,6 +39,7 @@ export interface PaintWorkspaceBounds {
 }
 
 export interface PaintWorkspaceSelection {
+  hasPaint?: boolean;
   wall: PaintWall;
   face: number;
   bounds: PaintWorkspaceBounds;
@@ -50,6 +52,7 @@ export interface PaintWorkspaceSelection {
 }
 
 export interface PaintWorkspaceState {
+  editableUntil?: number;
   active: boolean;
   pan?: THREE.Vector2;
   camera: THREE.OrthographicCamera;
@@ -144,6 +147,7 @@ export interface WorldEngine {
   paintWorkspace?: PaintWorkspaceState;
   onPaintWorkspaceChange?: (workspace: PaintWorkspaceState | undefined) => void;
   onPaintSample?: (wall: PaintWall, hit: THREE.Intersection, settings: LiveSettings, continues: boolean) => void;
+  onPlayerPick?: (event: PointerEvent) => boolean;
   onPaintEnd?: () => void;
   onMultiplayerFrame?: (delta: number, settings: LiveSettings) => void;
   multiplayerActive?: boolean;
@@ -164,6 +168,7 @@ export interface LookInput {
 }
 
 export interface LiveSettings {
+  brushHead?: BrushHead;
   paintMode: boolean;
   eraseMode: boolean;
   color: string;

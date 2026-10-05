@@ -58,6 +58,10 @@
       "target": "src/components/PaintWorkspaceHud.tsx"
     },
     {
+      "source": "src/components/PlayerInteractionCard.tsx",
+      "target": "src/components/PlayerInteractionCard.tsx"
+    },
+    {
       "source": "src/components/PosterPlacementHud.tsx",
       "target": "src/components/PosterPlacementHud.tsx"
     },
@@ -222,6 +226,10 @@
       "target": "src/game/paintWorkspace.ts"
     },
     {
+      "source": "src/game/pieceEditGrace.ts",
+      "target": "src/game/pieceEditGrace.ts"
+    },
+    {
       "source": "src/game/playerAvatar.ts",
       "target": "src/game/playerAvatar.ts"
     },
@@ -284,6 +292,10 @@
     {
       "source": "src/game/skyEffects.ts",
       "target": "src/game/skyEffects.ts"
+    },
+    {
+      "source": "src/game/sprayHeads.ts",
+      "target": "src/game/sprayHeads.ts"
     },
     {
       "source": "src/game/tagBrush.ts",
@@ -372,6 +384,10 @@
     {
       "source": "src/multiplayer/paintSync.ts",
       "target": "src/multiplayer/paintSync.ts"
+    },
+    {
+      "source": "src/multiplayer/permissions.ts",
+      "target": "src/multiplayer/permissions.ts"
     },
     {
       "source": "src/multiplayer/pieceSync.ts",

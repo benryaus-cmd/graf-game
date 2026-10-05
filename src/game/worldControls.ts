@@ -33,6 +33,8 @@ export function attachWorldControls(
   const lastBuzz = { current: 0 };
   const stroke: { current: PaintPoint | null } = { current: null };
   let pointerId: number | null = null;
+  let heldPaintPointer: PointerEvent | null = null;
+  let lastHeldPaintAt = 0;
   let startPointer = { x: 0, y: 0 };
   let startPointerWidth = 0;
   let startPointerHeight = 0;
@@ -90,6 +92,7 @@ export function attachWorldControls(
     return true;
   };
   const paintPointerMove = (event: PointerEvent) => {
+    heldPaintPointer = event;
     const samples = event.getCoalescedEvents?.();
     if (samples?.length) {
       for (const sample of samples) paint(sample);
@@ -99,7 +102,10 @@ export function attachWorldControls(
   };
   const onPointerDown = (event: PointerEvent) => {
     if (pointerId !== null || (event.pointerType === 'mouse' && (!event.isPrimary || event.button !== 0))) return;
+    if (!settings.current.paintMode && !posterState.current && !world.paintWorkspace?.active && world.onPlayerPick?.(event)) return;
     pointerId = event.pointerId;
+    heldPaintPointer = event;
+    lastHeldPaintAt = performance.now();
     const rect = canvas.getBoundingClientRect();
     const rotated = elementPointerIsRotated(canvas);
     startPointer = elementPointerPoint(canvas, event);
@@ -139,6 +145,7 @@ export function attachWorldControls(
   const onPointerUp = (event: PointerEvent) => {
     if (pointerId !== event.pointerId) return;
     pointerId = null;
+    heldPaintPointer = null;
     selectingWorkspace = false;
     endStroke();
     if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
@@ -149,10 +156,14 @@ export function attachWorldControls(
     timer.update(time);
     const delta = Math.min(timer.getDelta(), 0.045);
     const workspaceActive = !!world.paintWorkspace?.active;
+    if (heldPaintPointer && pointerId !== null && settings.current.paintMode && !posterState.current && !selectingWorkspace && time - lastHeldPaintAt >= 1000 / 30) {
+      lastHeldPaintAt = time;
+      paint(heldPaintPointer);
+    }
     if (!workspaceActive) {
       const look = settings.current.lookInput;
       if (look && world.cameraMode !== 'map') {
-        const turn = settings.current.lookSensitivity * 240 * delta;
+        const turn = settings.current.lookSensitivity * 480 * delta;
         world.playerYaw -= THREE.MathUtils.clamp(look.x, -1, 1) * turn;
         world.playerPitch = THREE.MathUtils.clamp(
           world.playerPitch + THREE.MathUtils.clamp(look.y, -1, 1) * turn,
@@ -202,6 +213,7 @@ export function attachWorldControls(
   const onBlur = () => {
     if (pointerId !== null && canvas.hasPointerCapture(pointerId)) canvas.releasePointerCapture(pointerId);
     pointerId = null;
+    heldPaintPointer = null;
     selectingWorkspace = false;
     keys.clear();
     endStroke();

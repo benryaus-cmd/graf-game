@@ -48,3 +48,8 @@ test('player parsing retains separate identity fields and falls back to legacy d
   });
   assert.equal(readPlayer({ id: 'new-player', username: 'new-user', nickName: 'New Name' })?.displayName, 'New Name');
 });
+
+test('player parsing retains only valid server role values', () => {
+  assert.equal(readPlayer({ playerId: 'p1', username: 'artist', role: 'moderator' })?.role, 'moderator');
+  assert.equal(readPlayer({ playerId: 'p1', username: 'artist', role: 'ownerish' })?.role, undefined);
+});

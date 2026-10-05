@@ -1,4 +1,5 @@
 import type { PieceMetadata } from './pieceSync';
+import type { ServerRole } from './permissions';
 
 export interface StrokePoint { x: number; y: number; z: number; pressure: number }
 export interface SharedStroke {
@@ -19,12 +20,13 @@ export interface SharedPlayer {
   /** Aippy profile identity fields are deliberately kept separate. */
   username?: string;
   nickName?: string;
+  role?: ServerRole;
   state?: PlayerState;
 }
 export type ConnectionPhase = 'solo' | 'connecting' | 'connected' | 'disconnected';
-export interface MultiplayerStatus { phase: ConnectionPhase; playerCount: number; notice?: string }
+export interface MultiplayerStatus { phase: ConnectionPhase; playerCount: number; notice?: string; role?: ServerRole; canDeletePieces?: boolean }
 export interface ChatMessage { id: string; playerId: string; displayName: string; text: string; timestamp: number }
-export interface MultiplayerView { chat: ChatMessage[]; revision: number; accountFeaturesAvailable: boolean; worldItemCount: number; pieces?: PieceMetadata[] }
+export interface MultiplayerView { chat: ChatMessage[]; revision: number; accountFeaturesAvailable: boolean; worldItemCount: number; pieces?: PieceMetadata[]; selectedPlayer?: { playerId: string; username: string; nickName: string; role?: ServerRole } | null; roleChange?: { targetUsername: string; previousRole: ServerRole; role: ServerRole; serverTime: number } }
 export type Message = Record<string, unknown> & { type: string };
 
 export function readPoint(value: unknown): StrokePoint | null {
@@ -81,7 +83,8 @@ export function readPlayer(value: unknown): SharedPlayer | null {
   const username = readIdentityField(p.username, 40);
   const nickName = readIdentityField(p.nickName, 40);
   const displayName = readIdentityField(p.displayName, 40) ?? (nickName || (username ? '@' + username : 'PLAYER'));
-  return { playerId: p.playerId ?? p.id!, displayName, username, nickName, state: readPlayerState(p.state) ?? undefined };
+  const role = p.role === 'player' || p.role === 'moderator' || p.role === 'admin' || p.role === 'owner' ? p.role : undefined;
+  return { playerId: p.playerId ?? p.id!, displayName, username, nickName, ...(role ? { role } : {}), state: readPlayerState(p.state) ?? undefined };
 }
 
 function readIdentityField(value: unknown, maxLength: number): string | undefined {

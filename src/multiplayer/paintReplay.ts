@@ -1,24 +1,28 @@
 import * as THREE from 'three';
-import { stampPaintHit, type PaintPoint } from '../game/worldPainting';
+import { stampPaintHit, paintRadius, type PaintPoint } from '../game/worldPainting';
 import type { PaintWall, PaintSurfaceLayer } from '../game/worldTypes';
 import { decodeSurface, pointToHit } from './surfaces';
 import type { SharedStroke, StrokePoint } from './protocol';
+import { headForTool, nextHoldSamples } from '../game/sprayHeads';
 
 interface PaintJob {
-  stroke: SharedStroke; surface: ReturnType<typeof decodeSurface>; points: StrokePoint[]; previous: StrokePoint | null; index: number; count: number;
+  stroke: SharedStroke; surface: ReturnType<typeof decodeSurface>; points: StrokePoint[]; previous: StrokePoint | null; holdSamples: number[]; index: number; count: number;
 }
 interface WallReplay { original: PaintWall; target: PaintWall; jobs: PaintJob[]; staging: boolean; committing: boolean; commitIndex: number }
 
 export class PaintReplay {
   private replays = new Map<string, WallReplay>();
+  private dwellByStroke = new Map<string, { point: StrokePoint; count: number; wallSurfaceId: string }>();
   constructor(private visibility: () => boolean[]) {}
   get rebuilding(): boolean { return [...this.replays.values()].some(replay => replay.staging); }
   cancel(): void {
     for (const replay of this.replays.values()) this.dispose(replay);
     this.replays.clear();
+    this.dwellByStroke.clear();
   }
   rebuild(wall: PaintWall): void {
     if (!wall.surfaceId) return;
+    this.dwellByStroke.clear();
     const old = this.replays.get(wall.surfaceId);
     if (old) this.dispose(old);
     const layers: PaintSurfaceLayer[] = [];
@@ -50,13 +54,28 @@ export class PaintReplay {
       this.replays.set(wall.surfaceId, replay);
     }
     if (replay.staging && replay.committing) { replay.commitIndex = 0; replay.committing = false; }
-    replay.jobs.push({ stroke, surface: decodeSurface(stroke.surfaceId), points, previous, index: 0, count: points.length });
+    const last = this.dwellByStroke.get(stroke.strokeId);
+    let prior = last?.point ?? previous;
+    let count = last?.count ?? 0;
+    const holdSamples = points.map(point => {
+      count = nextHoldSamples(prior ? { worldPoint: [prior.x, prior.y, prior.z], holdSamples: count || 1 } : null, [point.x, point.y, point.z]);
+      prior = point;
+      return count;
+    });
+    if (points.length) {
+      this.dwellByStroke.delete(stroke.strokeId);
+      this.dwellByStroke.set(stroke.strokeId, { point: points[points.length - 1], count, wallSurfaceId: wall.surfaceId });
+      while (this.dwellByStroke.size > 10_000) this.dwellByStroke.delete(this.dwellByStroke.keys().next().value!);
+    }
+    replay.jobs.push({ stroke, surface: decodeSurface(stroke.surfaceId), points, previous, holdSamples, index: 0, count: points.length });
   }
   isRebuilding(wall: PaintWall): boolean { return !!this.replays.get(wall.surfaceId!)?.staging; }
   removeMissing(walls: Map<string, PaintWall>): void {
     for (const [id, replay] of this.replays) {
       if (walls.get(id) !== replay.original) { this.dispose(replay); this.replays.delete(id); }
     }
+    const present = new Set([...walls.values()].map(wall => wall.surfaceId));
+    for (const [strokeId, dwell] of this.dwellByStroke) if (!present.has(dwell.wallSurfaceId)) this.dwellByStroke.delete(strokeId);
   }
   update(): void {
     // Incremental offscreen replay leaves current local paint visible and never waits on a snapshot.
@@ -68,7 +87,7 @@ export class PaintReplay {
         const surface = job.surface;
         if (!surface) { replay.jobs.shift(); continue; }
         const previousPoint = job.index > 0 ? job.points[job.index - 1] : job.previous;
-        renderNetworkPoint(replay.target, surface.face, surface.layer, job.stroke, job.points[job.index], previousPoint, this.visibility());
+        renderNetworkPoint(replay.target, surface.face, surface.layer, job.stroke, job.points[job.index], previousPoint, this.visibility(), job.holdSamples[job.index]);
         job.index++; remaining--;
         if (job.index >= job.count) replay.jobs.shift();
       }
@@ -105,7 +124,7 @@ export class PaintReplay {
 
 export function renderNetworkPoint(
   wall: PaintWall, face: number, layer: number, stroke: SharedStroke, point: StrokePoint,
-  previous: StrokePoint | null, visibility: boolean[],
+  previous: StrokePoint | null, visibility: boolean[], holdSamples?: number,
 ): PaintPoint | null {
   const hit = pointToHit(wall, face, point);
   if (!hit) return null;
@@ -120,7 +139,9 @@ export function renderNetworkPoint(
       object: wall.mesh, face, layer,
       x: THREE.MathUtils.clamp(previousHit.uv.x / scale.u, 0, 1) * context.canvas.width,
       y: (1 - THREE.MathUtils.clamp(previousHit.uv.y / scale.v, 0, 1)) * context.canvas.height,
+      worldPoint: [previousHit.point.x, previousHit.point.y, previousHit.point.z],
     };
   }
-  return stampPaintHit(wall, hit, stroke.colour, point.pressure * (stroke.opacity ?? 1), Math.max(0.025, stroke.brushSize / 50), layer, prior, visibility[layer] ?? true, stroke.operation === 'erase' || stroke.tool === 'eraser');
+  if (prior && holdSamples !== undefined) prior.holdSamples = Math.max(0, holdSamples - 1);
+  return stampPaintHit(wall, hit, stroke.colour, point.pressure * (stroke.opacity ?? 1), paintRadius(stroke.brushSize), layer, prior, visibility[layer] ?? true, stroke.operation === 'erase' || stroke.tool === 'eraser', headForTool(stroke.tool), holdSamples);
 }

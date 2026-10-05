@@ -96,3 +96,8 @@ Added direct Paint/Explore, compact colour selection, separate look joystick and
 Replaced AI creation UI with handmade transparent tags, bounded local design storage, gesture undo/redo and fine/marker/spray/roller/drip heads. Existing binary artwork upload supplies persistent multiplayer URLs. Current world spray retains its original brush.
 
 Protocol v2 retains Aippy username and nickname separately. Painting sessions create world-space pieces, complete them, display nearby server-owned engagement/window metadata and request likes. Server removals reconcile textures and ignore stale echoes. Replay is indexed and frame-budgeted; artwork download concurrency and stale loads are bounded. No new backend, account system or client-side shared economy was added. See docs/server-client-handoff.md for remaining contracts and verification limits.
+
+
+## Canvas and server-admin follow-up
+
+Added pre-stroke box resizing, finer size controls, six deterministic wall heads, stationary drips, edge overspray and 60-second editing grace. Canvas mode uses a bottom pan stick and hides movement; the selector hides competing overlays. World look speed is doubled and avatar facing corrected without changing network yaw. Server permissions gate piece deletion and contextual role changes; acknowledgement and removal broadcasts remain authoritative. Tests cover local/replayed drip geometry across texture resolutions. Credits, protected reservations and comments await the existing server contracts. Phone performance and live two-client play are not established by unit tests or the build.

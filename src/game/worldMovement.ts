@@ -74,7 +74,7 @@ export function advanceWorld(
     world.playerPosition.y - EYE_HEIGHT,
     world.playerPosition.z,
   );
-  world.playerAvatar.rotation.y = world.playerYaw;
+  world.playerAvatar.rotation.y = world.playerYaw + Math.PI;
   updatePlayerAvatar(world.playerAvatar, delta, magnitude > 0.08, world.abilityActive);
   updateBunnyCompanion(world.bunnyGroup, world.playerPosition, world.playerYaw, delta, magnitude > 0.08);
   advanceCityBots(world, delta);

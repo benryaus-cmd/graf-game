@@ -3,14 +3,17 @@ import { createPlayerAvatar } from '../game/playerAvatar';
 import { updatePlayerAvatar, applyAvatarAppearance, triggerAvatarEmote } from '../game/playerAvatarAppearance';
 import { SHOP_ITEMS } from '../game/shopCatalog';
 import type { AvatarEmote } from '../game/worldTypes';
+import type { ServerRole } from './permissions';
 import { EYE_HEIGHT } from '../game/playerPhysics';
 import { interpolatePlayer } from './playerSync';
 import { readPlayer, readPlayerState, type PlayerState, type Message } from './protocol';
+import { elementPointerPoint } from '../game/pointerCoordinates';
 
 interface RemotePlayer {
   avatar: THREE.Group; current: PlayerState | null; target: PlayerState | null; name: string;
-  appearance?: string; lastEmote?: string;
+  username?: string; role?: ServerRole; appearance?: string; lastEmote?: string;
 }
+export interface PickedPlayer { playerId: string; username: string; nickName: string; role?: ServerRole }
 export class RemotePlayers {
   private players = new Map<string, RemotePlayer>();
   private actions = new Set<string>();
@@ -42,10 +45,44 @@ export class RemotePlayers {
       const texture = new THREE.CanvasTexture(labelCanvas);
       const label = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, depthWrite: false }));
       label.position.set(0, 2.65, 0); label.scale.set(2.4, showHandle ? 0.53 : 0.45, 1); avatar.add(label);
-      remote = { avatar, current: null, target: null, name };
+      remote = { avatar, current: null, target: null, name, username, role: isRole((player as typeof player & { role?: unknown }).role) ? (player as typeof player & { role: ServerRole }).role : undefined };
       this.players.set(player.playerId, remote);
     }
+    if (player.username) remote.username = player.username.replace(/^@/, '');
+    const role = (player as typeof player & { role?: unknown }).role;
+    if (isRole(role)) remote.role = role;
     if (player.state) this.state(player.playerId, player.state);
+  }
+  roleChanged(playerId: string, username: string, role: ServerRole): void {
+    const remote = this.players.get(playerId);
+    if (!remote) return;
+    remote.username = username.replace(/^@/, '');
+    remote.role = role;
+  }
+  get(playerId: string): PickedPlayer | null {
+    const remote = this.players.get(playerId);
+    if (!remote) return null;
+    return { playerId, username: remote.username ?? '', nickName: remote.name, role: remote.role };
+  }
+  roleForUsername(username: string): ServerRole | undefined {
+    const normalized = username.replace(/^@/, '').toLowerCase();
+    return [...this.players.values()].find(player => player.username?.toLowerCase() === normalized)?.role;
+  }
+  pick(event: PointerEvent, canvas: HTMLElement, camera: THREE.Camera, wallMeshes: THREE.Object3D[], playerPosition: THREE.Vector3): PickedPlayer | null {
+    const point = elementPointerPoint(canvas, event);
+    const pointer = new THREE.Vector2(point.x * 2 - 1, 1 - point.y * 2);
+    const raycaster = new THREE.Raycaster();
+    raycaster.far = 12;
+    raycaster.setFromCamera(pointer, camera);
+    const walls = raycaster.intersectObjects(wallMeshes, false)[0];
+    const roots = [...this.players.entries()].filter(([, p]) => p.avatar.visible && p.current &&
+      p.avatar.position.distanceTo(playerPosition) <= 12).map(([, p]) => p.avatar);
+    const hit = raycaster.intersectObjects(roots, true).find(candidate => candidate.distance <= 12 && (!walls || candidate.distance < walls.distance));
+    if (!hit) return null;
+    let root: THREE.Object3D | null = hit.object;
+    while (root && !roots.includes(root as THREE.Group)) root = root.parent;
+    const entry = root && [...this.players.entries()].find(([, p]) => p.avatar === root);
+    return entry ? this.get(entry[0]) : null;
   }
   state(playerId: string, value: unknown): void {
     const state = readPlayerState(value);
@@ -81,7 +118,7 @@ export class RemotePlayers {
       }
       remote.avatar.visible = true;
       remote.avatar.position.set(state.position[0], state.position[1] - EYE_HEIGHT, state.position[2]);
-      remote.avatar.rotation.y = state.rotation[1];
+      remote.avatar.rotation.y = state.rotation[1] + Math.PI;
       updatePlayerAvatar(remote.avatar, delta, state.movement !== 'idle', state.jumping === true || state.flightState === 'flying' || state.flightState === 'levitating');
     }
   }
@@ -116,3 +153,4 @@ export class RemotePlayers {
 }
 
 function isEmote(value: unknown): value is AvatarEmote { return typeof value === 'string' && ['joy','cry','think','sleepy','spin'].includes(value); }
+function isRole(value: unknown): value is ServerRole { return value === 'player' || value === 'moderator' || value === 'admin' || value === 'owner'; }

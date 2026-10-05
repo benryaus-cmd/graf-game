@@ -1,4 +1,5 @@
-import { useState, useRef, type PointerEvent as ReactPointerEvent } from 'react';
+import { useState, useRef, useEffect, type PointerEvent as ReactPointerEvent } from 'react';
+import type { BrushHead } from '@/game/sprayHeads';
 import assetsData from '@/config/assets';
 import BrushTuning from '@/components/BrushTuning';
 import PosterStudio from '@/components/PosterStudio';
@@ -8,10 +9,16 @@ type PaintLayerControl = { name: string; visible: boolean };
 type PaintTool = 'paint' | 'eraser' | 'off';
 const PALETTE = [
   '#ff4d43', '#ff733e', '#ffb638', '#ffe34a', '#b6e34e', '#46d38b', '#37c9c8', '#39a8f2',
-  '#5368ef', '#8758df', '#cf55d6', '#f05b9d', '#f3e5c8', '#b8b3a8', '#54575a', '#191b20',
+  '#5368ef', '#8758df', '#cf55d6', '#f05b9d', '#ffffff', '#b8b3a8', '#54575a', '#000000',
+];
+const HEADS: Array<{ id: BrushHead; label: string }> = [
+  { id: 'fine', label: 'FINE' }, { id: 'soft', label: 'SOFT' }, { id: 'fat', label: 'FAT' },
+  { id: 'marker', label: 'MARKER' }, { id: 'roller', label: 'ROLLER' }, { id: 'drip', label: 'DRIP' },
 ];
 
 interface PaintDockProps {
+  brushHead?: BrushHead;
+  onBrushHeadChange?: (head: BrushHead) => void;
   open: boolean; onToggle: () => void;
   color: string; paintMode: boolean; eraseMode: boolean;
   brushSize: number; opacity: number; panelColor: string; accentColor: string;
@@ -31,9 +38,13 @@ const PaintDock = (props: PaintDockProps) => {
   const [hue, setHue] = useState(() => hexToHsl(props.color).h);
   const [darkness, setDarkness] = useState(0);
   const [paleness, setPaleness] = useState(0);
+  const [colorDraft, setColorDraft] = useState(props.color);
+  const [recentColors, setRecentColors] = useState<string[]>([]);
+  useEffect(() => setColorDraft(props.color), [props.color]);
   const swipeStart = useRef<{ id: number; x: number; y: number } | null>(null);
   const selectBaseColor = (next: string) => {
     setBaseColor(next); setHue(hexToHsl(next).h); setDarkness(0); setPaleness(0); props.onColorChange(next);
+    setRecentColors(previous => [next, ...previous.filter(color => color !== next)].slice(0, 6));
   };
   const updateHue = (value: number) => { setHue(value); props.onColorChange(paintColor(baseColor, value, darkness, paleness)); };
   const updateDarkness = (value: number) => { setDarkness(value); props.onColorChange(paintColor(baseColor, hue, value, paleness)); };
@@ -82,7 +93,7 @@ const PaintDock = (props: PaintDockProps) => {
               {!posterMode && <button
                 className="tune-toggle" type="button" aria-expanded={tuningOpen}
                 onClick={() => setTuningOpen((value) => !value)}
-              >{tuningOpen ? 'LESS' : 'TUNE'}</button>}
+              >{tuningOpen ? 'LESS' : 'MORE'}</button>}
               <button className="dock-close" type="button" aria-label="Close paint panel" onClick={props.onToggle}>×</button>
             </div>
           </div>
@@ -93,11 +104,15 @@ const PaintDock = (props: PaintDockProps) => {
             />
           ) : (
             <>
+              <div className="paint-heads" aria-label="Spray heads">
+                {HEADS.map(head => <button key={head.id} type="button" aria-pressed={(props.brushHead ?? 'soft') === head.id}
+                  onClick={() => props.onBrushHeadChange?.(head.id)}>{head.label}</button>)}
+              </div>
               <div className="dock-controls">
                 <div className="swatches" aria-label="Color palette">
-                  {PALETTE.map((swatch, index) => (
+                  {PALETTE.map((swatch) => (
                     <button
-                      type="button" aria-label={`Select paint color ${index + 1}`}
+                      type="button" aria-label={`Select paint colour ${swatch}`} title={swatch}
                       aria-pressed={props.color === swatch}
                       className={`swatch ${props.color === swatch ? 'swatch-selected' : ''}`}
                       style={{ backgroundColor: swatch }} key={swatch}
@@ -114,18 +129,27 @@ const PaintDock = (props: PaintDockProps) => {
                   <button
                     className={`paint-toggle ${selectedTool === 'paint' ? 'paint-toggle-active' : ''}`}
                     type="button" aria-pressed={selectedTool === 'paint'}
-                    onClick={() => props.onToolChange(selectedTool === 'paint' ? 'off' : 'paint')}
+                    onClick={() => { props.onToolChange('paint'); props.onToggle(); }}
                   >
                     <img src={assetsData.IMAGE_ERCF} alt="" /><span>SPRAY</span>
                   </button>
                   <button
                     className={`eraser-toggle ${selectedTool === 'eraser' ? 'eraser-toggle-active' : ''}`}
                     type="button" aria-pressed={selectedTool === 'eraser'}
-                    onClick={() => props.onToolChange(selectedTool === 'eraser' ? 'off' : 'eraser')}
+                    onClick={() => { props.onToolChange('eraser'); props.onToggle(); }}
                   ><span aria-hidden="true">◩</span><span>ERASE</span></button>
                 </div>
               </div>
-              <div className="layer-toolbar" aria-label="Drawing layers">
+              <div className="paint-color-details">
+                <label>HEX <input aria-label="Hex paint colour" value={colorDraft} maxLength={7} spellCheck={false}
+                  onBlur={() => setColorDraft(props.color)} onChange={event => {
+                    const next = event.target.value.toLowerCase(); setColorDraft(next);
+                    if (/^#[0-9a-f]{6}$/.test(next)) selectBaseColor(next);
+                  }} /></label>
+                <div aria-label="Recent colours">{recentColors.map(recent => <button type="button" key={recent}
+                  aria-label={`Reuse ${recent}`} style={{ backgroundColor: recent }} onClick={() => selectBaseColor(recent)} />)}</div>
+              </div>
+              {tuningOpen && <div className="layer-toolbar" aria-label="Drawing layers">
                 <div className="layer-list">
                   {props.layers.map((layer, index) => (
                     <div className={`layer-chip ${props.selectedLayer === index ? 'layer-chip-selected' : ''}`} key={layer.name}>
@@ -145,16 +169,15 @@ const PaintDock = (props: PaintDockProps) => {
                   className="layer-add" type="button" aria-label="Add drawing layer"
                   disabled={props.layers.length >= 8} onClick={props.onLayerAdd}
                 ><b>+</b><span>LAYER</span></button>
-              </div>
-              {tuningOpen && (
+              </div>}
                 <BrushTuning
+                  advanced={tuningOpen}
                   color={props.color} hue={hue} darkness={darkness} paleness={paleness}
                   brushSize={props.brushSize} opacity={props.opacity}
                   onHueChange={updateHue} onSizeChange={props.onBrushSizeChange}
                   onOpacityChange={props.onOpacityChange} onDarknessChange={updateDarkness}
                   onPalenessChange={updatePaleness}
                 />
-              )}
             </>
           )}
           <span className="dock-accent" style={{ backgroundColor: props.accentColor }} />

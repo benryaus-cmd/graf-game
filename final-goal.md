@@ -242,6 +242,12 @@ Do not add forced police chases, consumable-can scarcity, compulsory multiplayer
 Aim for 60 FPS local drawing on chosen supported phones and measure it. Do not promise every device or VM capacity without evidence. Update HOW_I_DID_IT.md as actual systems are delivered. This brief is the destination; gameplay changes and server deployment are subsequent implementation work.
 
 
+## Canvas and server-admin follow-up
+
+The client now supports resizing a selected painting area from 0.5 to 8 metres before drawing, fine brush sizes, six wall heads, bounded edge overspray, and progressive stationary drips. Canvas mode hides movement and places its pan stick at the bottom; opening paint tools hides competing look and multiplayer overlays. Finishing a piece gives a 60-second local editing grace period before completion. Character facing is corrected and world look-stick speed is doubled.
+
+Server-returned permissions control graffiti deletion and contextual role management. Selecting a nearby player exposes their nickname, username and known role; admin/owner role changes wait for server acknowledgement. The existing server remains responsible for authorisation, protected areas, cleanup and role persistence. Credits, paid protection and comments still need their exact server contracts; no client-only balance or fabricated protection is introduced. These changes do not establish measured phone performance or complete AA production readiness.
+
 ## 6 October production pass and revised owner direction
 
 Multiplayer display identity is intentionally client-trusted for now. Keep Aippy `username` and `nickName` separately, plus the resolved `displayName`, across join and player records. Keep the server-generated connection playerId. Do not fetch tokens or invent a login/profile service during this pass. Owner/admin authority is a separate existing-server patch; a matching unverified username must not grant privileges.

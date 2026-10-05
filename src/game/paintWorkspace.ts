@@ -23,6 +23,7 @@ export function isPaintWorkspaceHitAllowed(
   wall: PaintWall,
   face: number,
   uv: THREE.Vector2,
+  marginMetres = 0,
 ): boolean {
   if (!selection) return true;
   if (selection.wall !== wall || selection.face !== face) return false;
@@ -30,7 +31,12 @@ export function isPaintWorkspaceHitAllowed(
   const u = uv.x / scale.u;
   const v = uv.y / scale.v;
   const bounds = selection.bounds;
-  return u >= bounds.minU && u <= bounds.maxU && v >= bounds.minV && v <= bounds.maxV;
+  const dimensions = wall.faceDimensions[face] ?? { width: 1, height: 1 };
+  const margin = THREE.MathUtils.clamp(marginMetres, 0, .08);
+  const marginU = margin / Math.max(.01, dimensions.width);
+  const marginV = margin / Math.max(.01, dimensions.height);
+  return u >= Math.max(0, bounds.minU - marginU) && u <= Math.min(1, bounds.maxU + marginU) &&
+    v >= Math.max(0, bounds.minV - marginV) && v <= Math.min(1, bounds.maxV + marginV);
 }
 
 export function selectPaintWorkspaceFace(
@@ -98,8 +104,8 @@ export function exitPaintWorkspace(world: WorldEngine): void {
 export function setPaintWorkspaceSize(world: WorldEngine, sizeMetres: number): PaintWorkspaceState | undefined {
   const state = world.paintWorkspace;
   const old = state?.selection;
-  if (!state || !old) return state;
-  const size = THREE.MathUtils.clamp(sizeMetres, 0.1, 4);
+  if (!state || !old || old.hasPaint || !Number.isFinite(sizeMetres)) return state;
+  const size = THREE.MathUtils.clamp(sizeMetres, 0.5, 8);
   const oldBounds = old.bounds;
   const center = new THREE.Vector2((oldBounds.minU + oldBounds.maxU) / 2, (oldBounds.minV + oldBounds.maxV) / 2);
   const scale = old.wall.uvScales[old.face] ?? { u: 1, v: 1 };

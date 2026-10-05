@@ -350,6 +350,20 @@ test('server brush units reconstruct the same local paint path, width, opacity, 
   }
 });
 
+test('fine spray has a four millimetre line width and retains that width through multiplayer replay', () => {
+  const chunk = createCityChunk(0, 0, materials()); chunk.group.updateMatrixWorld(true);
+  const wall = chunk.walls.find(w => w.mesh.geometry.type === 'BoxGeometry')!;
+  wall.mesh.geometry.computeBoundingBox();
+  const v = wall.mesh.localToWorld(new THREE.Vector3(0, 0, wall.mesh.geometry.boundingBox!.max.z));
+  const point = { x: v.x, y: v.y, z: v.z, pressure: 1 };
+  stampPaintHit(wall, pointToHit(wall, 4, point)!, '#ff0000', 1, .1 / 50, 0);
+  const ctx: any = wall.layers[0].ensureFace(4)!;
+  assert.equal(ctx.draws.at(-1).width, .004);
+  const local = [...ctx.draws]; ctx.draws = [];
+  renderNetworkPoint(wall, 4, 0, { strokeId: 'fine', surfaceId: encodeSurface(wall.surfaceId!, 4, 0), colour: '#ff0000', tool: 'spray', brushSize: .1, points: [point] }, point, null, [true]);
+  assert.deepEqual(ctx.draws, local);
+});
+
 test('offscreen snapshot replay retains paint made during replay without double deposition', () => {
   let disposed = 0;
   const disposeTexture = THREE.Texture.prototype.dispose;
@@ -705,6 +719,35 @@ test('remote cosmetics and emotes reuse the existing avatar; repeated action IDs
   players.action({type:'player_action',actionId:'once',playerId:'other',action:'emote',data:{emote:'think'}});
   assert.equal(avatar.userData.activeEmote.elapsed,elapsed);
   players.clear();assert.equal(scene.children.length,0);
+});
+
+test('protocol 2 role changes use exact server wire and remote role broadcasts without optimistic assignment', () => {
+  const sockets: Socket[] = [], previousSocket = globalThis.WebSocket;
+  (globalThis as any).WebSocket = class extends Socket { constructor() { super(); sockets.push(this); } };
+  const scene = new THREE.Scene();
+  const world: any = { scene, walls: [], setPaintSession() {}, playerPosition: new THREE.Vector3(), playerYaw: 0, playerPitch: 0, paintRevision: 0 };
+  const statuses: any[] = [], views: any[] = [];
+  const session = new WorldMultiplayerSession(world, status => statuses.push(status), view => views.push(view));
+  try {
+    session.join('Owner'); const socket = sockets[0]; socket.readyState = 1;
+    socket.receive({ type: 'hello', protocol: 2, playerId: 'self' });
+    socket.receive({ type: 'world_snapshot', protocol: 2, roomId: 'public', playerId: 'self', sequence: 0, revision: 0, strokes: [], players: [{ playerId: 'target', username: 'artist', nickName: 'Artist', role: 'player' }] });
+    socket.receive({ type: 'permissions', role: 'owner', permissions: ['*'] });
+    assert.equal(statuses.at(-1).role, 'owner');
+    assert.equal(session.setRole('artist', 'admin'), true);
+    assert.deepEqual(socket.sent.at(-1), { type: 'admin_set_role', targetUsername: 'artist', role: 'admin' });
+    assert.equal((session as any).players.get('target').role, 'player', 'the outbound request does not optimistically change remote role');
+    socket.receive({ type: 'admin_set_role_complete', targetUsername: 'artist', previousRole: 'player', role: 'admin', serverTime: 123 });
+    assert.deepEqual(views.at(-1).roleChange, { targetUsername: 'artist', previousRole: 'player', role: 'admin', serverTime: 123 });
+    socket.receive({ type: 'player_role_changed', playerId: 'target', username: 'artist', role: 'admin' });
+    assert.equal((session as any).players.get('target').role, 'admin');
+    socket.receive({ type: 'permissions', role: 'player', permissions: [] });
+    assert.equal(statuses.at(-1).role, 'player');
+    assert.equal(session.setRole('artist', 'owner'), false);
+    session.leave();
+    assert.equal(statuses.at(-1).role, undefined);
+    assert.equal(session.setRole('artist', 'moderator'), false);
+  } finally { session.dispose(); globalThis.WebSocket = previousSocket; }
 });
 
 test('a delayed poster upload cannot publish after connection interruption, and offline placement never uploads', async () => {

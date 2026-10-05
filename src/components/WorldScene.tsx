@@ -13,15 +13,19 @@ import type { PosterPlacementRequest } from '@/game/usePosterPlacement';
 import { applyAvatarAppearance, triggerAvatarEmote } from '@/game/playerAvatarAppearance';
 import type { AvatarAppearance } from '@/game/progression';
 import type { AvatarEmote, CameraMode, LiveSettings, MovementInput, SkyMode, WorldEngine } from '@/game/worldTypes';
-import { enterPaintWorkspace, exitPaintWorkspace, clearPaintWorkspace } from '@/game/paintWorkspace';
+import { enterPaintWorkspace, exitPaintWorkspace, clearPaintWorkspace, setPaintWorkspaceSize } from '@/game/paintWorkspace';
 import type { PaintWorkspaceView, PaintWorkspaceAction } from '@/components/PaintWorkspaceHud';
 import { WorldMultiplayerSession } from '@/multiplayer/worldSession';
 import type { MultiplayerStatus, MultiplayerView, PlayerCosmetics } from '@/multiplayer/protocol';
+import type { ServerRole } from '@/multiplayer/permissions';
+import type { BrushHead } from '@/game/sprayHeads';
+import { PieceEditGrace } from '@/game/pieceEditGrace';
 
 interface WorldSceneProps {
-  workspaceRequest: { action: PaintWorkspaceAction; sequence: number } | null;
+  brushHead: BrushHead;
+  workspaceRequest: { action: PaintWorkspaceAction; size?: number; sequence: number } | null;
   onWorkspaceChange: (view: PaintWorkspaceView) => void;
-  multiplayerRequest: { action: 'join' | 'leave' | 'chat' | 'resync' | 'like' | 'inspect'; text?: string; sequence: number } | null;
+  multiplayerRequest: { action: 'join' | 'leave' | 'chat' | 'resync' | 'like' | 'inspect' | 'delete-piece' | 'set-role'; text?: string; role?: ServerRole; sequence: number } | null;
   displayName: string; username: string; nickName: string; onMultiplayerStatus: (status: MultiplayerStatus) => void;
   cosmetics: PlayerCosmetics; onMultiplayerView: (view: MultiplayerView) => void;
   sky: SkyMode; paintMode: boolean; eraseMode: boolean; color: string;
@@ -52,6 +56,7 @@ const WorldScene = (props: WorldSceneProps) => {
   const posterValidityRef = useRef(props.onPosterValidity);
   const posterPlacedRef = useRef(props.onPosterPlaced);
   const liveRef = useRef<LiveSettings>({
+    brushHead: props.brushHead,
     paintMode: props.paintMode, eraseMode: props.eraseMode, color: props.color,
     opacity: props.opacity, movement: props.movement, lookInput: props.lookInput, brushSize: props.brushSize,
     moveSpeed: props.moveSpeed, jumpPower: props.jumpPower,
@@ -63,6 +68,7 @@ const WorldScene = (props: WorldSceneProps) => {
     multiplayerStatusRef.current = props.onMultiplayerStatus;
     multiplayerViewRef.current = props.onMultiplayerView;
     liveRef.current = {
+      brushHead: props.brushHead,
       paintMode: props.paintMode, eraseMode: props.eraseMode, color: props.color,
       opacity: props.opacity, movement: props.movement, lookInput: props.lookInput, brushSize: props.brushSize,
       moveSpeed: props.moveSpeed, jumpPower: props.jumpPower,
@@ -87,7 +93,7 @@ const WorldScene = (props: WorldSceneProps) => {
     if (!container) return;
     const world = createWorld(container, liveRef.current.fogDensity);
     worldRef.current = world;
-    world.onPaintWorkspaceChange = workspace => workspaceCallbackRef.current({ selected: !!workspace?.selection, active: !!workspace?.active, width: workspace?.selection?.width ?? 0, height: workspace?.selection?.height ?? 0 });
+    world.onPaintWorkspaceChange = workspace => workspaceCallbackRef.current({ selected: !!workspace?.selection, active: !!workspace?.active, width: workspace?.selection?.width ?? 0, height: workspace?.selection?.height ?? 0, hasPaint: !!workspace?.selection?.hasPaint, editableUntil: workspace?.editableUntil });
     const multiplayer = new WorldMultiplayerSession(world, status => multiplayerStatusRef.current(status), view => multiplayerViewRef.current(view));
     multiplayerRef.current = multiplayer;
     world.setPaintVisibility(liveRef.current.layerVisibility);
@@ -119,6 +125,7 @@ const WorldScene = (props: WorldSceneProps) => {
     window.addEventListener('resize', resize);
     resize();
     return () => {
+      editGrace.current.resume();
       stopControls();
       multiplayer.dispose();
       if (multiplayerRef.current === multiplayer) multiplayerRef.current = null;
@@ -133,6 +140,8 @@ const WorldScene = (props: WorldSceneProps) => {
     };
   }, []);
 
+  const editGrace = useRef(new PieceEditGrace());
+
   useEffect(() => {
     const request = props.multiplayerRequest;
     if (!request) return;
@@ -141,15 +150,37 @@ const WorldScene = (props: WorldSceneProps) => {
     else if (request.action === 'chat') multiplayerRef.current?.sendChat(request.text ?? '');
     else if (request.action === 'inspect') multiplayerRef.current?.inspectPiece(request.text ?? '');
     else if (request.action === 'like') multiplayerRef.current?.likePiece(request.text ?? '');
+    else if (request.action === 'delete-piece') multiplayerRef.current?.deletePiece(request.text ?? '');
+    else if (request.action === 'set-role' && request.role) multiplayerRef.current?.setRole(request.text ?? '', request.role);
     else multiplayerRef.current?.resync();
   }, [props.multiplayerRequest]);
 
   useEffect(() => {
     const world = worldRef.current, request = props.workspaceRequest;
     if (!world || !request) return;
+    editGrace.current.resume();
     world.onPaintEnd?.();
-    if (request.action === 'enter') enterPaintWorkspace(world);
-    else if (request.action === 'exit') exitPaintWorkspace(world);
+    if (request.action === 'enter') {
+      if (world.paintWorkspace) world.paintWorkspace.editableUntil = undefined;
+      if (world.paintWorkspace?.selection) world.paintWorkspace.selection.preview.visible = true;
+      enterPaintWorkspace(world);
+    }
+    else if (request.action === 'exit') {
+      if (world.paintWorkspace?.editableUntil) { multiplayerRef.current?.completePiece(); clearPaintWorkspace(world); }
+      else exitPaintWorkspace(world);
+    }
+    else if (request.action === 'resize') setPaintWorkspaceSize(world, request.size ?? 2);
+    else if (request.action === 'finish' && world.paintWorkspace?.selection?.hasPaint) {
+      exitPaintWorkspace(world);
+      const state = world.paintWorkspace;
+      state.selection!.preview.visible = false;
+      state.editableUntil = editGrace.current.start(() => {
+        if (worldRef.current !== world || world.paintWorkspace !== state) return;
+        multiplayerRef.current?.completePiece();
+        clearPaintWorkspace(world);
+      });
+      world.onPaintWorkspaceChange?.(state);
+    }
     else { multiplayerRef.current?.completePiece(); clearPaintWorkspace(world); }
   }, [props.workspaceRequest]);
 

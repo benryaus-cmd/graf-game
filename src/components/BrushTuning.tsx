@@ -1,4 +1,5 @@
 interface BrushTuningProps {
+  advanced?: boolean;
   color: string;
   hue: number;
   darkness: number;
@@ -14,6 +15,17 @@ interface BrushTuningProps {
 
 const BrushTuning = (props: BrushTuningProps) => (
   <div className="advanced-controls">
+    <label className="paint-range">
+      <span><b>SIZE</b><i>{props.brushSize.toFixed(1)}</i></span>
+      <input type="range" min="0.3" max="30" step="0.3" value={props.brushSize}
+        aria-label="Brush size" onChange={event => props.onSizeChange(Number(event.target.value))} />
+    </label>
+    <label className="paint-range">
+      <span><b>OPACITY</b><i>{Math.round(props.opacity * 100)}%</i></span>
+      <input type="range" min="5" max="100" value={Math.round(props.opacity * 100)}
+        aria-label="Paint opacity" onChange={event => props.onOpacityChange(Number(event.target.value) / 100)} />
+    </label>
+    {props.advanced && <>
     <div className="paint-preview" aria-live="polite">
       <span className="paint-preview-chip" style={{ backgroundColor: props.color, opacity: props.opacity }} />
       <span className="paint-preview-copy">
@@ -30,29 +42,6 @@ const BrushTuning = (props: BrushTuningProps) => (
         value={props.hue}
         aria-label="Paint colour"
         onChange={(event) => props.onHueChange(Number(event.target.value))}
-      />
-    </label>
-    <label className="paint-range">
-      <span><b>SIZE</b><i>{Math.round(props.brushSize)} px</i></span>
-      <input
-        type="range"
-        min="1"
-        max="52"
-        step="1"
-        value={props.brushSize}
-        aria-label="Brush size"
-        onChange={(event) => props.onSizeChange(Number(event.target.value))}
-      />
-    </label>
-    <label className="paint-range">
-      <span><b>OPACITY</b><i>{Math.round(props.opacity * 100)}%</i></span>
-      <input
-        type="range"
-        min="5"
-        max="100"
-        value={Math.round(props.opacity * 100)}
-        aria-label="Paint opacity"
-        onChange={(event) => props.onOpacityChange(Number(event.target.value) / 100)}
       />
     </label>
     <label className="paint-range">
@@ -77,6 +66,7 @@ const BrushTuning = (props: BrushTuningProps) => (
         onChange={(event) => props.onPalenessChange(Number(event.target.value))}
       />
     </label>
+    </>}
   </div>
 );
 

@@ -11,3 +11,7 @@ Implement these in the existing backend, not a new service, then supply the exac
 piece_like and piece metadata are already connected. Client-trusted Aippy names remain display identity, not secure ownership/authentication. Specify the temporary owner key policy consistently with the current server; do not claim this solves secure account identity.
 
 No backend code or infrastructure was changed in this client pass.
+
+## Admin additions requested
+
+The supplied `permissions`, `admin_delete_piece`, `admin_delete_piece_complete`, and `piece_removed` contracts are now integrated. Client controls use server permissions and wait for shared removal. Contextual player management uses `admin_set_role`, its acknowledgement and `player_role_changed`; admins cannot assign or change owners. Server role persistence remains the owner's separate work. Protected-area enforcement and any independent poster-deletion contract remain server work; nickname matching grants no client privileges.

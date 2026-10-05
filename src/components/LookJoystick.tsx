@@ -3,10 +3,11 @@ import type { LookInput } from '@/game/worldTypes';
 import { elementPointerIsRotated, elementPointerPoint } from '@/game/pointerCoordinates';
 
 interface LookJoystickProps {
+  canvasMode?: boolean;
   onLook: (look: LookInput) => void;
 }
 
-const LookJoystick = ({ onLook }: LookJoystickProps) => {
+const LookJoystick = ({ onLook, canvasMode = false }: LookJoystickProps) => {
   const [knob, setKnob] = useState({ x: 0, y: 0 });
   const activePointer = useRef<number | null>(null);
   const element = useRef<HTMLDivElement>(null);
@@ -67,10 +68,10 @@ const LookJoystick = ({ onLook }: LookJoystickProps) => {
 
   return (
     <div
-      className="joystick look-joystick"
+      className={`joystick look-joystick ${canvasMode ? 'canvas-pan-joystick' : ''}`}
       ref={element}
       role="group"
-      aria-label="Look control"
+      aria-label={canvasMode ? 'Pan canvas' : 'Look control'}
       onPointerDown={handleDown}
       onPointerMove={(event) => { if (activePointer.current === event.pointerId) update(event); }}
       onPointerUp={handleEnd}
@@ -79,7 +80,7 @@ const LookJoystick = ({ onLook }: LookJoystickProps) => {
       style={{ right: 20, left: 'auto', touchAction: 'none' }}
     >
       <span className="joy-ring joy-ring-inner" />
-      <span className="joy-label">LOOK</span>
+      <span className="joy-label">{canvasMode ? 'PAN' : 'LOOK'}</span>
       <span className="joystick-knob" style={{ transform: `translate(${knob.x}px, ${knob.y}px)` }}><i /></span>
     </div>
   );

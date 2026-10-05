@@ -6,11 +6,15 @@ import AvatarMenu from '@/components/AvatarMenu';
 import SkyMenu from '@/components/SkyMenu';
 import type { ShopItem, GameProgress } from '@/game/progression';
 import type { CameraMode, MovementInput, SkyMode, AvatarEmote } from '@/game/worldTypes';
+import type { BrushHead } from '@/game/sprayHeads';
 
 export type HudMenu = 'paint' | 'bots' | 'avatar' | 'sky' | null;
 type PaintTool = 'paint' | 'eraser' | 'off';
 interface PaintLayerControl { name: string; visible: boolean }
 interface GameHudProps {
+  brushHead?: BrushHead;
+  onBrushHeadChange?: (head: BrushHead) => void;
+  hideTouchControls?: boolean;
   panelColor: string; accentColor: string; sky: SkyMode; activeMenu: HudMenu;
   musicReady: boolean; paintMode: boolean; eraseMode: boolean; showCrosshair: boolean; color: string;
   brushSize: number; opacity: number; layers: PaintLayerControl[]; selectedLayer: number;
@@ -107,11 +111,12 @@ const GameHud = (props: GameHudProps) => (
         onSizeChange={props.onPosterSizeChange} onPlace={props.onPosterCommit} onCancel={props.onPosterCancel}
       />
     )}
-    <MovementJoystick onMove={props.onMovement} />
-    <button className="jump-button" type="button" onClick={props.onJump} aria-label={props.jumpLabel}>
+    {!props.hideTouchControls && <MovementJoystick onMove={props.onMovement} />}
+    {!props.hideTouchControls && <button className="jump-button" type="button" onClick={props.onJump} aria-label={props.jumpLabel}>
       <span className="jump-arrow">↑</span><span>{props.jumpLabel}</span>
-    </button>
+    </button>}
     <PaintDock
+      brushHead={props.brushHead} onBrushHeadChange={props.onBrushHeadChange}
       open={props.activeMenu === 'paint'} onToggle={() => props.onMenuToggle('paint')}
       color={props.color} paintMode={props.paintMode} eraseMode={props.eraseMode}
       brushSize={props.brushSize} opacity={props.opacity} panelColor={props.panelColor}

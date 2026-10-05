@@ -3,6 +3,7 @@ import type { LiveSettings, PaintWall, WorldEngine } from '@/game/worldTypes';
 import { isPaintTargetReachable } from '@/game/paintTargeting';
 import { elementPointerPoint } from '@/game/pointerCoordinates';
 import { isPaintWorkspaceHitAllowed } from '@/game/paintWorkspace';
+import { drawPaintHead, headForTool, nextHoldSamples, type PaintHead } from '@/game/sprayHeads';
 
 export interface PaintPoint {
   object: THREE.Object3D;
@@ -10,6 +11,12 @@ export interface PaintPoint {
   x: number;
   y: number;
   layer: number;
+  holdSamples?: number;
+  worldPoint?: readonly [number, number, number];
+}
+
+export function paintRadius(brushSize: number): number {
+  return Math.max(brushSize >= 1 ? .025 : .002, brushSize / 50);
 }
 
 export function stampPaintHit(
@@ -22,6 +29,8 @@ export function stampPaintHit(
   previous: PaintPoint | null = null,
   visible = true,
   erase = false,
+  head?: PaintHead,
+  dwellSamples?: number,
 ): PaintPoint | null {
   if (!hit.face || !hit.uv) return null;
   const face = Number.isFinite(hit.face.materialIndex) ? hit.face.materialIndex : 0;
@@ -41,7 +50,7 @@ export function stampPaintHit(
   const pixelsPerWorldY = context.canvas.height / Math.max(0.01, dimensions.height);
   const worldX = x / pixelsPerWorldX;
   const worldY = y / pixelsPerWorldY;
-  const radius = Math.max(0.025, worldRadius);
+  const radius = Math.max(0.002, worldRadius);
   context.save();
   context.setTransform(pixelsPerWorldX, 0, 0, pixelsPerWorldY, 0, 0);
   context.globalAlpha = THREE.MathUtils.clamp(opacity, 0.05, 1);
@@ -51,20 +60,25 @@ export function stampPaintHit(
   context.lineWidth = radius * 2;
   context.lineCap = 'round';
   context.lineJoin = 'round';
-  context.beginPath();
   const continues = previous?.object === hit.object && previous.face === face && previous.layer === layerIndex;
+  context.beginPath();
   if (continues && previous) {
     context.moveTo(previous.x / pixelsPerWorldX, previous.y / pixelsPerWorldY);
     context.lineTo(worldX, worldY);
     context.stroke();
-  } else {
+  } else if (!head) {
     context.arc(worldX, worldY, radius, 0, Math.PI * 2);
     context.fill();
   }
+  const worldPoint = [hit.point.x, hit.point.y, hit.point.z] as const;
+  const holdSamples = dwellSamples === undefined
+    ? nextHoldSamples(continues ? previous : null, worldPoint)
+    : Math.max(1, Math.min(60, dwellSamples));
+  if (head) drawPaintHead(context, worldX, worldY, radius, head, holdSamples);
   context.restore();
   wall.dirty = true;
   layer.textures[face].needsUpdate = true;
-  return { object: hit.object, face, x, y, layer: layerIndex };
+  return { object: hit.object, face, x, y, layer: layerIndex, holdSamples, worldPoint };
 }
 
 export function sprayOnWall(
@@ -99,17 +113,7 @@ export function sprayOnWall(
   const layerIndex = Math.max(0, settings.layerIndex);
   const face = Number.isFinite(hit.face.materialIndex) ? hit.face.materialIndex : 0;
   const selection = world.paintWorkspace?.selection;
-  if (selection && !isPaintWorkspaceHitAllowed(selection, wall, face, hit.uv)) { stroke.current = null; return; }
-  if (selection) {
-    // Keep the entire brush inside the box; network replay uses the same unclipped stroke.
-    const dimensions = wall.faceDimensions[face] ?? { width: 1, height: 1 };
-    const scale = wall.uvScales[face] ?? { u: 1, v: 1 };
-    const radius = Math.max(0.025, settings.brushSize / 50);
-    const u = hit.uv.x / scale.u, v = hit.uv.y / scale.v;
-    const bounds = selection.bounds;
-    if (u < bounds.minU + radius / dimensions.width || u > bounds.maxU - radius / dimensions.width ||
-        v < bounds.minV + radius / dimensions.height || v > bounds.maxV - radius / dimensions.height) { stroke.current = null; return; }
-  }
+  if (selection && !isPaintWorkspaceHitAllowed(selection, wall, face, hit.uv, Math.min(.08, paintRadius(settings.brushSize)))) { stroke.current = null; return; }
   const previous = stroke.current?.object === hit.object && stroke.current.face === face && stroke.current.layer === layerIndex
     ? stroke.current : null;
   const point = stampPaintHit(
@@ -117,13 +121,20 @@ export function sprayOnWall(
     hit,
     settings.color,
     settings.opacity,
-    settings.brushSize / 50,
+    paintRadius(settings.brushSize),
     layerIndex,
     previous,
     settings.layerVisibility[layerIndex] ?? true,
     settings.eraseMode,
+    (settings as LiveSettings & { brushHead?: PaintHead }).brushHead
+      ? headForTool((settings as LiveSettings & { brushHead?: PaintHead }).brushHead)
+      : undefined,
   );
   if (!point) { stroke.current = null; return; }
+  if (selection && !selection.hasPaint) {
+    selection.hasPaint = true;
+    world.onPaintWorkspaceChange?.(world.paintWorkspace);
+  }
   stroke.current = point;
   world.onPaintSample?.(wall, hit, settings, !!previous);
   const now = performance.now();

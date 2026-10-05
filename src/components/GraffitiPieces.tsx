@@ -7,6 +7,9 @@ interface GraffitiPiecesProps {
   onLike: (pieceId: string) => boolean;
   onResync: () => void;
   onView?: (pieceId: string) => void;
+  role?: string;
+  canDeletePieces?: boolean;
+  onDelete?: (pieceId: string) => boolean;
 }
 
 type PendingLikes = Record<string, number>;
@@ -21,11 +24,12 @@ const formatTimeLeft = (milliseconds: number) => {
 const statusLabel = (status?: string) => ['complete', 'completed'].includes(status?.toLowerCase() ?? '') ? 'COMPLETE' : 'ACTIVE';
 const pendingKey = (piece: PieceMetadata) => piece.currentWindowStartedAt ?? 0;
 
-const GraffitiPieces = ({ pieces, connected, onLike, onResync, onView }: GraffitiPiecesProps) => {
+const GraffitiPieces = ({ pieces, connected, onLike, onResync, onView, role, canDeletePieces = false, onDelete }: GraffitiPiecesProps) => {
   const [open, setOpen] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const [pendingLikes, setPendingLikes] = useState<PendingLikes>({});
   const [sendError, setSendError] = useState<string | null>(null);
+  const [deleteNotice, setDeleteNotice] = useState<string | null>(null);
   const visiblePieces = pieces.slice(0, 20);
 
   useEffect(() => {
@@ -64,6 +68,13 @@ const GraffitiPieces = ({ pieces, connected, onLike, onResync, onView }: Graffit
     }
   };
 
+  const requestDelete = (piece: PieceMetadata) => {
+    if (!connected) { setDeleteNotice('Deletion is unavailable while disconnected.'); return; }
+    if (!canDeletePieces || !onDelete) { setDeleteNotice('Your server permissions do not allow deleting graffiti.'); return; }
+    if (onDelete(piece.pieceId)) setDeleteNotice('Delete requested. Waiting for the server removal event.');
+    else setDeleteNotice('Delete request could not be sent. Check your connection and permissions.');
+  };
+
   return (
     <div className="graffiti-pieces" style={{ position: 'absolute', zIndex: 10, top: 150, left: 12, pointerEvents: 'auto', fontFamily: 'inherit' }}>
       <button
@@ -80,12 +91,14 @@ const GraffitiPieces = ({ pieces, connected, onLike, onResync, onView }: Graffit
             <div style={{ display: 'grid', flex: 1, gap: 3 }}>
               <small style={{ color: '#a5a8a2', fontSize: 8, fontWeight: 900, letterSpacing: '.16em' }}>COMMUNITY WALLS</small>
               <b style={{ fontSize: 12, letterSpacing: '.08em' }}>NEARBY ART</b>
+              {role && <small style={{ color: '#c4c7bd', fontSize: 8, letterSpacing: '.1em' }}>SERVER ROLE: {role.toUpperCase()}</small>}
             </div>
             <button type="button" onClick={onResync} disabled={!connected} style={smallButtonStyle}>RESYNC</button>
             <button type="button" aria-label="Close nearby art" onClick={() => setOpen(false)} style={closeButtonStyle}>×</button>
           </header>
           {!connected && <p style={noteStyle} role="status">Connect to see shared pieces and send likes.</p>}
           {sendError && <p style={{ ...noteStyle, color: '#ffc0b2' }} role="alert">{sendError}</p>}
+          {deleteNotice && <p style={{ ...noteStyle, color: deleteNotice.startsWith('Delete request could not') ? '#ffc0b2' : '#c4c7bd' }} role="status">{deleteNotice}</p>}
           {visiblePieces.length === 0 ? (
             <p style={noteStyle} role="status">No shared pieces nearby yet.</p>
           ) : (
@@ -104,6 +117,7 @@ const GraffitiPieces = ({ pieces, connected, onLike, onResync, onView }: Graffit
                         <span style={{ color: '#b8bcb4', fontSize: 9 }}>{statusLabel(piece.status)} · GENERATION {piece.survivalGeneration ?? 0}</span>
                       </div>
                       {onView && <button type="button" onClick={() => onView(piece.pieceId)} style={smallButtonStyle}>VIEW</button>}
+                      {canDeletePieces && onDelete && <button type="button" onClick={() => requestDelete(piece)} disabled={!connected} style={{ ...smallButtonStyle, color: '#ffc0b2', opacity: connected ? 1 : .62 }}>DELETE</button>}
                       <button
                         type="button" onClick={() => requestLike(piece)} disabled={!connected || pending}
                         aria-label={pending ? 'Like requested, waiting for server refresh' : `Like ${label}`}

@@ -8,15 +8,18 @@ import LookJoystick from '@/components/LookJoystick';
 import GraffitiPieces from '@/components/GraffitiPieces';
 import PaintWorkspaceHud, { type PaintWorkspaceView, type PaintWorkspaceAction } from '@/components/PaintWorkspaceHud';
 import MultiplayerControls from '@/components/MultiplayerControls';
+import PlayerInteractionCard from '@/components/PlayerInteractionCard';
 import { useUserInfo } from '@aippy/runtime/user';
 import { aippyDisplayName } from '@/multiplayer/profile';
 import type { MultiplayerStatus, MultiplayerView } from '@/multiplayer/protocol';
+import type { ServerRole } from '@/multiplayer/permissions';
 import SettingsModal from '@/components/SettingsModal';
 import { useSprayAudio } from '@/components/useSprayAudio';
 import { usePosterPlacement } from '@/game/usePosterPlacement';
 import { getAvatarAppearance, loadGameProgress, saveGameProgress, type GameProgress, type ShopItem } from '@/game/progression';
 import tweaksConfig from '@/config/tweaksConfig.json';
 import type { AvatarEmote, CameraMode, MovementInput, SkyMode } from '@/game/worldTypes';
+import type { BrushHead } from '@/game/sprayHeads';
 
 const ProjectFileViewer = lazy(() => import('@/components/ProjectFileViewer'));
 
@@ -36,11 +39,11 @@ const App = () => {
   const displayName = aippyDisplayName(aippyUser);
   const [multiplayerStatus, setMultiplayerStatus] = useState<MultiplayerStatus>({ phase: 'solo', playerCount: 0 });
   const [multiplayerView, setMultiplayerView] = useState<MultiplayerView>({ chat: [], revision: 0, accountFeaturesAvailable: false, worldItemCount: 0 });
-  const [multiplayerRequest, setMultiplayerRequest] = useState<{ action: 'join' | 'leave' | 'chat' | 'resync' | 'like' | 'inspect'; text?: string; sequence: number } | null>(null);
-  const requestMultiplayer = (action: 'join' | 'leave' | 'chat' | 'resync' | 'like' | 'inspect', text?: string) => {
+  const [multiplayerRequest, setMultiplayerRequest] = useState<{ action: 'join' | 'leave' | 'chat' | 'resync' | 'like' | 'inspect' | 'delete-piece' | 'set-role'; text?: string; role?: ServerRole; sequence: number } | null>(null);
+  const requestMultiplayer = (action: 'join' | 'leave' | 'chat' | 'resync' | 'like' | 'inspect' | 'delete-piece' | 'set-role', text?: string, role?: ServerRole) => {
     if (action === 'inspect') { setPaintMode(false); requestWorkspace('exit'); setViewMode('first'); }
     if (action === 'join' || action === 'leave') { poster.cancel(); requestWorkspace('clear'); }
-    setMultiplayerRequest(previous => ({ action, text, sequence: (previous?.sequence ?? 0) + 1 }));
+    setMultiplayerRequest(previous => ({ action, text, role, sequence: (previous?.sequence ?? 0) + 1 }));
   };
   const accentColor = tweaks.accentColor.useState();
   const panelColor = tweaks.panelColor.useState();
@@ -53,19 +56,21 @@ const App = () => {
   const showCrosshair = tweaks.showCrosshair.useState();
   const [hasJoined, setHasJoined] = useState(false);
   const [brushSelection, setBrushSelection] = useState<{ value: number; source: number } | null>(null);
-  const brushSize = brushSelection?.source === initialBrushSize ? brushSelection.value : initialBrushSize;
+  const brushSize = brushSelection?.source === initialBrushSize ? brushSelection.value : Math.max(.1, Math.min(10, initialBrushSize / 3));
   const [opacity, setOpacity] = useState(0.88);
+  const [brushHead, setBrushHead] = useState<BrushHead>('soft');
   const { play, stopAll } = useSound({ ambient: assetsData.AUDIO_AZQA }, { preload: true });
   const { warmAudio, playSpray, playChime } = useSprayAudio();
   const [sky, setSky] = useState<SkyMode>('day');
   const [paintMode, setPaintMode] = useState(false);
   const [portrait, setPortrait] = useState(false);
   const [workspaceView, setWorkspaceView] = useState<PaintWorkspaceView>({ selected: false, active: false, width: 0, height: 0 });
-  const [workspaceRequest, setWorkspaceRequest] = useState<{ action: PaintWorkspaceAction; sequence: number } | null>(null);
-  const requestWorkspace = (action: PaintWorkspaceAction) => {
+  const [workspaceRequest, setWorkspaceRequest] = useState<{ action: PaintWorkspaceAction; size?: number; sequence: number } | null>(null);
+  const requestWorkspace = (action: PaintWorkspaceAction, size?: number) => {
     setMovement({ x: 0, y: 0 }); setLookInput({ x: 0, y: 0 });
     if (action === 'enter') { setPaintMode(true); closeMenu(); }
-    setWorkspaceRequest(previous => ({ action, sequence: (previous?.sequence ?? 0) + 1 }));
+    if (action === 'finish' || action === 'clear') setPaintMode(false);
+    setWorkspaceRequest(previous => ({ action, size, sequence: (previous?.sequence ?? 0) + 1 }));
   };
   const [eraseMode, setEraseMode] = useState(false);
   const [color, setColor] = useState(COLORS[0]);
@@ -101,9 +106,10 @@ const App = () => {
   };
   const toggleMenu = (menu: Exclude<HudMenu, null>) => setActiveMenu(current => current === menu ? null : menu);
   const closeMenu = () => setActiveMenu(null);
-  const updateBrushSize = (value: number) => setBrushSelection({ value, source: initialBrushSize });
+  const updateBrushSize = (value: number) => setBrushSelection({ value: Math.max(.1, Math.min(10, value / 3)), source: initialBrushSize });
   const selectColor = (nextColor: string) => { setColor(nextColor); playChime(); };
   const selectPaintTool = (tool: PaintTool) => {
+    if (tool !== 'off' && workspaceView.editableUntil) requestWorkspace('enter');
     if (tool === 'off' && workspaceView.active) requestWorkspace('exit');
     setPaintMode(tool !== 'off');
     setEraseMode(tool === 'eraser');
@@ -170,7 +176,7 @@ const App = () => {
 
   return (
     <main
-      className={`game-shell ${portrait ? 'game-portrait' : ''}`}
+      className={`game-shell ${portrait ? 'game-portrait' : ''} ${workspaceView.active ? 'canvas-mode' : ''}`}
       style={{ '--accent': accentColor, '--panel': panelColor } as CSSProperties}
       onClickCapture={startAudioOnFirstClick}
     >
@@ -191,6 +197,7 @@ const App = () => {
       ) : (
         <>
           <WorldScene
+            brushHead={brushHead}
             workspaceRequest={workspaceRequest} onWorkspaceChange={setWorkspaceView}
             multiplayerRequest={multiplayerRequest} displayName={displayName} username={aippyUser.username} nickName={aippyUser.nickName} onMultiplayerStatus={setMultiplayerStatus}
             cosmetics={cosmetics} onMultiplayerView={setMultiplayerView}
@@ -207,9 +214,11 @@ const App = () => {
             onSpray={playSpray} onPaint={earnPaintCoin}
           />
           <GameHud
+            brushHead={brushHead} onBrushHeadChange={setBrushHead}
+            hideTouchControls={workspaceView.active || activeMenu === 'paint'}
             panelColor={panelColor} accentColor={accentColor} sky={sky} activeMenu={activeMenu}
             musicReady={musicReady} paintMode={paintMode} eraseMode={eraseMode}
-            showCrosshair={showCrosshair} color={color} brushSize={brushSize} opacity={opacity}
+            showCrosshair={showCrosshair} color={color} brushSize={brushSize * 3} opacity={opacity}
             layers={layers} selectedLayer={selectedLayer} cameraLabel={CAMERA_LABELS[viewMode]}
             viewMode={viewMode} mapZoom={mapZoom} progress={progress}
             purchasesDisabled={multiplayerStatus.phase !== 'solo'}
@@ -230,14 +239,22 @@ const App = () => {
             onClick={() => { setMovement({ x: 0, y: 0 }); setLookInput({ x: 0, y: 0 }); setPortrait(value => !value); }}>
             {portrait ? '↻ LANDSCAPE' : '↻ PORTRAIT'}
           </button>
-          <LookJoystick onLook={setLookInput} />
-          <PaintWorkspaceHud view={workspaceView} painting={paintMode} onAction={requestWorkspace} />
-          {multiplayerStatus.phase !== 'solo' && <GraffitiPieces pieces={multiplayerView.pieces ?? []} connected={multiplayerStatus.phase === 'connected'} onLike={pieceId => { if (multiplayerStatus.phase !== 'connected') return false; requestMultiplayer('like', pieceId); return true; }} onResync={() => requestMultiplayer('resync')} onView={pieceId => requestMultiplayer('inspect', pieceId)} />}
+          {activeMenu !== 'paint' && <LookJoystick onLook={setLookInput} canvasMode={workspaceView.active} />}
+          {activeMenu !== 'paint' && <PaintWorkspaceHud view={workspaceView} painting={paintMode} onAction={requestWorkspace} />}
+          <div hidden={activeMenu === 'paint'}>
+          {multiplayerStatus.phase !== 'solo' && <GraffitiPieces pieces={multiplayerView.pieces ?? []} connected={multiplayerStatus.phase === 'connected'} role={multiplayerStatus.role} canDeletePieces={multiplayerStatus.canDeletePieces} onDelete={pieceId => { if (multiplayerStatus.phase !== 'connected' || !multiplayerStatus.canDeletePieces) return false; requestMultiplayer('delete-piece', pieceId); return true; }} onLike={pieceId => { if (multiplayerStatus.phase !== 'connected') return false; requestMultiplayer('like', pieceId); return true; }} onResync={() => requestMultiplayer('resync')} onView={pieceId => requestMultiplayer('inspect', pieceId)} />}
           <MultiplayerControls
             status={multiplayerStatus} displayName={displayName} avatar={aippyUser.avatar} profileLoading={aippyUser.isLoading}
             onJoin={() => requestMultiplayer('join')} onLeave={() => requestMultiplayer('leave')}
             messages={multiplayerView.chat} onChat={text => requestMultiplayer('chat', text)} onResync={() => requestMultiplayer('resync')}
           />
+          <PlayerInteractionCard selected={multiplayerView.selectedPlayer} ownRole={multiplayerStatus.role} connected={multiplayerStatus.phase === 'connected'} notice={multiplayerStatus.notice} roleChange={multiplayerView.roleChange}
+            onSetRole={(username, role) => {
+              const ownRole = multiplayerStatus.role;
+              if (multiplayerStatus.phase !== 'connected' || (ownRole !== 'owner' && ownRole !== 'admin') || (ownRole === 'admin' && role === 'owner')) return false;
+              requestMultiplayer('set-role', username, role); return true;
+            }} />
+          </div>
           <button
             type="button"
             className="absolute right-3 top-16 z-40 flex h-9 w-9 items-center justify-center rounded-full bg-black/30 text-sm text-white/40"

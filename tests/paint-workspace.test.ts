@@ -9,6 +9,7 @@ import {
   PAINT_WORKSPACE_LAYER,
   selectPaintWorkspaceFace,
   updatePaintWorkspaceCamera,
+  setPaintWorkspaceSize,
 } from '../src/game/paintWorkspace';
 import type { PaintWall, PaintWorkspaceSelection, WorldEngine } from '../src/game/worldTypes';
 
@@ -16,6 +17,19 @@ const wall = {
   uvScales: [{ u: 1, v: 1 }],
   faceDimensions: [{ width: 4, height: 3 }],
 } as PaintWall;
+
+test('painting area can grow to eight metres before drawing and then locks its bounds', () => {
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(20, 20, 0.1));
+  const paintWall = { ...wall, mesh, uvScales: Array(6).fill({ u: 1, v: 1 }), faceDimensions: Array(6).fill({ width: 20, height: 20 }) } as PaintWall;
+  const world = { scene: new THREE.Scene(), renderer: { domElement: { clientWidth: 800, clientHeight: 600 } } } as unknown as WorldEngine;
+  world.scene.add(mesh);
+  const state = selectPaintWorkspaceFace(world, paintWall, 4, { minU: .45, minV: .45, maxU: .55, maxV: .55 });
+  setPaintWorkspaceSize(world, 8);
+  assert.ok(Math.abs(state.selection!.width - 8) < 1e-8);
+  (state.selection as PaintWorkspaceSelection & { hasPaint: boolean }).hasPaint = true;
+  setPaintWorkspaceSize(world, 1);
+  assert.ok(Math.abs(state.selection!.width - 8) < 1e-8, 'painting bounds must remain stable once a piece has started');
+});
 
 test('paint workspace selection stays within a two metre rectangle on large faces', () => {
   const bounds = centeredPaintWorkspaceBounds(wall, 0, new THREE.Vector2(0.5, 0.5));
@@ -40,6 +54,9 @@ test('paint hit validation clips both the selected face and normalized UV bounds
   assert.equal(isPaintWorkspaceHitAllowed(selection, wall, 1, new THREE.Vector2(0.5, 0.5)), false);
   assert.equal(isPaintWorkspaceHitAllowed(selection, otherWall, 0, new THREE.Vector2(0.5, 0.5)), false);
   assert.equal(isPaintWorkspaceHitAllowed(selection, wall, 0, new THREE.Vector2(0.9, 0.5)), false);
+  assert.equal(isPaintWorkspaceHitAllowed(selection, wall, 0, new THREE.Vector2(.25, .2)), true);
+  assert.equal(isPaintWorkspaceHitAllowed(selection, wall, 0, new THREE.Vector2(.24, .5), .08), true);
+  assert.equal(isPaintWorkspaceHitAllowed(selection, wall, 0, new THREE.Vector2(.20, .5), .08), false);
 });
 
 test('workspace camera sees only the selected wall subtree and lights without changing visibility', () => {

@@ -4,6 +4,7 @@ import { MultiplayerConnection, type PlayerIdentity } from './connection';
 import { DEFAULT_ROOM_ID, MULTIPLAYER_URL } from './config';
 import { PaintSync } from './paintSync';
 import { PaintReplay } from './paintReplay';
+import { headForTool } from '../game/sprayHeads';
 import { PlayerSync } from './playerSync';
 import { RemotePlayers } from './remotePlayers';
 import { decodeSurface, encodeSurface } from './surfaces';
@@ -14,6 +15,7 @@ import { AccountFeatures } from './accountFeatures';
 import { PieceSync } from './pieceSync';
 import { clearPaintWorkspace } from '../game/paintWorkspace';
 import type { Message, MultiplayerStatus, MultiplayerView, PlayerCosmetics } from './protocol';
+import { canManageRole, canDeletePieces, readPermissions, type ServerPermissions, type ServerRole } from './permissions';
 
 export class WorldMultiplayerSession {
   private connection: MultiplayerConnection;
@@ -35,6 +37,9 @@ export class WorldMultiplayerSession {
   private visibility = [true];
   private recompose = new Set<string>();
   private status: MultiplayerStatus = { phase: 'solo', playerCount: 0 };
+  private serverPermissions: ServerPermissions | null = null;
+  private selectedPlayer: MultiplayerView['selectedPlayer'] = null;
+  private roleChange: MultiplayerView['roleChange'];
   private lastView = '';
   private serverPlayerCount: number | null = null;
   private cosmetics: PlayerCosmetics = { outfit: 'street', top: 'coral', bottom: 'charcoal', accessory: 'none' };
@@ -49,7 +54,12 @@ export class WorldMultiplayerSession {
     this.players = new RemotePlayers(world.scene);
     this.replay = new PaintReplay(() => this.visibility);
     this.connection = new MultiplayerConnection(MULTIPLAYER_URL, status => {
-      if (status.phase === 'disconnected') { this.paint.interrupted(); this.artworks.interrupted(); this.players.clear(); this.serverPlayerCount = null; }
+      if (status.phase === 'disconnected' || status.phase === 'connecting') {
+        this.serverPermissions = null;
+        this.selectedPlayer = null; this.roleChange = undefined;
+        this.paint.interrupted(); this.artworks.interrupted(); this.players.clear(); this.serverPlayerCount = null;
+        this.emitView();
+      }
       this.emit(status);
     }, message => this.message(message));
     this.chat = new ChatSync(message => this.connection.send(message), () => this.emitView());
@@ -91,7 +101,7 @@ export class WorldMultiplayerSession {
       const value = this.paint.sample({
         pieceId: this.selectedPieceId ?? undefined,
         surfaceId: encodeSurface(wall.surfaceId, face, Math.max(0, settings.layerIndex)),
-        colour: settings.color, tool: settings.eraseMode ? 'eraser' : 'spray', brushSize: Math.max(1, settings.brushSize),
+        colour: settings.color, tool: settings.eraseMode ? 'eraser' : ((settings as typeof settings & { brushHead?: string }).brushHead ? headForTool((settings as typeof settings & { brushHead?: string }).brushHead) : undefined) ?? 'spray', brushSize: settings.brushSize,
         operation: settings.eraseMode ? 'erase' : 'paint', opacity: this.connection.protocol === 1 ? 1 : Math.max(0.05, Math.min(1, settings.opacity)),
         layerIndex: Math.max(0, settings.layerIndex), face: String(face),
         point: { x: hit.point.x, y: hit.point.y, z: hit.point.z, pressure: this.connection.protocol === 1 ? Math.max(0.05, Math.min(1, settings.opacity)) : 1 },
@@ -99,6 +109,12 @@ export class WorldMultiplayerSession {
       if (this.replay.isRebuilding(wall)) this.replay.enqueue(wall, value.stroke, [value.stroke.points[value.stroke.points.length - 1]], value.previous);
     };
     world.onArtworkPlaced = (wall, face, artwork) => { if (this.multiplayer) void this.artworks.placed(wall, face, artwork, this.connection.connected); };
+    world.onPlayerPick = event => {
+      if (!this.multiplayer) return false;
+      const picked = this.players.pick(event, this.world.renderer.domElement, this.world.cameraMode === 'map' ? this.world.mapCamera : this.world.camera, this.world.walls.map(wall => wall.mesh), this.world.playerPosition);
+      if (!picked) { this.selectedPlayer = null; this.emitView(); return false; }
+      this.selectedPlayer = picked; this.emitView(); return true;
+    };
     world.onPaintEnd = () => this.paint.end();
     world.onMultiplayerFrame = (delta, settings) => this.update(delta, settings);
   }
@@ -119,12 +135,25 @@ export class WorldMultiplayerSession {
     return true;
   }
   likePiece(pieceId: string): boolean { return this.connection.connected && this.pieces.like(pieceId); }
+  deletePiece(pieceId: string): boolean {
+    if (!this.connection.connected || !canDeletePieces(this.serverPermissions) || !pieceId) return false;
+    return this.sendWorld({ type: 'admin_delete_piece', pieceId });
+  }
+  setRole(targetUsername: string, role: ServerRole): boolean {
+    const ownRole = this.serverPermissions?.role;
+    if (!this.connection.connected || this.connection.protocol !== 2 || !targetUsername || !canManageRole(ownRole, this.players.roleForUsername(targetUsername), role)) return false;
+    return this.sendWorld({ type: 'admin_set_role', targetUsername, role });
+  }
   join(displayName: string, roomId = DEFAULT_ROOM_ID, identity?: PlayerIdentity): void {
+    this.serverPermissions = null;
+    this.selectedPlayer = null; this.roleChange = undefined;
     this.completePiece(); this.pieces.clear(); clearPaintWorkspace(this.world);
     this.paint.interrupted(); this.artworks.interrupted(); this.players.clear(); this.playerSync.reset(); this.serverPlayerCount = null;
     this.connection.connect(displayName, roomId, identity);
   }
   leave(): void {
+    this.serverPermissions = null;
+    this.selectedPlayer = null; this.roleChange = undefined;
     this.completePiece(); clearPaintWorkspace(this.world); this.connection.disconnect(); this.players.clear(); this.replay.cancel(); this.artworks.clear(); this.pieces.clear();
     this.multiplayer = false; this.world.multiplayerActive = false; this.walls.clear(); this.recompose.clear();
     this.chat.clear(); this.accounts.snapshotWorldItems([]); this.order.snapshot({}); this.emitView();
@@ -132,9 +161,11 @@ export class WorldMultiplayerSession {
     this.world.setPaintSession('solo'); this.world.paintRevision++;
   }
   dispose(): void {
+    this.serverPermissions = null;
+    this.selectedPlayer = null; this.roleChange = undefined;
     this.completePiece(); clearPaintWorkspace(this.world); this.connection.disconnect(); this.players.clear(); this.replay.cancel(); this.artworks.clear(); this.pieces.clear();
     this.world.multiplayerActive = false;
-    this.world.onPaintSample = this.world.onPaintEnd = this.world.onMultiplayerFrame = this.world.onArtworkPlaced = undefined;
+    this.world.onPaintSample = this.world.onPaintEnd = this.world.onMultiplayerFrame = this.world.onArtworkPlaced = this.world.onPlayerPick = undefined;
   }
   sendChat(text: string): boolean { return this.chat.send(text); }
   resync(): boolean {
@@ -147,6 +178,20 @@ export class WorldMultiplayerSession {
     this.connection.send({ type: 'player_action', actionId: crypto.randomUUID(), action: 'emote', data: { emote } });
   }
   private message(message: Message): void {
+    if (message.type === 'permissions') {
+      this.serverPermissions = readPermissions(message);
+      this.emit({ ...this.status, role: this.serverPermissions?.role ?? 'player' });
+      return;
+    }
+    if (message.type === 'player_role_changed' && typeof message.playerId === 'string' && typeof message.username === 'string' && isServerRole(message.role)) {
+      this.players.roleChanged(message.playerId, message.username, message.role);
+      if (this.selectedPlayer?.playerId === message.playerId) this.selectedPlayer = this.players.get(message.playerId);
+      this.emitView(); return;
+    }
+    if (message.type === 'admin_set_role_complete' && typeof message.targetUsername === 'string' && isServerRole(message.previousRole) && isServerRole(message.role) && typeof message.serverTime === 'number') {
+      this.roleChange = { targetUsername: message.targetUsername, previousRole: message.previousRole, role: message.role, serverTime: message.serverTime };
+      this.emitView(); return;
+    }
     if (message.type === 'world_snapshot') {
       const sameConnection = this.snapshotPlayerId === this.connection.playerId;
       this.snapshotPlayerId = this.connection.playerId;
@@ -171,6 +216,7 @@ export class WorldMultiplayerSession {
       this.players.joined(message.player, this.connection.playerId); this.serverPlayerCount = null; this.emit(this.status);
     } else if (message.type === 'player_left' && typeof message.playerId === 'string') {
       this.players.left(message.playerId); this.serverPlayerCount = null; this.emit(this.status);
+      if (this.selectedPlayer?.playerId === message.playerId) { this.selectedPlayer = null; this.emitView(); }
     } else if (message.type === 'player_count') {
       const count = message.playerCount ?? message.count;
       if (Number.isInteger(count) && (count as number) >= 0) this.serverPlayerCount = count as number;
@@ -249,7 +295,7 @@ export class WorldMultiplayerSession {
     if (chunk !== this.pieceChunk) { this.pieceChunk = chunk; this.emitView(); }
   }
   private emitView(): void {
-    const view: MultiplayerView = { chat: this.chat.messages, revision: this.order.revision,
+    const view: MultiplayerView = { chat: this.chat.messages, revision: this.order.revision, selectedPlayer: this.selectedPlayer, roleChange: this.roleChange,
       accountFeaturesAvailable: this.accounts.available, worldItemCount: this.accounts.worldItems.size,
       pieces: [...this.pieces.pieces.values()].filter(piece => this.world.playerPosition.distanceToSquared(new THREE.Vector3(...piece.anchor)) <= 96 * 96).sort((a, b) => this.world.playerPosition.distanceToSquared(new THREE.Vector3(...a.anchor)) - this.world.playerPosition.distanceToSquared(new THREE.Vector3(...b.anchor))).slice(0, 20) };
     const serial = JSON.stringify(view);
@@ -264,8 +310,15 @@ export class WorldMultiplayerSession {
     return sent;
   }
   private emit(status: MultiplayerStatus): void {
+    status = {
+      ...status,
+      role: status.phase === 'connected' ? this.serverPermissions?.role : undefined,
+      canDeletePieces: this.connection.connected && canDeletePieces(this.serverPermissions),
+    };
     const next = { ...status, playerCount: status.phase === 'connected' ? this.serverPlayerCount ?? this.players.count + 1 : 0 };
     if (JSON.stringify(next) === JSON.stringify(this.status)) return;
     this.status = next; this.report(next);
   }
 }
+
+function isServerRole(value: unknown): value is ServerRole { return value === 'player' || value === 'moderator' || value === 'admin' || value === 'owner'; }
