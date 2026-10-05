@@ -1,176 +1,224 @@
-# Final goal: a shared street-art world
+# Final goal: SIDESTREET — a premium graffiti world
 
 Updated: 5 October 2026.
 
-Repository: https://github.com/benryaus-cmd/graf-game
-
+Repository: https://github.com/benryaus-cmd/graf-game  
 Live reference: https://aippy.ai/@PinkYyyy/street-art-canvas-aV7b
 
-This is the working product direction for future changes. Build towards it incrementally in the existing game. A goal listed here is not a claim that it already works. Later instructions from the owner take precedence.
+This is the working destination for future development. It describes intended behaviour, not completed features. Later instructions from the owner take precedence. Keep the GitHub-to-Aippy importer working as the game evolves.
 
-## Intended experience
+## Direction: keep the world and spraying foundation; rebuild the experience
 
-A clean, mobile-first open world where people explore together, see and talk to each other, claim a piece of a real surface, paint it smoothly, and discover other people's graffiti. Artwork has an author, views, likes and comments. Genuine engagement earns the artist credits, which can buy a larger painting area or an expensive tag over another artist's protected work. Aim for the finish and feel of a premium graffiti game: deliberate controls, convincing characters, expressive paint and a coherent social world.
+Keep the existing Three.js world, useful geometry/chunks and basic wall-painting foundation. Rebuild the controls, HUD, painting workflow and supporting systems as needed. The owner has authorised a substantial overhaul; retaining existing menus, bots, primitive avatars or poster features is not a goal. Preserve existing saved artwork during migration where practical, without letting old saves overwrite the shared world.
 
-The central rule is: **my movement, looking and painting respond immediately on my device.** Slow internet may delay other players and their paint, but must not make my own controls or brush wait for the server.
+The game should feel like a serious graffiti sandbox: expressive handmade art, clean controls, convincing characters, a city worth exploring and an optional persistent social world. Premium quality means control feel and painting quality first, followed by coherent presentation and dependable persistence. It does not mean adding every possible feature at once.
 
-Preserve the existing Three.js world, paint tools, layers, posters, avatars and saved work where compatible with this direction. Clean up and extend the current game rather than replacing its identity.
+**Solo by default. Join the shared server deliberately. My movement, looking and brush respond immediately, including on bad internet.** Remote players and their strokes may arrive late; my own input must never wait for a network round trip.
 
-## Evidence and limits of this review
+Remove the AI image/poster generator. Players make their own art, tags, throw-ups and signatures. Replace the prompt-and-generate workflow with a handmade art library and drawing tools.
 
-The initial cloud-browser attempt opened the live SIDESTREET welcome screen, but clicking ENTER THE WORLD produced a black game area. That browser reported WebGL disabled and Three.js failed to create its renderer. This was an environment limitation, not evidence that the game fails on the owner's device. A subsequent session in a different browser service successfully rendered the world; its findings are recorded below.
+## What the current review establishes
 
-At the owner's request, the project snapshot verified against GitHub commit `3bc73839c0a5ccd081e17474462466c77113c20c` was also built locally. Dependency installation and `npm run build` succeeded (1,195 modules transformed). The preview server started successfully on `127.0.0.1:8080` after binding it explicitly to localhost. The original cloud browser rejected the preview address with `ERR_BLOCKED_BY_CLIENT`; this local route did not enable gameplay. The separate live-site session below provides partial interaction evidence, while full control feel remains unverified. No gameplay code was changed for this review.
+The owner confirms spraying works, and supplied a portrait screenshot showing red/green paint on a concrete wall. The immediate problem is having to open the paint menu to enable spray, close it to paint, and reopen it to disable spray. The screenshot also shows visibly coarse/jagged paint edges and a crowded header. Those are the priorities, not a claim that paint deposition is broken.
 
-### Follow-up live session in a different browser
+A separate live-browser session rendered the world, opened the Paint Station, selected green and toggled spray. Its unsuccessful targeting clicks were inconclusive and are superseded by the owner's positive painting evidence. The first browser had WebGL disabled; that was an environment limitation. The GitHub-matched project snapshot built successfully with npm run build. None of this proves good touch-control feel, measured frame rate or multiplayer readiness.
 
-At the owner's request, a separate browser service tested the exact live Aippy URL on 5 October 2026. Its completed session reported:
+Source inspection provides useful starting points:
 
-- ENTER THE WORLD successfully opened the 3D urban scene, with concrete walls, an archway, walkways/railings and the existing bunny character. WebGL worked in this browser.
-- The Paint Station opened and closed. Selecting green (`#46D38B`) updated the colour display; activating SPRAY changed its active state, which remained active after closing the panel.
-- The expanded paint panel obscured a substantial part of the world. The visible HUD includes brand/district/gesture text, weather/music, view/bots/avatar actions, left MOVE, right JUMP and the paint-station trigger.
-- There was no surface-box selection step before activating spray.
-- Several reported canvas clicks near concrete walls did not produce visible paint marks. No useful error or explanation appeared. This is an inconclusive input/targeting result, not a confirmed claim that painting is generally broken: the report does not establish valid ray hits, pointer drags or an authenticated paint path.
-- The Aippy sign-in toast did not prevent world entry or paint-menu interaction. Do not assume it caused the unsuccessful paint clicks without evidence.
+- GameHud combines several decorative/status rows, large actions, a movement joystick, jump and a paint dock.
+- worldControls uses canvas dragging for looking or painting depending on paint mode. These inputs compete.
+- worldPainting raycasts paintable walls with a 160-world-unit cutoff. Foreground non-paintable occlusion and a fixed selected surface need explicit handling.
+- Paint layers use fixed-resolution canvases per face with linear texture filtering. Strokes connect samples, but this alone does not establish sufficient detail or good stabilisation.
+- Paint and credits are saved in browser localStorage. App awards a coin for spraying at an 800 ms throttle; that cannot remain the shared economy.
+- PosterStudio contains the AI prompt/generation workflow that should be removed.
+- Existing world chunks and paint layers are useful foundations, but mutable wall indices must become stable surface IDs.
 
-The service reported before/after screenshots, but did not return image attachments in its result. [Session report/recording](https://agent.tinyfish.ai/runs/3afe04a0-d9d0-4c37-9ff6-e6429ec844c2).
+The screenshot cannot establish whether texture density, sampling, projection or several factors caused the rough edges. Measure those separately during implementation.
 
-World rendering and paint-menu interaction now have live evidence. Successful paint deposition, simultaneous movement/look/spray, jumping, doorway spill and measured frame rate still need positive gameplay checks. In particular, the session's comparison of keyboard and joystick controls does not test the source-level drag-to-look versus spray conflict.
+[Alternative live session report](https://agent.tinyfish.ai/runs/3afe04a0-d9d0-4c37-9ff6-e6429ec844c2).
 
-### Source inspection
+## Clean controls and a compact HUD
 
-The following findings come from GitHub source inspection:
+Use an independent **left movement thumb control** and **right look thumb control**. Support both simultaneously, including while paint is enabled. Keep jump reachable. Preserve keyboard/mouse support.
 
-- `GameHud.tsx` combines a brand header, music/weather controls, district text, gesture hint, view/bot/avatar actions, jump, a movement joystick and a paint dock. The owner reports the resulting UI is messy.
-- There is a dedicated movement joystick, but looking is a canvas drag. `worldControls.ts` makes that same drag paint when spray mode is active, so looking and spraying compete for the same input.
-- `worldPainting.ts` chooses the first hit from paintable wall meshes and allows hits up to 160 world units away. This is not unlimited distance, but it permits distant background painting and does not establish a selected, bounded painting area.
-- Paint and progression are currently saved to browser localStorage. `App.tsx` awards coins for spraying, with an 800 ms throttle. Shared ownership and engagement-based credits need a different authority model.
-- The world already uses chunks and per-wall paint layers. These are useful foundations for nearby multiplayer subscriptions and stable surface identifiers.
+Put the colour selector and active tool/head in a compact top strip. Keep size and undo close at hand; open advanced palette, head tuning, layers and the art library only when needed. Reduce branding and decorative text. Put secondary settings in one small menu. Smaller readable text must not mean tiny touch targets.
 
-## Controls and cleaner HUD
+Provide a persistent, directly reachable **Paint / Explore toggle** outside the expanded paint menu. One tap enables painting/selection; one tap returns to exploration. Opening the palette only changes tools or colour. Closing it must not be the mechanism for starting or stopping spray.
 
-Use a dedicated left movement thumb control and a dedicated right look thumb control, matching the owner's request for movement toggle left and look toggle right. Both must work independently and simultaneously. Spraying must not disable the right look control.
+Enabling paint does not deposit paint automatically. Initially tap a surface to select an area; once selected, press/drag on it to paint. Show a small active-tool indicator and brush preview. Let artists stop painting or release the selected area without hunting through a modal. Avoid several overlapping switches whose combined state is unclear.
 
-Move the paint selector to the top. Give it a compact colour swatch/tool strip, with expanded palette, brush tuning, layers and poster tools available on demand. Keep the normal play screen mostly world, not panels.
+Every pointer has one owner: movement, look, brush or UI. Right-look input never deposits paint; UI taps never fall through to the world. Pointer release, cancellation, lost focus and menu entry stop held actions. Typing in chat disables gameplay keyboard handling.
 
-Reduce the size and prominence of brand and decorative text. Consolidate secondary actions such as weather, bots, avatar, settings and view selection into a compact, consistent menu. Use smaller readable text without shrinking the actual touch targets. Movement, looking and painting must remain accessible without repeatedly opening menus.
+Put **Portrait / Landscape** at the top right. Change the drawing/view orientation without reload, lost paint or multiplayer disconnect. Use native orientation control when available and an in-app rotated/reflowed view fallback otherwise. Transform pointer coordinates and control positions correctly. Preserve artwork aspect ratio, selected surface, draft and camera state; never stretch the painting to fill the screen.
 
-Separate Explore, Select area and Paint states visibly. UI touches must not spray the world underneath. Each control owns its pointer; releasing or cancelling it stops that input. Keep jump reachable without overlapping the two thumb controls. Preserve keyboard/mouse support.
+## Choose a real surface and preview a painting box
 
-Put a visible Portrait/Landscape button at the top right. It changes the playable/drawing orientation without reloading, resetting paint or disconnecting multiplayer. Support portrait graffiti naturally. Use native orientation changes where available and an in-app layout/view rotation fallback where the browser refuses a device lock. Rotate/reflow controls and transform pointer coordinates correctly; do not merely rotate the image while leaving hit testing wrong. Preserve the selected surface, camera state and draft when switching back.
+Flow: **Paint → tap surface → see attached box → adjust/confirm → paint**. Selection taps do not paint.
 
-## Two live painting views and expressive spray heads
+Attach the preview rectangle to a stable surface/face in world coordinates. It must stay on that surface as the camera moves. Show availability, dimensions and any price before confirmation. Start with a useful bounded area; allow resizing/repositioning up to a hard maximum. Extra area costs credits. Standard size, maximum size, reach and prices are tuning values, not fixed promises here.
 
-After selecting an area, the artist can either paint straight on the 3D wall or press **Enter canvas mode**. Canvas mode hides the world and presents the same surface artwork against a clean, otherwise blank workspace. Show existing paint rather than clearing it. Provide pan/zoom, the compact paint controls and a clear return to the world. Every edit updates the underlying wall live; there is no separate copy, export step or delayed Apply button. Mode switches preserve strokes, layers, protection, orientation and multiplayer updates.
+Respect actual geometry, nearby reach and the nearest foreground obstruction, including non-paintable solid objects. A doorway is a hole, not a continuous canvas. A selected wall must never turn into a target on a distant building through the doorway. Do not fall back to another wall when the chosen surface is missed. Break the stroke across invalid hits rather than connecting across empty space.
 
-Canvas mode is a comfortable front-on editing view of the same surface coordinates. It can display a margin beyond the claim so drizzle spill remains visible and editable. Keep its aspect ratio faithful to the wall region; portrait mode must not stretch the artwork. Other players can watch the wall being painted while its artist is in canvas mode.
+Ordinary tools, erasers and reusable art are clipped to the chosen region and surface. Boxes cannot bridge holes or invalid geometry. Preview invalid placement clearly. The special drizzle exception is defined below.
 
-Offer genuinely different spray heads: a fine cap for lines, a fat cap for fills, a flat/chisel head, a drip head and a drizzle head. Make head shape, spread, softness, opacity and brush size meaningful. Drips run down the surface and drizzle creates loose trails/splashes. Use deterministic seeds and replayable paint actions so all clients reconstruct the same marks, including animated drips, without streaming pixels every frame.
+In the shared world, confirmation requests a server claim. Show a pending box immediately and preserve provisional local draft strokes while it is being checked. Pending paint cannot overwrite confirmed shared art. If refused, keep the draft and offer another valid area. In solo, the same selection flow works locally.
 
-**Drizzle explicitly ignores the painting box limits.** It may draw beyond the rectangle on the same reachable, unobstructed surface. This is an exception to ordinary brush clipping, not an exception to the doorway, distance or surface-target rules. Spill is attributed to its artist, but does not silently enlarge their protected claim. Where it would cross another artist's protected area, use the paid tag-over permission described below instead of a free protection bypass. Unprotected neighbouring surface remains usable. Show that boundary before a credit-spending action, and make drizzle visible in both wall and canvas views.
+## Smooth, sharp, expressive paint
 
-## Select a surface before painting
+Treat input smoothing and visible pixel size as separate problems. Lowering texture resolution would make pixels larger; the goal is cleaner edges and appropriate detail at normal painting distance.
 
-The flow is **choose spray -> tap a surface -> preview a box -> adjust/confirm -> paint inside it**. Tapping to select must not deposit paint.
+Resample strokes at consistent spacing in surface coordinates, interpolate gaps, and offer adjustable stabilisation. Keep its default light enough for responsive handwriting and intentional corners. Support coalesced pointer samples and stylus pressure where available; mouse/touch must still feel good. Use frame-rate-independent paint accumulation so slow frames do not change coverage.
 
-The preview is a rectangle attached to the actual chosen surface, not a screen-space rectangle projected onto everything behind it. Store its stable chunk/surface/face identity and bounds in surface coordinates. It stays attached when the camera moves. Show whether it is available, protected or invalid before confirmation.
+Allocate texture detail according to physical artwork size and intended viewing distance. Avoid stretching one modest square texture across an enormous face. Evaluate bounded artwork patches or tiles, antialiased brush masks, correct UV scale and physical brush widths. Raise active-area detail within a measured GPU/memory budget; do not make every distant wall an enormous texture. Preserve sharper source art when resizing a reusable tag.
 
-Use a bounded standard area and a hard maximum size. Fit the box to usable surface geometry; a large wall must not automatically become one unlimited canvas. Allow resizing/repositioning within valid space before confirming. Enlargement costs credits, with the extra cost and resulting dimensions shown before purchase. Exact standard size, maximum dimensions, reach and credit rates remain configurable tuning values; they are not approved numerical promises in this document.
+Update dirty paint surfaces at most as needed per frame; avoid repeated full-texture upload, PNG encoding or saving in the brush input handler. Load/composite snapshots without blocking strokes. Compare the same mark at close, normal and distant viewing ranges on a representative phone.
 
-Ordinary painting is clipped to the confirmed region and its chosen face; drizzle is the explicit exception described above. Stop a stroke when its target becomes invalid; do not jump to another wall or connect across empty space. Erasers, posters and bots obey the same surface/protection rules and cannot provide a free bypass.
+### Tools and heads
 
-Fix the doorway/background problem explicitly:
+| Tool/head | Intended behaviour |
+| --- | --- |
+| Fine/skinny cap | Controlled outlines, lettering and highlights; narrow adjustable soft edge. |
+| Standard cap | Balanced general drawing and fills. |
+| Fat cap | Broad fills and gradients with soft overspray. |
+| Flat/chisel head | Directional strokes, handstyles and broad edges. |
+| Marker | Clean opaque tags, including pressure/chisel behaviour where appropriate. |
+| Paint roller | Broad strips for backgrounds and block lettering, with a distinct texture/edge. |
+| Drip head | Paint builds up and runs down with gravity along the surface; dwell and flow matter. |
+| Drizzle head | Loose trails/splashes that can extend beyond the painting box. |
+| Eraser | Editable removal of authorised contributions; never free removal of protected art. |
 
-- Selection and painting must respect nearby reach and foreground occlusion, including non-paintable solid geometry.
-- A doorway opening is not a continuous paintable wall. A box cannot bridge its hole and spray the building behind it.
-- Once a surface is selected, raycast against that target and validate the hit rather than falling back to whatever background wall is intersected next.
-- Invalid, distant, hidden or out-of-box hits produce no paint.
+Expose useful size, opacity/flow and softness controls without making the artist configure a simulation. Head changes should be visibly different. Use deterministic brush versions/seeds and replayable actions so remote clients reproduce spray scatter and drips. Do not require a server message for each simulated droplet.
 
-## Four-hour ownership protection
+**Drizzle ignores box limits**, but stays on the same reachable, unobstructed physical surface. It cannot cross doorways, jump to the background or paint protected neighbouring art for free. Spill remains attributed but does not automatically expand the protected claim. Show the spill margin in canvas mode. Protected overlap needs the same expensive paid override as any other tool.
 
-Confirmation requests a claim from the server. An accepted area belongs to its artist and is protected from ordinary painting or erasing by other people for **four hours**. A deliberate, expensive paid tag-over is the explicit exception. Use server time; recommended timer start is successful claim confirmation. Editing or reconnecting must not silently renew it.
+## Wall painting and live canvas mode
 
-Show the artist and remaining protection time when inspecting the graffiti. Reject ordinary overlapping claims against another person's protected region. Claim acceptance, expansion, paid overrides and their credit deductions are consistent server transactions; concurrent requests cannot both own the same area.
+After selecting an area, paint on the 3D wall or choose **Enter canvas mode**. Canvas mode hides the world and shows the same live artwork front-on in an otherwise clean workspace. Existing art stays visible; “blank screen” means removing world clutter, not clearing the wall.
 
-After expiry, the artwork remains visible, but the area becomes eligible to be painted over. Expiry is not automatic deletion. Preserve attribution/history so later contributions are not credited to the wrong artist. The owner can continue editing while their claim is valid, including after reconnecting.
+Provide pan/zoom, portrait rotation, the compact tools and an obvious return button. Both views edit the same surface coordinates and layer stack. There is no duplicate painting, export or delayed Apply step. Other players see updates on the wall while the artist draws in canvas mode. Switching view/orientation preserves marks, selection, layers, protection and pending updates.
 
-### Expensive tag-over
+Give the piece a manageable layer stack: create/name, hide, reorder, opacity, lock and merge. Keep undo/redo for the artist's own editable work. A layer hidden in the editor must not ambiguously count as shared visible paint; shared composition changes are explicit operations. Undo cannot delete somebody else's later strokes or refund a reusable-art purchase through repeated placement. Layers cannot bypass claims, hard size limits or paid overrides.
 
-Allow a player to deliberately tag over another artist's graffiti even during the four-hour window, by spending a substantial number of credits. This is an intentional rivalry mechanic, not a bug or a cheap griefing shortcut. It must be clearly more expensive than normal painting/area enlargement, with the affected artwork, area and exact price shown before confirmation. Rate and pricing formula remain economy-tuning decisions.
+## Handmade tags, throw-ups and a personal art library
 
-The server quotes and atomically charges for a bounded override region. Permission cannot extend to the whole wall, all nearby art or subsequent unrelated tags. Record the author, target, paid region and transaction; reject insufficient funds and deduplicate retries. Recommended rule: the paid region becomes the new artist's claimed contribution with its own four-hour timer, while unaffected portions of the original claim retain their original timer. Keep earlier artwork versions and attribution so a tag-over is visible rivalry rather than loss of the original creator's portfolio. Ordinary erasing must not imitate this mechanic for free. The UI must explain the final chosen rule before charging.
+Graffiti tools should support quick signatures, outline-and-fill throw-ups and developed pieces with backgrounds, shading and highlights. These are different creative uses of the same drawing tools, not generated images or locked templates.
 
-## Social discovery and credits
+Add a **Make throw-up / tag** workspace with a transparent background, layers, undo/redo and the same brush tools. Save the player's handmade design to their library, name it, preview it and optionally designate their personal logo/signature. No AI prompt or image-generation button.
 
-Give each graffiti piece a stable artwork ID tied to its author and region. Tapping an artwork opens a small inspection panel with author, view/like counts, comments and protection status. Inspecting must not accidentally select or spray it.
+Place saved designs into a piece with drag, resize and rotate handles. Preview the exact placement, clipping and price; confirm deliberately. Keep transparency and clean scaling. Limit source dimensions, data size, physical placement size and total covered area. Avoid saving a whole wall as an unlimited reusable “logo”.
 
-Earn credits from legitimate views and likes on your graffiti. Comments are supported; comment-based rewards are not part of the requested economy. Do not use endless spraying as the final credit source.
+| Action in the shared world | Credit rule |
+| --- | --- |
+| Draw/edit/save a design to your own library | Free baseline creation; no generation charge. |
+| Reuse a throw-up/tag as a standalone mark or in another piece | Costs credits; show the quote before placement. |
+| Place your own designated logo/signature inside a piece you authored | Free within the signature size/coverage limits. |
+| Put that logo in someone else's piece | Normal reuse cost and required surface permission apply. |
+| Expand the region or cover another artist's protected paint | Relevant expansion/override charges still apply. A free signature never grants these permissions. |
 
-Count meaningful views rather than every frame, camera pass or refresh. Exclude self-rewards, deduplicate repeat events, and enforce one active like per viewer per artwork. Store credit awards and spending in a server ledger with idempotent operations. Clients cannot manufacture balances or reward events. Define reward rates and any starting allowance during economy tuning so a new artist can make their first piece without an impossible credit barrier.
+The server verifies asset ownership, piece authorship, designation and size/coverage limits. A client “this is my logo” flag is insufficient. Bound the total free signature coverage per piece so repeated free copies cannot fill a mural. Exact limits and reuse prices need tuning.
 
-Comments, authorship and engagement persist across sessions. Include basic reporting/moderation for shared artwork and comments. Server-side identity must survive reconnects; never trust a player ID supplied without validation.
+Preview any combined reuse/expansion/override price together. Use unique operation IDs so retries cannot charge twice or place duplicates. Keep the original editable design when placing it. Solo uses local library/drafts; any later account sync is explicit and must not import a fabricated online balance.
 
-## Visible players, conversation and character quality
+## Four-hour protection and deliberate paid tag-over
 
-People in the same nearby world must see one another as actual animated 3D characters, with a name, facing direction and recognisable painting/idle/movement state. Show nearby player presence without an always-expanded scoreboard. Distinguish human players from bots. Joining or inviting a friend into the same world should be straightforward; do not place friends into separate invisible sessions.
+An accepted online area is protected from ordinary painting/erasing by other players for **four hours**, measured by the server. Recommended start is claim confirmation. Editing/reconnecting does not silently renew it. Show author and remaining time when inspecting the piece.
 
-Provide nearby text chat and a compact chat button. Players can select a nearby person to start a conversation; speech bubbles and a small scrollable conversation panel can make who is talking clear. The mobile keyboard must not cover the composer, and typing must stop gameplay key handling and accidental spraying. Include mute/block/report and modest server rate limits. Voice chat is an optional later enhancement, not a required dependency for being able to talk.
+After expiry, art remains; it becomes eligible to be painted over. Expiry does not delete the original portfolio/history. Accept claims/expansions atomically so competing requests cannot both receive the same protected area.
 
-Replace the visibly crude/broken character construction with properly rigged 3D models taken from an existing GitHub asset repository. Provide a few genuinely different appearances, proportions and outfits rather than merely recolouring one broken mesh. Use a consistent street-art aesthetic, natural proportions, correct materials, sensible scale and stable feet/ground contact. Blend idle, walk/run, jump, spray and social gestures without twisted limbs or sliding. Attach the spray can to the correct hand; remote animation follows replicated action state.
+Allow an **expensive, deliberate tag-over** during protection. This is rivalry by choice. Show the affected artwork, bounded area and substantial price before purchase. Charge significantly more than ordinary reuse or expansion; tune actual rates later.
 
-Use GLB/glTF assets with documented source and asset-specific reuse terms. Mirror only the chosen models, textures and animations into this game for the existing importer; no runtime dependency on GitHub. Share resources, use independent skeletons for player instances, and budget detail for mobile.
+The server validates funds and grants only the quoted region, with deduplicated charging. Recommended rule: that region becomes the new contribution with its own four-hour timer, while unaffected original regions retain their old timer. Preserve original versions and attribution. Explain the final rule before charging. Erasers, drizzles, imported art, layers or any retained bots cannot bypass it.
 
-Researched candidates, not assets already installed:
+## Solo first; one clearly joinable persistent server
 
-| Candidate | What is verified | Use/limitation |
-| --- | --- | --- |
-| [Quaternius character/animation bundle on GitHub](https://github.com/NafisRayan/Animate-Rigged-Humanoid-No-Blender) | Repository includes Universal Base Characters and animation-library folders, and documents a GLB merge workflow. The [creator's pack](https://quaternius.itch.io/universal-base-characters) describes six rigged base models under CC0. | Preferred direction for human proportions and multiple streetwear looks. Inspect the actual included variants and adapt outfits before choosing; not every creator-pack variant is assumed present in this mirror. |
-| [KayKit Adventurers](https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0) | Creator repository documents four rigged/animated low-poly characters, glTF files and CC0 licensing. | Coherent alternative if a stylised look is chosen; fantasy clothing needs street-art adaptation. |
+Boot into a local solo world immediately. Make **Join server** easy to find, with concise connection status, occupancy and available slots when known. Do not require multiplayer, sign-in or a working VM merely to paint alone.
 
-The [Quaternius animation source](https://quaternius.itch.io/universal-animation-library) documents humanoid locomotion/emotes and CC0 licensing. Confirm model/clip compatibility and keep source/licence records when importing. Do not assume a repository's code licence covers every model inside it.
+The join action is an authoritative server admission request, not a client-side slot estimate. Reserve capacity atomically; handle simultaneous joins, reconnect grace and stale connections. If full, show “Server full” and leave solo available. Do not show fabricated occupancy or silently create a second empty world to hide a full server.
 
-## Multiplayer hosted on the owner's DigitalOcean VM
+The shared world persists when everyone leaves. The service remains running; last-player departure must not reset art, claims, identities or credits. Leaving multiplayer returns to solo while preserving local work. Joining loads the shared world's state; it does not automatically publish every local wall texture.
 
-Keep the Aippy browser game as the client. Add a lightweight game service on the owner's existing DigitalOcean Ubuntu VM, alongside the studio services. Start with WebSockets for realtime traffic and persistent storage for claims, strokes, artwork, engagement and credits. Reuse existing Postgres/Redis only with separate game data, credentials and resource limits. Preserve the studio's operation.
+Keep solo saves and shared state separate. Offer an explicit future publish/import flow for chosen handmade designs or draft pieces, with normal claim/size/credit checks. Solo rewards and browser-edited counters cannot become server credits. A disconnected online session may retain a local draft; it cannot finalise purchases or assume an expired claim still permits shared writes.
 
-Expose the game backend through HTTPS/WSS with configured Aippy origins. Keep server credentials off the client. No server capacity, player count, hosting cost or deployment completion is assumed until measured. Record actual deployment commands and configuration when that work happens.
+## Visible people, conversation and convincing characters
 
-### Local response and shared agreement
+Nearby online players appear as animated 3D humans with names, facing direction and idle/movement/painting state. Add compact presence and easy friend meetups. Bots are not a substitute for real multiplayer; remove confusing bot features from the default experience.
 
-- Simulate the local player's movement/look and render their paint immediately. Never wait for a position or stroke acknowledgement to display the local action.
-- Send movement snapshots periodically; interpolate remote avatars with bounded extrapolation. Network smoothing must not be applied to the local input path.
-- Batch paint actions rather than transmitting every pixel or brush sample separately. Initial tuning can target roughly 50-150 ms paint batches and about 50 ms movement updates; these are adjustable starting points, not fixed requirements.
-- A stroke identifies the artwork/claim, surface/face, layer, brush settings, surface-coordinate points and unique client operation ID. Use stable IDs, not transient Three.js object references or mutable array positions.
-- The server validates ownership, geometry limits and operation size, deduplicates retries, establishes an ordered stroke sequence and distributes accepted work.
-- Render unacknowledged local strokes over confirmed state. Reconcile acknowledgements without drawing a stroke twice or repeatedly replacing the full texture. Snapshot loading and encoding must not block the brush.
-- Nearby chunk subscriptions deliver nearby players, claim status and paint. Do not broadcast or download the entire open world's state for every player.
+Provide nearby text chat, a compact chat button and clear speaker identification. Selecting a player can open conversation/actions. Support mute/block/report, bounded message sizes and server rate limits. Handle the mobile keyboard without hiding the composer or causing accidental paint. Optional voice can follow later.
 
-Use the same stable player identity for character presence, text chat, artwork authorship and credits. Chat and other players' animation can arrive late without stalling local paint. Keep network queues and message sizes bounded so a busy conversation or a complex mural cannot freeze input.
+Use coherent rigged GLB/glTF characters with several distinct appearances and a streetwear direction. Fix scale, feet/ground contact, materials, hand/can attachment and animation blending. Avoid twisted limbs, floating parts and sliding. Share textures/meshes where useful, but each animated instance needs its own skeleton.
 
-Protection and responsive painting must coexist: display a pending box immediately, and allow local preview strokes while a claim is awaiting confirmation. Pending work is provisional and cannot overwrite confirmed shared artwork. If the server refuses the claim, retain the draft locally, explain why, and offer another valid area. Once a claim is accepted, every brush gesture remains immediate while strokes synchronise in the background.
+Asset shortlist, not imported assets:
 
-On connection loss, show a small honest connection state and retain a bounded queue/draft. Replay valid work with operation IDs after reconnecting; expired or rejected claims require reconciliation, not silent overwriting. Pending credit purchases cannot be treated as successful offline. The server remains authoritative for final claims, expiry, credits and shared ordering, without running the client's brush frame by frame.
+| Source | Direction and caveat |
+| --- | --- |
+| [Quaternius humanoid bundle on GitHub](https://github.com/NafisRayan/Animate-Rigged-Humanoid-No-Blender), [creator's base-character pack](https://quaternius.itch.io/universal-base-characters) | Preferred human proportions. Creator documents six CC0 rigged base models; inspect actual files/variants in the mirror and adapt outfits. Do not assume every creator-pack option is included. |
+| [KayKit Adventurers](https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0) | Creator's CC0 rigged/animated low-poly alternative; fantasy outfits need adaptation. |
+| [Quaternius animation library](https://quaternius.itch.io/universal-animation-library) | Candidate locomotion/emotes; verify chosen clips, licence and rig compatibility. |
 
-Persist stroke history and periodic paint snapshots so a late joiner or restarted server reconstructs the same accepted artwork. Keep current local saves safe during migration and make any upload/migration explicit rather than blindly replacing the shared world with a device's old local textures.
+Mirror only chosen licensed files into the project for reliable Aippy imports. Keep asset-specific source/licence records and mobile budgets. Never assume one code licence covers all models inside a repository.
 
-## Further premium-game recommendations
+## DigitalOcean backend and smooth multiplayer
 
-These are assistant recommendations to pursue after the requested foundation; they are not claims of completed features or fixed scope ahead of the owner's priorities.
+Run a separate lightweight game service on the owner's Ubuntu VM alongside existing Studio services. Use HTTPS/WSS, authenticated persistent player identity and separate game data/credentials. Postgres holds durable artwork, claims, assets, comments, engagement and a credit ledger. Redis is optional for transient coordination, not the only copy of art.
 
-- **A serious artist workspace:** undo/redo for your own contributions, zoom/pan, brush previews, stencils, reusable saved palettes, and optional line smoothing. Undo must not erase someone else's later work. Keep advanced tools tucked away.
-- **A reason to explore:** discoverable mural hotspots, an artist portfolio/gallery, saved favourites, neighbourhood reputation and optional daily painting briefs with modest server-awarded credits. Use starter credits or introductory briefs as a tuned on-ramp; do not rely on refresh farming or endless spray rewards.
-- **Social expression:** wave/point/admire emotes, easy friend meetups and opt-in collaborative murals where the owner can invite another artist to paint the same protected area.
-- **A believable street:** varied paintable brick/concrete/metal surfaces, restrained lighting, readable landmarks, and environmental sound. Preserve artwork colour readability; avoid heavy effects over the brush or excessive mobile GPU cost.
-- **Paint with character:** subtle nozzle hiss, can shake, pressure/coverage feedback, gentle haptics and believable drip accumulation. Sound and vibration settings must work independently.
-- **Rivalry with memory:** inspect before/after versions and who tagged whom. Reward interesting creation and real engagement; paid tag-over should be costly drama, not the only viable progression loop.
-- **A finished product:** graceful asset-loading/WebGL error screens, autosaved drafts, restrained connection feedback, safe-area layouts, accessible contrast, and performance settings. Aim for 60 FPS local input/rendering on supported target phones and measure it rather than promising it on every device.
+Start with WebSockets and a small explicit protocol. A room framework is optional, not a reason to replace the client. Server capacity must be configured and measured on the actual VM; no guaranteed player count or price is assumed.
 
-## Delivery order and completion checks
+- Movement/look and paint render locally first, including with 500 ms round-trip latency. Do not smooth the local player's input through the server.
+- Send movement snapshots; interpolate remote avatars with bounded extrapolation.
+- Batch paint actions, not individual pixels. Roughly 50–150 ms paint batches and 50 ms position updates are starting points for measurement.
+- Each paint action identifies stable artwork/claim/surface/face/layer IDs, brush/version/settings, surface-coordinate samples and a unique operation ID.
+- The server checks permissions and limits, deduplicates, assigns accepted ordering and distributes it. Local provisional strokes sit over confirmed state; acknowledgements must not paint them twice.
+- Subscribe to nearby chunks for art and players. Stream initial snapshots and subsequent operations without freezing the active brush.
+- Persist ordered history plus periodic snapshots. Reconnects and late joins rebuild the same accepted composition.
+- Keep queues bounded. If a claim expired or a pending action is rejected, preserve the local draft and explain the conflict; never silently overwrite protected shared work.
 
-1. Clean the HUD; add independent left move/right look and the top-right portrait toggle. Check simultaneous input, jump, menu touches and rotated pointer alignment on a phone.
-2. Add surface-box selection, live canvas mode, spray heads and reach/occlusion. Check doorways, distant walls, ordinary clipping and deliberate drizzle spill; switch wall/canvas/orientation without losing paint.
-3. Integrate coherent rigged character models, then deploy the VM service and connect two real clients with visible presence, chat, server claims and ordered paint. Check the four-hour boundary and concurrent overlapping claims.
-4. Add persistent artwork inspection, views, likes, comments and the credit ledger; connect paid expansion and costly protected tag-over. Check insufficient funds, duplicate requests, original-version attribution and drizzle hitting a protected neighbour.
-5. Exercise reconnects, late joins, chunk changes and server restart. Under simulated 500 ms round-trip latency, confirm local movement/look/brush does not wait for the network, while clients eventually converge. Check that chat, drip simulation and canvas switching do not stall painting.
+Run the service with automatic restart and health visibility. Keep durable backups and verify recovery after a process/VM restart. Empty-world lifetime and process uptime are separate from database persistence: all three must work. Preserve existing VM workloads. Document actual deployment/configuration when implemented, rather than pretending a backend is already live.
 
-Use actual game interaction and measured results for completion claims. Source inspection alone does not establish good control feel. Work in the main game, preserve the existing GitHub-to-Aippy import workflow, and update `HOW_I_DID_IT.md` as real systems are built. This document defines the destination; implementation and deployment are separate tasks.
+## Credits and discovery
+
+Give each piece a stable ID, author, bounds, versions and engagement. Inspect without spraying: author, views, likes, comments, protection and optional history. Earn credits from meaningful views/likes, not holding spray, refreshing or self-liking.
+
+Count eligible distinct engagement server-side, deduplicate rewards and use one active like per viewer/piece. Do not reward repeated unlike/re-like loops. Keep awards/spending in an idempotent ledger. Comments persist but are not a requested credit source.
+
+A bounded basic painting area and ordinary handmade painting should be accessible to a newcomer. Tune starting allowance or introductory briefs so expansions/reuse are attainable. Recommend modest daily creative briefs later; repeated activity alone must not mint unlimited credits. Protect progression from trivial view-farming.
+
+## Research and what is worth reusing
+
+Reviewed primary developer/creator sources on 5 October 2026. These are references and candidates, not proof that their implementation is already integrated or compatible with Aippy.
+
+| Reference | Useful takeaway / reuse decision |
+| --- | --- |
+| [Graffitifun: tags, throw-ups and pieces](https://graffitifun.com/tagging-vs-throw-ups-vs-pieces-explained/) | Signature tags, quick outline/fill lettering and detailed pieces suggest marker/fine-cap, fill/outline and shading workflows. Give players expressive tools rather than generated imagery. |
+| [Kingspray, developer-provided description](https://store.steampowered.com/app/471660/Kingspray_Graffiti_VR/) | Distinct caps, spray character, drips and different paint surfaces are a useful quality reference. It is a VR game; adapt relevant feel to touch/mouse, not VR controls. Reference only; no assumed reusable code/art. |
+| [VandalVault developer's browser-game post](https://rameone.itch.io/vandalvault/devlog/1451640/vandalvault-is-live-spray-paint-the-internet) | Documents Three.js multiplayer wall painting, drips, galleries, profiles, challenges and live chat. A relevant browser-game reference, not independent proof of performance or a licence to copy source/assets. Do not import its police/can-limit loop by default. |
+| [perfect-freehand](https://github.com/steveruizok/perfect-freehand) | MIT TypeScript library generating pressure-sensitive stroke outlines. Prototype for marker/handstyle smoothing; it is not a complete aerosol/drip engine. Can render to the existing Canvas/Three.js path without changing build framework. |
+| [Klecks / Kleki source](https://github.com/bitbof/klecks) | MIT browser painting app with layers, pressure/stabilisation, touch gestures and editing transforms; standalone and embedded modes. Evaluate selected techniques/modules or a small prototype for canvas mode. Do not drop an entire second application into the game without checking live-wall integration, bundle cost and mobile memory. Keep required notices; branding is separate. |
+| [Konva](https://github.com/konvajs/konva) | MIT canvas scene graph with interaction/transforms. Candidate for transparent tag placement, resize/rotate handles and library editing. Keep core spray and the live wall texture independent; use only if it simplifies the editor within budget. |
+
+Prefer a small drawing core that owns surface-coordinate strokes/layers, shared by the 3D wall and 2D canvas view. Prototype the hard parts before adding dependencies. Vite is a build tool, not a paint engine; compatible TypeScript/Canvas tools are useful regardless of how their demos are built.
+
+## Additional premium direction
+
+After controls, paint quality and persistent multiplayer work, pursue:
+
+- Artist portfolios, favourites, neighbourhood mural routes and a restrained discovery feed.
+- Invite-only collaborative pieces with explicit co-painter permissions; free-signature ownership rules remain explicit.
+- Before/after history and rivalries with attribution, rather than deleting the original artist's record.
+- Saved palettes, colour picking, optional guides, non-generative stencils and useful brush previews.
+- Recognisable districts, readable concrete/brick/metal, restrained lighting and convincing paint colour.
+- Nozzle hiss, can shake, roller sound and optional haptics; subtle feedback that never masks the drawing.
+- Wave/point/admire emotes, friend meetups and optional curated community events.
+- Draft autosave, clear asset/WebGL errors, safe-area layouts and measured quality settings.
+
+Do not add forced police chases, consumable-can scarcity, compulsory multiplayer or heavy effects ahead of the artist experience.
+
+## Delivery order and evidence of completion
+
+1. Rebuild the HUD and input ownership: direct Paint/Explore, top tools, left move/right look, jump and portrait. Verify simultaneous touch use, stop/cancel behaviour and menu hit testing.
+2. Fix targeting and paint quality: box preview, reach/occlusion, normal clipping, drizzle exception, stroke sampling and detail. Compare repeatable lettering/fills at multiple distances on a phone.
+3. Add the shared drawing core, live canvas mode, heads/roller, layers and handmade library. Verify switching modes/orientation preserves the same art; resized signatures stay clean.
+4. Deploy the persistent VM service, add deliberate solo-to-server joining, real capacity handling, coherent characters and nearby chat. Check two real clients, full admission, empty-server persistence and restart recovery.
+5. Connect server claims, four-hour expiry, engagement credits, reuse/signature rules, paid expansions and protected tag-over. Check competing claims, insufficient funds, retry deduplication and protected drizzle overlap.
+6. Exercise late joins, reconnects, chunk changes, snapshots and 500 ms simulated latency. Local input must remain immediate; accepted shared paint must eventually converge without losing drafts.
+
+Aim for 60 FPS local drawing on chosen supported phones and measure it. Do not promise every device or VM capacity without evidence. Update HOW_I_DID_IT.md as actual systems are delivered. This brief is the destination; gameplay changes and server deployment are subsequent implementation work.
