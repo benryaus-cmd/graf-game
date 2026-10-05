@@ -1,0 +1,13 @@
+{
+  "baseUrl": "https://raw.githubusercontent.com/benryaus-cmd/graf-game/main/",
+  "files": [
+    {
+      "source": "src/App.tsx",
+      "target": "src/games/importedGame/upstream/src/App.tsx"
+    },
+    {
+      "source": "src/assets/graffciti-menu.webp",
+      "target": "src/games/importedGame/upstream/src/assets/graffciti-menu.webp"
+    }
+  ]
+}

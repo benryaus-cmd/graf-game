@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
-import assetsData from '@/config/assets';
+import menuBackground from '@/assets/graffciti-menu.webp';
 import { aippyTweaks } from '@aippy/runtime/tweaks';
 import GameHud, { type HudMenu } from '@/components/GameHud';
 import WorldScene from '@/components/WorldScene';
@@ -28,7 +28,7 @@ import { RADIO_STREAM_URL } from '@/config/radio';
 const ProjectFileViewer = lazy(() => import('@/components/ProjectFileViewer'));
 
 const tweaks = aippyTweaks(tweaksConfig);
-const COVER_IMAGE_URL = assetsData.IMAGE_ABZY;
+const COVER_IMAGE_URL = menuBackground;
 const COLORS = ['#ff4d43', '#ff65a5', '#45d7df', '#ffd34e', '#b9e84e', '#f7f2dc'];
 const CAMERA_LABELS: Record<CameraMode, string> = {
   first: 'FIRST PERSON', third: 'THIRD PERSON', map: 'MAP VIEW',
@@ -250,7 +250,7 @@ const App = () => {
     >
       {!hasJoined ? (
         <section className="cover-screen" aria-label="Welcome to GraffCiti">
-          <img className="cover-art" src={COVER_IMAGE_URL} alt="A sunlit blocky landscape with a winding stream and blossoms" />
+          <img className="cover-art" src={COVER_IMAGE_URL} alt="Graffiti-covered city alley" />
           <div className="cover-shade" />
           <div className="cover-content">
             <span className="cover-kicker">AN OPEN CREATIVE WORLD</span>

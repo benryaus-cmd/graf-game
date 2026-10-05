@@ -420,6 +420,10 @@
     {
       "source": "src/multiplayer/piecePulse.ts",
       "target": "src/games/importedGame/upstream/src/multiplayer/piecePulse.ts"
+    },
+    {
+      "source": "src/assets/graffciti-menu.webp",
+      "target": "src/games/importedGame/upstream/src/assets/graffciti-menu.webp"
     }
   ]
 }

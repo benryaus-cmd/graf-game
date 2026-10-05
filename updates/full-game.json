@@ -500,6 +500,10 @@
     {
       "source": "src/multiplayer/piecePulse.ts",
       "target": "src/multiplayer/piecePulse.ts"
+    },
+    {
+      "source": "src/assets/graffciti-menu.webp",
+      "target": "src/assets/graffciti-menu.webp"
     }
   ]
 }
