@@ -1,0 +1,28 @@
+name: GraffCiti artwork lag probe
+
+on:
+  push:
+    branches:
+      - perf-artwork-lag-probe
+    paths:
+      - '.github/workflows/perf-server-lag-probe.yml'
+      - 'scripts/perf-server-lag-probe.mjs'
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      NODE_TLS_REJECT_UNAUTHORIZED: '0'
+      PROBE_WS_URL: 'wss://24.144.88.205/multiplayer'
+      PROBE_HTTP_BASE: 'https://24.144.88.205'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Probe live server transport around artwork save/load
+        run: node scripts/perf-server-lag-probe.mjs
