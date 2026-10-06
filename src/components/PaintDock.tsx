@@ -120,7 +120,7 @@ const PaintDock = (props: PaintDockProps) => {
       {posterMode ? <PosterStudio size={props.posterSize} onSizeChange={props.onPosterSizeChange} onStartPlacement={props.onStartPosterPlacement} /> : <>
         <section className="tool-section"><h3>BRUSH</h3>
           <div className="paint-heads" aria-label="Brush heads">
-            {HEADS.map(head => <button key={head.id} type="button" aria-pressed={(props.brushHead ?? 'soft') === head.id} onClick={() => props.onBrushHeadChange?.(head.id)}>{head.label}</button>)}
+            {HEADS.map(head => { const selected = (props.brushHead ?? 'soft') === head.id; return <button key={head.id} type="button" className={selected ? 'paint-head-selected' : undefined} aria-pressed={selected} onClick={() => props.onBrushHeadChange?.(head.id)}>{head.label}</button>; })}
           </div>
         </section>
         <section className="tool-section"><h3>COLOUR <span className="color-readout"><i style={{ backgroundColor: props.color }} />{props.color.toUpperCase()}</span></h3>
