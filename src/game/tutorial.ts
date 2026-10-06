@@ -6,8 +6,10 @@ export type TutorialStep =
   | 'size-canvas'
   | 'move-canvas'
   | 'start-painting'
+  | 'tools'
   | 'paint'
   | 'finish'
+  | 'save'
   | 'radio'
   | 'multiplayer'
   | 'multiplayer-info'
@@ -23,13 +25,37 @@ export const TUTORIAL_ORDER: readonly TutorialStep[] = [
   'size-canvas',
   'move-canvas',
   'start-painting',
+  'tools',
   'paint',
   'finish',
+  'save',
   'radio',
   'multiplayer',
   'multiplayer-info',
   'complete',
 ];
+
+interface TutorialWorkspace { selected: boolean; started?: boolean; hasPaint?: boolean; editableUntil?: number }
+
+export function tutorialStartStep(view: TutorialWorkspace): TutorialStep {
+  if (view.editableUntil) return 'save';
+  if (view.hasPaint) return 'finish';
+  if (view.started) return 'tools';
+  return view.selected ? 'size-canvas' : 'move';
+}
+
+/** Observe existing game state; never perform a game action or infer a save before grace. */
+export function tutorialObservedStep(step: TutorialStep, view: TutorialWorkspace, options: { reviewing?: boolean; saveArmed?: boolean } = {}): TutorialStep {
+  if (options.reviewing) return step;
+  if (step === 'select-canvas' && view.selected) return 'size-canvas';
+  if (step === 'start-painting' && view.started) return 'tools';
+  if (step === 'paint' && view.hasPaint) return 'finish';
+  if (step === 'save' && options.saveArmed) {
+    if (!view.selected) return 'radio';
+    if (view.started && !view.editableUntil) return 'paint';
+  }
+  return step;
+}
 
 export function nextTutorialStep(step: TutorialStep): TutorialStep {
   const index = TUTORIAL_ORDER.indexOf(step);
@@ -37,7 +63,7 @@ export function nextTutorialStep(step: TutorialStep): TutorialStep {
 }
 
 export function tutorialProgress(step: TutorialStep): { current: number; total: number } {
-  const guided = TUTORIAL_ORDER.filter(value => value !== 'welcome' && value !== 'complete');
+  const guided: readonly TutorialStep[] = TUTORIAL_ORDER.filter(value => value !== 'welcome' && value !== 'complete');
   const index = guided.indexOf(step);
   return {
     current: index < 0 ? (step === 'complete' ? guided.length : 0) : index + 1,

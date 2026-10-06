@@ -27,11 +27,14 @@ export default function GameSheet({ title, subtitle, onClose, children, footer, 
     const keydown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); close.current(); }
       if (event.key !== 'Tab') return;
-      const items = Array.from(element.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), summary, [tabindex="0"]')).filter(item => item.getClientRects().length > 0);
+      const selector = 'button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), summary, [tabindex="0"]';
+      const coach = shell.querySelector<HTMLElement>('.tutorial-card');
+      const items = [...Array.from(element.querySelectorAll<HTMLElement>(selector)), ...Array.from(coach?.querySelectorAll<HTMLElement>(selector) ?? [])].filter(item => item.getClientRects().length > 0);
       if (!items.length) { event.preventDefault(); return; }
-      const first = items[0], last = items[items.length - 1];
-      if (event.shiftKey && (document.activeElement === first || !element.contains(document.activeElement))) { event.preventDefault(); last.focus(); }
-      else if (!event.shiftKey && (document.activeElement === last || !element.contains(document.activeElement))) { event.preventDefault(); first.focus(); }
+      event.preventDefault();
+      const current = items.indexOf(document.activeElement as HTMLElement);
+      const next = current < 0 ? (event.shiftKey ? items.length - 1 : 0) : (current + (event.shiftKey ? -1 : 1) + items.length) % items.length;
+      items[next].focus();
     };
     // Keep only sheet layout above a soft keyboard. The game/renderer stays its original size.
     const viewport = window.visualViewport;

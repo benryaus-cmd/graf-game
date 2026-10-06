@@ -119,7 +119,7 @@ const PaintDock = (props: PaintDockProps) => {
       </nav>
       {posterMode ? <PosterStudio size={props.posterSize} onSizeChange={props.onPosterSizeChange} onStartPlacement={props.onStartPosterPlacement} /> : <>
         <section className="tool-section"><h3>BRUSH</h3>
-          <div className="paint-heads" aria-label="Brush heads">
+          <div className="paint-heads" aria-label="Brush heads" data-tutorial="brush-heads">
             {HEADS.map(head => { const selected = (props.brushHead ?? 'soft') === head.id; return <button key={head.id} type="button" className={selected ? 'paint-head-selected' : undefined} aria-pressed={selected} onClick={() => props.onBrushHeadChange?.(head.id)}>{head.label}</button>; })}
           </div>
         </section>
