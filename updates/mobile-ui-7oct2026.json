@@ -1,6 +1,6 @@
 {
   "version": "mobile-ui-7oct2026",
-  "baseUrl": "https://raw.githubusercontent.com/benryaus-cmd/graf-game/main/",
+  "baseUrl": "https://raw.githubusercontent.com/benryaus-cmd/graf-game/d0c1181859984bed58a9fdccffbc874b3322bb96/",
   "files": [
     {
       "source": "src/App.tsx",
