@@ -48,17 +48,17 @@ const COPY: Record<TutorialStep, StepCopy> = {
   },
   'size-canvas': {
     title: 'SIZE YOUR CANVAS',
-    body: 'Adjust the box width or height. This sets the size of your piece.',
+    body: 'Open CANVAS, then adjust the box width or height. This sets the size of your piece.',
     target: 'canvas-size',
   },
   'move-canvas': {
     title: 'MOVE YOUR CANVAS',
-    body: 'Tap MOVE AREA. The controls collapse so you can drag the box on the wall. Tap DONE MOVING when it looks right.',
+    body: 'Open CANVAS and tap MOVE AREA. The controls collapse so you can drag the box on the wall. Tap DONE MOVING when it looks right.',
     target: 'canvas-move',
   },
   'start-painting': {
     title: 'START YOUR PIECE',
-    body: 'Tap START PAINTING when the size and position look right. Solo canvases are free; multiplayer uses your confirmed purchase.',
+    body: 'Open CANVAS and tap START PAINTING when the size and position look right. Solo canvases are free; multiplayer uses your confirmed purchase.',
     target: 'canvas-start',
   },
   tools: {
@@ -74,7 +74,7 @@ const COPY: Record<TutorialStep, StepCopy> = {
   },
   finish: {
     title: 'FINISH YOUR PIECE',
-    body: 'Name it if you want, then finish the piece to save it.',
+    body: 'Open CANVAS, name it if you want, then finish the piece to save it.',
     target: 'piece-finish',
   },
   save: {
@@ -127,7 +127,8 @@ export default function TutorialOverlay({ step, menu, reviewing = false, multipl
       const visible = sheetViewport(rect, shell.clientWidth, shell.clientHeight, viewport ?? { offsetLeft: 0, offsetTop: 0, width: window.innerWidth, height: window.innerHeight }, rotated);
       Object.assign(layer.current!.style, { left: `${visible.left}px`, top: `${visible.top}px`, width: `${visible.width}px`, height: `${visible.height}px` });
       shell.style.setProperty('--tutorial-space', `${visible.top + card.current!.offsetHeight + 16}px`);
-      const target = copy.target ? shell.querySelector<HTMLElement>(`[data-tutorial="${copy.target}"]`) : null;
+      let target = copy.target ? shell.querySelector<HTMLElement>(`[data-tutorial="${copy.target}"]`) : null;
+      if ((!target || !target.getClientRects().length) && ['canvas-size', 'canvas-move', 'canvas-start', 'piece-finish'].includes(copy.target ?? '')) target = shell.querySelector<HTMLElement>('[data-tutorial="canvas-controls"]');
       if (watchedTarget !== target) {
         if (watchedTarget) observer.unobserve(watchedTarget);
         watchedTarget = target;
@@ -147,7 +148,8 @@ export default function TutorialOverlay({ step, menu, reviewing = false, multipl
     mutations.observe(shell, { childList: true, subtree: true });
     update();
     const frame = requestAnimationFrame(() => {
-      const target = copy.target ? shell.querySelector<HTMLElement>(`[data-tutorial="${copy.target}"]`) : null;
+      let target = copy.target ? shell.querySelector<HTMLElement>(`[data-tutorial="${copy.target}"]`) : null;
+      if ((!target || !target.getClientRects().length) && ['canvas-size', 'canvas-move', 'canvas-start', 'piece-finish'].includes(copy.target ?? '')) target = shell.querySelector<HTMLElement>('[data-tutorial="canvas-controls"]');
       const body = target?.closest<HTMLElement>('.game-sheet-body');
       if (target && body) {
         const rect = shell.getBoundingClientRect();

@@ -31,7 +31,7 @@ function canvasFixture() {
   let path: unknown[] = [];
   const context: any = {
     canvas, draws: [], globalAlpha: 1, globalCompositeOperation: 'source-over',
-    save() {}, restore() {}, setTransform() {}, fillRect() {}, fillText() {},
+    save() {}, restore() {}, setTransform() {}, fillRect() {}, fillText() {}, measureText(value: string) { return { width: value.length * 12 }; },
     beginPath() { path = []; },
     moveTo(...args: number[]) { path.push(['move', ...args]); },
     lineTo(...args: number[]) { path.push(['line', ...args]); },
@@ -902,4 +902,29 @@ test('join account and permissions messages are retained before the initial snap
   socket.receive({ type: 'error', code: 'insufficient_credits', pieceId: 'piece' });
   assert.equal(messages.at(-1).code, 'insufficient_credits');
   connection.disconnect();
+});
+
+test('live chat echoes attach bubbles to own and remote avatars and clean up on leave', () => {
+  const sockets: Socket[] = [], oldSocket = globalThis.WebSocket;
+  (globalThis as any).WebSocket = class extends Socket { constructor() { super(); sockets.push(this); } };
+  const scene = new THREE.Scene(), playerAvatar = new THREE.Group();
+  const world: any = { scene, playerAvatar, walls: [], setPaintSession() {}, playerPosition: new THREE.Vector3(), playerYaw: 0, playerPitch: 0, paintRevision: 0 };
+  const session = new WorldMultiplayerSession(world, () => {});
+  try {
+    session.join('Self'); const socket = sockets[0]; socket.readyState = 1;
+    socket.receive({ type: 'hello', protocol: 2, playerId: 'self' });
+    socket.receive({ type: 'world_snapshot', protocol: 2, roomId: 'public', playerId: 'self', sequence: 10, revision: 10, strokes: [], artworks: [], worldItems: [], graffitiPieces: [], players: [{ playerId: 'other', displayName: 'Other', state: { position: [0, 1.72, 1], rotation: [0, 0, 0] } }], chatHistory: [{ id: 'history', playerId: 'self', text: 'old', timestamp: 1 }] });
+    const remote = scene.children.find(child => child.userData.parts)!;
+    assert.equal(playerAvatar.children.length, 0, 'history must not create an own bubble');
+    const remoteLabels = remote.children.filter(child => child instanceof THREE.Sprite).length;
+    const own = { id: 'own', playerId: 'self', text: 'hello from me', timestamp: 2 };
+    socket.receive({ type: 'chat_message', sequence: 11, revision: 11, message: own });
+    assert.equal(playerAvatar.children.length, 1);
+    const original = playerAvatar.children[0];
+    socket.receive({ type: 'chat_message', sequence: 12, revision: 12, message: own });
+    assert.equal(playerAvatar.children[0], original, 'duplicate must not replace the bubble');
+    socket.receive({ type: 'chat_message', sequence: 13, revision: 13, message: { id: 'remote', playerId: 'other', text: 'hi there', timestamp: 3 } });
+    assert.equal(remote.children.filter(child => child instanceof THREE.Sprite).length, remoteLabels + 1);
+    session.leave(); assert.equal(playerAvatar.children.length, 0); assert.equal(scene.children.length, 0);
+  } finally { session.dispose(); globalThis.WebSocket = oldSocket; }
 });

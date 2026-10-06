@@ -2,6 +2,7 @@ import { useState, useEffect, type ReactNode } from 'react';
 import type { BrushHead } from '@/game/sprayHeads';
 import assetsData from '@/config/assets';
 import BrushTuning from '@/components/BrushTuning';
+import ColorPicker from '@/components/ColorPicker';
 import GameSheet from '@/components/GameSheet';
 import PosterStudio from '@/components/PosterStudio';
 import { hexToHsl, paintColor } from '@/game/paintColor';
@@ -39,6 +40,7 @@ function paletteStorage(): PaletteStorage | null {
 }
 
 const PaintDock = (props: PaintDockProps) => {
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [tuningOpen, setTuningOpen] = useState(false);
   const [posterMode, setPosterMode] = useState(false);
   const [baseColor, setBaseColor] = useState(props.color);
@@ -126,12 +128,14 @@ const PaintDock = (props: PaintDockProps) => {
         <section className="tool-section"><h3>COLOUR <span className="color-readout"><i style={{ backgroundColor: props.color }} />{props.color.toUpperCase()}</span></h3>
           <div className="swatches" aria-label="Color palette">
             {paletteColors.map(swatch => <button key={swatch} type="button" aria-label={`Select paint colour ${swatch}`} title={swatch} aria-pressed={props.color === swatch} className={`swatch ${props.color === swatch ? 'swatch-selected' : ''}`} style={{ backgroundColor: swatch }} onClick={() => selectBaseColor(swatch)} />)}
-            <label className="wheel-picker" aria-label="Choose any paint color"><input aria-label="Custom paint colour" type="color" value={props.color} onChange={event => selectBaseColor(event.target.value)} /><span>＋</span></label>
+            <button type="button" className="wheel-picker" aria-label="Create custom paint colour" onClick={() => setPickerOpen(value => !value)}>＋</button>
           </div>
           <div className="colour-actions">
-            {props.onEyedropper && <button type="button" className="ui-button" aria-pressed={!!props.eyedropperActive} onClick={() => { props.onEyedropper?.(); props.onToggle(); }}>PICK COLOUR</button>}
+            <button type="button" aria-expanded={pickerOpen} onClick={() => setPickerOpen(value => !value)}>PICK COLOUR</button>
+            {props.onEyedropper && <button type="button" className="ui-button" aria-pressed={!!props.eyedropperActive} onClick={() => { props.onEyedropper?.(); props.onToggle(); }}>EYEDROPPER</button>}
             <label className="hex-control"><span>HEX</span><input aria-label="Hex paint colour" value={colorDraft} maxLength={7} spellCheck={false} onBlur={() => setColorDraft(props.color)} onChange={event => { const next = event.target.value.toLowerCase(); setColorDraft(next); if (/^#[0-9a-f]{6}$/.test(next)) selectBaseColor(next); }} /></label>
           </div>
+          {pickerOpen && <ColorPicker color={props.color} onChange={selectBaseColor} />}
           {recentColors.length > 0 && <div className="recent-colours" aria-label="Recent colours">{recentColors.map(recent => <button type="button" key={recent} aria-label={`Reuse ${recent}`} style={{ backgroundColor: recent }} onClick={() => selectBaseColor(recent)} />)}</div>}
         </section>
         <div className="tool-mode" aria-label="Paint operation">

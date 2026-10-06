@@ -10,7 +10,7 @@ export function readChatMessage(value: unknown): ChatMessage | null {
 export class ChatSync {
   messages: ChatMessage[] = [];
   private lastSent = -Infinity;
-  constructor(private transmit: (message: Message) => boolean, private changed: (messages: ChatMessage[]) => void) {}
+  constructor(private transmit: (message: Message) => boolean, private changed: (messages: ChatMessage[]) => void, private live?: (message: ChatMessage) => void) {}
   snapshot(values: unknown[]): void {
     this.messages = [];
     for (const value of values.slice(-100)) this.add(value, false);
@@ -21,7 +21,7 @@ export class ChatSync {
     const message = readChatMessage(value);
     if (!message || this.messages.some(m => m.id === message.id)) return;
     this.messages = [...this.messages, message].sort((a,b) => a.timestamp - b.timestamp).slice(-100);
-    if (notify) this.changed([...this.messages]);
+    if (notify) { this.changed([...this.messages]); this.live?.(message); }
   }
   send(value: string): boolean {
     const text = value.trim().slice(0, 500); const now = performance.now();

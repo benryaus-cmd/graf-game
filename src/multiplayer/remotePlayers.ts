@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { SpeechBubble } from '../game/speechBubble';
 import { createPlayerAvatar } from '../game/playerAvatar';
 import { updatePlayerAvatar, applyAvatarAppearance, triggerAvatarEmote } from '../game/playerAvatarAppearance';
 import { SHOP_ITEMS } from '../game/shopCatalog';
@@ -10,7 +11,7 @@ import { readPlayer, readPlayerState, type PlayerState, type Message } from './p
 import { elementPointerPoint } from '../game/pointerCoordinates';
 
 interface RemotePlayer {
-  avatar: THREE.Group; current: PlayerState | null; target: PlayerState | null; name: string;
+  bubble?: SpeechBubble; avatar: THREE.Group; current: PlayerState | null; target: PlayerState | null; name: string;
   username?: string; role?: ServerRole; appearance?: string; lastEmote?: string;
 }
 export interface PickedPlayer { playerId: string; username: string; nickName: string; role?: ServerRole }
@@ -122,9 +123,16 @@ export class RemotePlayers {
       updatePlayerAvatar(remote.avatar, delta, state.movement !== 'idle', state.jumping === true || state.flightState === 'flying' || state.flightState === 'levitating');
     }
   }
+  say(playerId: string, text: string): void {
+    const remote = this.players.get(playerId);
+    if (!remote) return;
+    remote.bubble ??= new SpeechBubble(remote.avatar);
+    remote.bubble.show(text);
+  }
   left(playerId: string): void {
     const player = this.players.get(playerId);
     if (!player) return;
+    player.bubble?.dispose();
     this.scene.remove(player.avatar);
     const geometry = new Set<THREE.BufferGeometry>(); const materials = new Set<THREE.Material>(); const textures = new Set<THREE.Texture>();
     player.avatar.traverse(object => {

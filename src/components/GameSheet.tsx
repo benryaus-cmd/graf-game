@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
+import { useRotatedSheetScroll } from '@/components/useRotatedSheetScroll';
 import { sheetViewport } from '@/components/sheetViewport';
 
 interface GameSheetProps {
@@ -14,6 +15,7 @@ interface GameSheetProps {
 
 /** Presentation only: dismissing a sheet never invokes a game action. */
 export default function GameSheet({ title, subtitle, onClose, children, footer, className = '', closeLabel = 'Close panel' }: GameSheetProps) {
+  const scroll = useRotatedSheetScroll();
   const titleId = useId();
   const panel = useRef<HTMLElement>(null);
   const close = useRef(onClose);
@@ -71,7 +73,7 @@ export default function GameSheet({ title, subtitle, onClose, children, footer, 
         <div><h2 id={titleId}>{title}</h2>{subtitle && <p>{subtitle}</p>}</div>
         <button className="sheet-close" type="button" aria-label={closeLabel} onClick={onClose}>×</button>
       </header>
-      <div className="game-sheet-body">{children}</div>
+      <div className="game-sheet-body" {...scroll}>{children}</div>
       {footer && <footer className="game-sheet-footer">{footer}</footer>}
     </section>
   </div>;

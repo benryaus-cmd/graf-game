@@ -25,6 +25,8 @@ import type { AvatarEmote, CameraMode, MovementInput, SkyMode } from '@/game/wor
 import type { BrushHead } from '@/game/sprayHeads';
 import { LiveRadioController } from '@/game/liveRadio';
 import { RADIO_STREAM_URL } from '@/config/radio';
+import ReferenceSheet from '@/components/ReferenceSheet';
+import type { ReferenceSettings } from '@/game/referenceGuide';
 import TutorialOverlay from '@/components/TutorialOverlay';
 import { TUTORIAL_ORDER, nextTutorialStep, tutorialStartStep, tutorialObservedStep, readTutorialCompleted, writeTutorialCompleted, type TutorialStep } from '@/game/tutorial';
 
@@ -85,7 +87,11 @@ const App = () => {
   const [portrait, setPortrait] = useState(false);
   const [screenPortrait, setScreenPortrait] = useState(() => window.innerHeight >= window.innerWidth);
   const rotatedPortrait = portrait ? !screenPortrait : screenPortrait;
+  const [canvasCollapsed, setCanvasCollapsed] = useState(true);
+  const [reference, setReference] = useState<ReferenceSettings | null>(null);
+  useEffect(() => { const url = reference?.url; return () => { if (url) URL.revokeObjectURL(url); }; }, [reference?.url]);
   const [workspaceView, setWorkspaceView] = useState<PaintWorkspaceView>({ selected: false, active: false, width: 0, height: 0 });
+  useEffect(() => { if (!workspaceView.selected) { setCanvasCollapsed(true); setReference(current => current?.moving ? { ...current, moving: false } : current); } }, [workspaceView.selected]);
   const [localPieceNames, setLocalPieceNames] = useState<Record<string, string>>(readLocalPieceNames);
   const [pieceTitleDraft, setPieceTitleDraft] = useState('');
   const [protectionEnabled, setProtectionEnabled] = useState(false);
@@ -106,6 +112,7 @@ const App = () => {
   const requestWorkspace = (action: PaintWorkspaceAction, size?: number, height?: number, requestedTitle?: string, requestedProtectionEnabled?: boolean) => {
     if ((action === 'start' || action === 'enter') && multiplayerView.protection?.pendingPurchase) return;
     if (action === 'start' && protectionStartDisabled) return;
+    if (['start', 'enter', 'exit', 'finish', 'clear', 'move'].includes(action)) setCanvasCollapsed(true);
     const title = requestedTitle?.trim().slice(0, 60) || undefined;
     if (action === 'finish' && title && workspaceNameKey) {
       const next = { ...localPieceNames, [workspaceNameKey]: title };
@@ -245,6 +252,7 @@ const App = () => {
   const closeMenu = () => setActiveMenu(null);
   const advanceTutorial = (expected: TutorialStep) => setTutorialStep(current => current === expected ? nextTutorialStep(current) : current);
   const beginTutorial = () => {
+    setReference(current => current?.moving ? { ...current, moving: false } : current);
     setTutorialReview(false);
     setHasJoined(true);
     setMovement({ x: 0, y: 0 }); setLookInput({ x: 0, y: 0 });
@@ -355,6 +363,7 @@ const App = () => {
     setViewMode(current => modes[(modes.indexOf(current) + 1) % modes.length]);
   };
   const playEmote = (emote: AvatarEmote) => {
+    closeMenu();
     setViewMode('third');
     setEmoteSignal(current => ({ emote, sequence: (current?.sequence ?? 0) + 1 }));
   };
@@ -368,7 +377,7 @@ const App = () => {
   const jumpLabel = progress.outfit === 'jax' ? 'FLY' : progress.outfit === 'ringmaster' ? 'LEVITATE'
     : progress.outfit === 'pomni' ? 'HIGH JUMP' : 'JUMP';
 
-  const workspaceHud = <PaintWorkspaceHud key={tutorialStep ?? 'workspace'} initialCollapsed={tutorialStep === 'paint'} compact={activeMenu === 'paint'} view={workspaceView} painting={paintMode && !adminFreePaint} onAction={requestWorkspace}
+  const workspaceHud = <PaintWorkspaceHud collapsed={canvasCollapsed} onCollapsedChange={setCanvasCollapsed} onReference={() => { setCanvasCollapsed(true); toggleMenu('reference'); }} view={workspaceView} painting={paintMode && !adminFreePaint} onAction={requestWorkspace}
             protectionEnabled={protectionEnabled} startDisabled={protectionStartDisabled} startLabel={protectionStartLabel}
             pieceTitle={pieceTitleDraft} onPieceTitleChange={setPieceTitleDraft}
             protectedUntil={multiplayerView.protection?.protectedUntil} geometryLocked={!!multiplayerView.protection?.pendingPurchase || !!multiplayerView.protection?.purchased}
@@ -405,6 +414,7 @@ const App = () => {
       ) : (
         <>
           <WorldScene
+            reference={reference} onReferenceMove={(x, y) => setReference(current => current ? { ...current, x, y } : null)}
             eyedropperActive={eyedropperActive} onColorPick={pickColour}
             brushHead={brushHead}
             workspaceRequest={workspaceRequest} onWorkspaceChange={setWorkspaceView}
@@ -425,7 +435,7 @@ const App = () => {
           <GameHud
             eyedropperActive={eyedropperActive} onEyedropper={() => { setMovement({ x: 0, y: 0 }); setLookInput({ x: 0, y: 0 }); setEyedropperNotice('Tap existing paint to pick its colour.'); setEyedropperActive(true); }}
             brushHead={brushHead} onBrushHeadChange={setBrushHead}
-            hideTouchControls={workspaceView.active || !!activeMenu || eyedropperActive}
+            hideTouchControls={workspaceView.active || !!activeMenu || eyedropperActive || !!reference?.moving}
             panelColor={panelColor} accentColor={accentColor} sky={sky} activeMenu={activeMenu}
             canAdminPaint={!!multiplayerStatus.canAdminPaint} adminFreePaint={adminFreePaint} musicReady={false} radioController={radioController} radioUrl={radioController ? RADIO_STREAM_URL : undefined} radioVolume={musicVolume} paintMode={paintMode} eraseMode={eraseMode}
             showCrosshair={showCrosshair} color={color} brushSize={brushSize * 3} opacity={opacity}
@@ -444,7 +454,7 @@ const App = () => {
             onPurchase={purchaseItem} onEquip={equipItem} onEmote={playEmote}
             onMovement={setMovement} onJump={() => setJumpSignal(signal => signal + 1)}
             onBotsToggle={() => setBotsEnabled(enabled => !enabled)}
-            workspaceControls={activeMenu === 'paint' && tutorialStep !== 'tools' && tutorialStep !== 'paint' ? workspaceHud : undefined}
+
             topControls={<>
               <div className="top-network-controls">
                 {multiplayerStatus.phase !== 'solo' ? <CanvasCredits balance={multiplayerView.protection?.creditBalance ?? null} /> : <span className="canvas-credit-status" aria-label="Solo coins">🪙 {progress.coins}</span>}
@@ -455,8 +465,12 @@ const App = () => {
               </div>
             </>}
           />
-          {!activeMenu && <LookJoystick onLook={setLookInput} canvasMode={workspaceView.active} />}
-          {activeMenu !== 'paint' && workspaceHud}
+          {!activeMenu && !reference?.moving && <LookJoystick onLook={setLookInput} canvasMode={workspaceView.active} />}
+          <div hidden={!!activeMenu || !!reference?.moving}>{workspaceHud}</div>
+          {workspaceView.selected && !activeMenu && reference && (reference.moving || canvasCollapsed) && <aside className="reference-quick-controls" aria-label="Reference guide actions">
+            {reference.moving ? <><span>Drag to position guide</span><button type="button" className="ui-primary" onClick={() => setReference({ ...reference, moving: false })}>DONE MOVING</button></> : <><button type="button" onClick={() => toggleMenu('reference')}>REFERENCE</button><button type="button" onClick={() => setReference({ ...reference, visible: !reference.visible })}>{reference.visible ? 'HIDE' : 'SHOW'}</button><button type="button" onClick={() => setReference({ ...reference, visible: true, moving: true })}>MOVE</button></>}
+          </aside>}
+          {activeMenu === 'reference' && <ReferenceSheet selected={workspaceView.selected} guide={reference} onChange={setReference} onClose={closeMenu} />}
           {eyedropperActive && <aside className="eyedropper-hint" role="status"><span>{eyedropperNotice}</span><button type="button" onClick={() => setEyedropperActive(false)}>CANCEL</button></aside>}
           <div hidden={activeMenu === 'paint'}>
           <PlayerInteractionCard open={activeMenu === 'player'} onClose={closeMenu} adminResult={multiplayerView.adminResult} onAdminAction={(action, targetUsername, options) => {

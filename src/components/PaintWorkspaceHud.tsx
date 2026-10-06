@@ -1,10 +1,14 @@
 import { useEffect, useState } from 'react';
+import { useRotatedSheetScroll } from '@/components/useRotatedSheetScroll';
 import type { ReactNode } from 'react';
 export interface PaintWorkspaceView { selected: boolean; active: boolean; width: number; height: number; zoom?: number; sizeLinked?: boolean; started?: boolean; hasPaint?: boolean; moving?: boolean; editableUntil?: number; bounds?: { min: [number, number, number]; max: [number, number, number] } }
 export type PaintWorkspaceAction = 'start' | 'enter' | 'exit' | 'clear' | 'finish' | 'resize' | 'zoom' | 'fit' | 'link' | 'move';
-interface Props { view: PaintWorkspaceView; painting: boolean; onAction: (action: PaintWorkspaceAction, size?: number, height?: number, title?: string, protectionEnabled?: boolean) => void; protectionControls?: ReactNode; geometryLocked?: boolean; protectedUntil?: number | null; compact?: boolean; initialCollapsed?: boolean; pieceTitle?: string; onPieceTitleChange?: (title: string) => void; protectionEnabled?: boolean; startDisabled?: boolean; startLabel?: string }
-export default function PaintWorkspaceHud({ view, painting, onAction, protectionControls, geometryLocked = false, protectedUntil, compact = false, initialCollapsed = false, pieceTitle = '', onPieceTitleChange, protectionEnabled = false, startDisabled = false, startLabel = 'START PAINTING' }: Props) {
-  const [collapsed, setCollapsed] = useState(initialCollapsed);
+interface Props { view: PaintWorkspaceView; painting: boolean; onAction: (action: PaintWorkspaceAction, size?: number, height?: number, title?: string, protectionEnabled?: boolean) => void; onReference?: () => void; protectionControls?: ReactNode; geometryLocked?: boolean; protectedUntil?: number | null; compact?: boolean; initialCollapsed?: boolean; collapsed?: boolean; onCollapsedChange?: (value: boolean) => void; pieceTitle?: string; onPieceTitleChange?: (title: string) => void; protectionEnabled?: boolean; startDisabled?: boolean; startLabel?: string }
+export default function PaintWorkspaceHud({ view, painting, onAction, onReference, protectionControls, geometryLocked = false, protectedUntil, compact = false, initialCollapsed = true, collapsed: controlledCollapsed, onCollapsedChange, pieceTitle = '', onPieceTitleChange, protectionEnabled = false, startDisabled = false, startLabel = 'START PAINTING' }: Props) {
+  const scroll = useRotatedSheetScroll();
+  const [localCollapsed, setLocalCollapsed] = useState(initialCollapsed);
+  const collapsed = controlledCollapsed ?? localCollapsed;
+  const setCollapsed = (value: boolean) => { setLocalCollapsed(value); onCollapsedChange?.(value); };
   const minimized = collapsed || !!view.moving;
   const [now, setNow] = useState(Date.now);
   useEffect(() => {
@@ -24,12 +28,13 @@ export default function PaintWorkspaceHud({ view, painting, onAction, protection
       <button type="button" aria-label="Zoom in" onClick={() => onAction('zoom', Math.min(8, (view.zoom ?? 1) + .25))}>+</button>
       <button type="button" onClick={() => onAction('fit')}>FIT</button>
     </aside>}
-    <aside className={`paint-workspace-controls${minimized ? ' is-collapsed' : ''}`} aria-label="Painting area">
-    {view.moving && <button type="button" data-tutorial="canvas-move" className="workspace-move-done" onClick={() => { setCollapsed(false); onAction('move', 0); }}>DONE MOVING</button>}
-    {!compact && !view.moving && <button type="button" className="workspace-collapse-toggle" aria-expanded={!minimized} aria-label={minimized ? 'Expand canvas controls' : 'Collapse canvas controls'} onClick={() => setCollapsed(value => !value)}>{minimized ? 'CANVAS ▾' : 'COLLAPSE ▴'}</button>}
+    <aside className={`paint-workspace-controls${minimized ? ' is-collapsed' : ''}`} aria-label="Painting area" {...scroll}>
+    {view.moving && <button type="button" data-tutorial="canvas-move" className="workspace-move-done" onClick={() => { setCollapsed(true); onAction('move', 0); }}>DONE MOVING</button>}
+    {!compact && !view.moving && <button type="button" data-tutorial="canvas-controls" className="workspace-collapse-toggle" aria-expanded={!minimized} aria-label={minimized ? 'Expand canvas controls' : 'Collapse canvas controls'} onClick={() => setCollapsed(!collapsed)}>{minimized ? 'CANVAS ▾' : 'COLLAPSE ▴'}</button>}
     {(!minimized || (compact && !view.moving)) && <>
     {!view.selected ? <span>Tap a nearby wall to select your painting area.</span> : <>
       <span>{view.width.toFixed(1)} × {view.height.toFixed(1)} m <small>{protectedUntil && protectedUntil > now ? 'PROTECTED' : 'UNPROTECTED'}</small></span>
+      {onReference && <button type="button" onClick={onReference}>REFERENCE IMAGE</button>}
       {!compact && !view.started && protectionControls}
       {!compact && !view.hasPaint && !geometryLocked && <div className="paint-workspace-size-controls" data-tutorial="canvas-size">
         <button type="button" data-tutorial="canvas-move" aria-pressed={false} onClick={() => { setCollapsed(true); onAction('move', 1); }}>

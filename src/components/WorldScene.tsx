@@ -21,9 +21,12 @@ import type { ServerRole } from '@/multiplayer/permissions';
 import type { BrushHead } from '@/game/sprayHeads';
 import { workspaceWorldBounds } from '@/game/paintWorkspaceFeedback';
 import type { AdminAction, AdminActionOptions } from '@/multiplayer/adminActions';
+import { ReferenceGuide, type ReferenceSettings } from '@/game/referenceGuide';
 import { PieceEditGrace } from '@/game/pieceEditGrace';
 
 interface WorldSceneProps {
+  reference?: ReferenceSettings | null;
+  onReferenceMove?: (x: number, y: number) => void;
   adminFreePaint?: boolean;
   brushHead: BrushHead;
   workspaceRequest: { action: PaintWorkspaceAction; size?: number; height?: number; title?: string; protectionEnabled?: boolean; sequence: number } | null;
@@ -49,6 +52,8 @@ const WorldScene = (props: WorldSceneProps) => {
   workspaceCallbackRef.current = props.onWorkspaceChange;
   const colorPickCallbackRef = useRef(props.onColorPick);
   colorPickCallbackRef.current = props.onColorPick;
+  const referenceRef = useRef<ReferenceGuide | null>(null);
+  const dragRef = useRef<{ id: number; start: THREE.Vector2; x: number; y: number } | null>(null);
   const mountRef = useRef<HTMLDivElement>(null);
   const worldRef = useRef<WorldEngine | null>(null);
   const multiplayerRef = useRef<WorldMultiplayerSession | null>(null);
@@ -104,8 +109,11 @@ const WorldScene = (props: WorldSceneProps) => {
     if (!container) return;
     const world = createWorld(container, liveRef.current.fogDensity);
     worldRef.current = world;
+    const guide = new ReferenceGuide(world);
+    referenceRef.current = guide;
     world.onPaintWorkspaceChange = workspace => {
       multiplayerRef.current?.workspaceChanged();
+      guide.refresh();
       const selection = workspace?.selection;
       let bounds: PaintWorkspaceView['bounds'];
       if (selection) bounds = workspaceWorldBounds(selection);
@@ -153,6 +161,7 @@ const WorldScene = (props: WorldSceneProps) => {
       window.removeEventListener('resize', resize);
       if (posterRef.current) disposePosterPlacementSession(world, posterRef.current);
       posterRef.current = null;
+      guide.dispose(); referenceRef.current = null;
       disposeWorld(world);
       if (worldRef.current === world) worldRef.current = null;
     };
@@ -283,7 +292,25 @@ const WorldScene = (props: WorldSceneProps) => {
     multiplayerRef.current?.emote(props.emoteSignal.emote);
   }, [props.emoteSignal]);
 
-  return <div ref={mountRef} className="world-mount" />;
+  useEffect(() => { referenceRef.current?.set(props.reference ?? null); }, [props.reference]);
+
+  return <><div ref={mountRef} className="world-mount" />
+    {props.reference?.moving && <div className="reference-move-surface" aria-label="Drag to position reference image"
+      onPointerDown={event => {
+        if (dragRef.current || (event.pointerType === 'mouse' && event.button !== 0)) return;
+        const start = referenceRef.current?.point(event, event.currentTarget);
+        if (!start) return;
+        event.preventDefault(); event.stopPropagation(); event.currentTarget.setPointerCapture(event.pointerId);
+        dragRef.current = { id: event.pointerId, start, x: props.reference!.x, y: props.reference!.y };
+      }}
+      onPointerMove={event => {
+        const drag = dragRef.current;
+        if (!drag || drag.id !== event.pointerId) return;
+        const point = referenceRef.current?.point(event, event.currentTarget);
+        if (point) props.onReferenceMove?.(drag.x + point.x - drag.start.x, drag.y + point.y - drag.start.y);
+      }}
+      onPointerUp={() => { dragRef.current = null; }} onPointerCancel={() => { dragRef.current = null; }} onLostPointerCapture={() => { dragRef.current = null; }} />}
+  </>;
 };
 
 export default WorldScene;

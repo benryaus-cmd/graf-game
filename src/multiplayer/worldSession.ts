@@ -6,6 +6,7 @@ import { PaintSync } from './paintSync';
 import { PaintReplay } from './paintReplay';
 import { headForTool } from '../game/sprayHeads';
 import { PlayerSync } from './playerSync';
+import { SpeechBubble } from '../game/speechBubble';
 import { RemotePlayers } from './remotePlayers';
 import { decodeSurface, encodeSurface } from './surfaces';
 import { ChatSync } from './chat';
@@ -40,6 +41,7 @@ export class WorldMultiplayerSession {
   private players: RemotePlayers;
   private playerSync: PlayerSync;
   private chat: ChatSync;
+  private ownSpeech: SpeechBubble;
   private artworks: ArtworkSync;
   private pieces: PieceSync;
   private protection: ProtectionSync;
@@ -88,6 +90,7 @@ export class WorldMultiplayerSession {
     private reportView: (view: MultiplayerView) => void = () => {}) {
     this.lastPosition = world.playerPosition.toArray();
     this.players = new RemotePlayers(world.scene);
+    this.ownSpeech = new SpeechBubble(world.playerAvatar);
     this.replay = new PaintReplay(() => this.visibility);
     this.connection = new MultiplayerConnection(MULTIPLAYER_URL, status => {
       if (status.phase === 'disconnected' || status.phase === 'connecting') {
@@ -96,12 +99,15 @@ export class WorldMultiplayerSession {
         this.world.adminFreePaint = false;
         this.selectedPlayer = null; this.roleChange = undefined; this.adminResult = undefined;
         this.selectedPieceForView = null;
-        this.paint.interrupted(); this.artworks.interrupted(); this.players.clear(); this.serverPlayerCount = null;
+        this.paint.interrupted(); this.artworks.interrupted(); this.players.clear(); this.ownSpeech.dispose(); this.serverPlayerCount = null;
         this.emitView();
       }
       this.emit(status);
     }, message => this.message(message));
-    this.chat = new ChatSync(message => this.connection.send(message), () => this.emitView());
+    this.chat = new ChatSync(message => this.connection.send(message), () => this.emitView(), message => {
+      if (message.playerId === this.connection.playerId) this.ownSpeech.show(message.text);
+      else this.players.say(message.playerId, message.text);
+    });
     this.order = new WorldOrder();
     this.pieces = new PieceSync(message => this.sendWorld(message), (_pieces, removedStrokeIds) => {
       this.protectionRevision++;
@@ -387,7 +393,7 @@ export class WorldMultiplayerSession {
     this.selectedPlayer = null; this.roleChange = undefined; this.adminResult = undefined;
     this.selectedPieceForView = null;
     this.completePiece(); this.pieces.clear(); clearPaintWorkspace(this.world);
-    this.paint.interrupted(); this.artworks.interrupted(); this.players.clear(); this.playerSync.reset(); this.serverPlayerCount = null;
+    this.paint.interrupted(); this.artworks.interrupted(); this.players.clear(); this.ownSpeech.dispose(); this.playerSync.reset(); this.serverPlayerCount = null;
     this.flattenPrepareGeneration++; this.pendingFlatten = null;
     this.connection.connect(displayName, roomId, identity);
   }
@@ -398,7 +404,7 @@ export class WorldMultiplayerSession {
     this.world.adminFreePaint = false;
     this.selectedPlayer = null; this.roleChange = undefined; this.adminResult = undefined;
     this.selectedPieceForView = null;
-    this.completePiece(); clearPaintWorkspace(this.world); this.players.clear(); this.replay.cancel(); this.artworks.clear(); this.pieces.clear();
+    this.completePiece(); clearPaintWorkspace(this.world); this.players.clear(); this.ownSpeech.dispose(); this.replay.cancel(); this.artworks.clear(); this.pieces.clear();
     this.flattenPrepareGeneration++; this.pendingFlatten = null;
     this.connection.disconnect();
     this.multiplayer = false; this.world.multiplayerActive = false; this.walls.clear(); this.recompose.clear();
@@ -413,7 +419,7 @@ export class WorldMultiplayerSession {
     this.world.adminFreePaint = false;
     this.selectedPlayer = null; this.roleChange = undefined; this.adminResult = undefined;
     this.selectedPieceForView = null;
-    this.completePiece(); clearPaintWorkspace(this.world); this.players.clear(); this.replay.cancel(); this.artworks.clear(); this.pieces.clear();
+    this.completePiece(); clearPaintWorkspace(this.world); this.players.clear(); this.ownSpeech.dispose(); this.replay.cancel(); this.artworks.clear(); this.pieces.clear();
     this.flattenPrepareGeneration++; this.pendingFlatten = null;
     this.connection.disconnect();
     this.world.multiplayerActive = false;
@@ -599,7 +605,7 @@ export class WorldMultiplayerSession {
       this.multiplayer = true; this.world.multiplayerActive = true;
       this.order.snapshot(message);
       this.world.setPaintSession('multiplayer'); this.refreshWalls();
-      this.players.clear();
+      this.players.clear(); this.ownSpeech.dispose();
       for (const player of Array.isArray(message.players) ? message.players : []) {
         this.players.joined(player, this.connection.playerId);
       }

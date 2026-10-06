@@ -52,7 +52,7 @@ test('paint tools show every default colour and five layers without MORE; closed
 test('canvas actions show only the preparation pair or painting pair', async () => {
   const { default: Hud } = await import('../src/components/PaintWorkspaceHud');
   const view = { selected: true, active: false, width: 2, height: 2 };
-  const render = (started: boolean) => renderToStaticMarkup(createElement(Hud, { view: { ...view, started }, painting: true, onAction: () => {} }));
+  const render = (started: boolean) => renderToStaticMarkup(createElement(Hud, { view: { ...view, started }, initialCollapsed: false, painting: true, onAction: () => {} }));
   const preparing = render(false);
   assert.ok(preparing.includes('START PAINTING'));
   assert.ok(preparing.includes('CANCEL'));
@@ -61,7 +61,7 @@ test('canvas actions show only the preparation pair or painting pair', async () 
   assert.ok(painting.includes('ENTER CANVAS'));
   assert.ok(painting.includes('CANCEL'));
   assert.ok(!painting.includes('FINISH PIECE'));
-  const painted = renderToStaticMarkup(createElement(Hud, { view: { ...view, started: true, hasPaint: true }, painting: true, onAction: () => {} }));
+  const painted = renderToStaticMarkup(createElement(Hud, { view: { ...view, started: true, hasPaint: true }, initialCollapsed: false, painting: true, onAction: () => {} }));
   assert.ok(painted.includes('FINISH PIECE'));
   assert.ok(!painted.includes('CANCEL'));
 });

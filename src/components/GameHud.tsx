@@ -2,6 +2,7 @@ import MovementJoystick from '@/components/MovementJoystick';
 import PaintDock from '@/components/PaintDock';
 import PosterPlacementHud from '@/components/PosterPlacementHud';
 import type { PosterPlacementRequest } from '@/game/usePosterPlacement';
+import EmoteSheet from '@/components/EmoteSheet';
 import AvatarMenu from '@/components/AvatarMenu';
 import SkyMenu from '@/components/SkyMenu';
 import type { ShopItem, GameProgress } from '@/game/progression';
@@ -11,7 +12,7 @@ import type { ReactNode } from 'react';
 
 import type { LiveRadioController } from '@/game/liveRadio';
 
-export type HudMenu = 'paint' | 'bots' | 'avatar' | 'sky' | 'chat' | 'art' | 'player' | 'settings' | null;
+export type HudMenu = 'paint' | 'bots' | 'avatar' | 'sky' | 'chat' | 'art' | 'player' | 'settings' | 'emotes' | 'reference' | null;
 type PaintTool = 'paint' | 'eraser' | 'off' | 'admin';
 interface PaintLayerControl { name: string; visible: boolean }
 interface GameHudProps {
@@ -90,7 +91,9 @@ const GameHud = (props: GameHudProps) => (
       />
     )}
     {!props.hideTouchControls && <MovementJoystick onMove={props.onMovement} />}
-    {!props.hideTouchControls && <button className="jump-button" type="button" onClick={props.onJump} aria-label={props.jumpLabel}>
+    {props.activeMenu === 'emotes' && <EmoteSheet onClose={props.onMenuClose} onEmote={props.onEmote} />}
+    {!props.hideTouchControls && <button className="emote-button" type="button" onClick={() => props.onMenuToggle('emotes')} aria-label="Open emotes"><span className="jump-arrow">✦</span><span>EMOTE</span></button>}
+    {!props.hideTouchControls && <button className="jump-button" type="button" onPointerDown={event => { if (event.pointerType === 'mouse' && event.button !== 0) return; event.preventDefault(); event.stopPropagation(); props.onJump(); }} onClick={event => { if (event.detail === 0) props.onJump(); }} aria-label={props.jumpLabel}>
       <span className="jump-arrow">↑</span><span>{props.jumpLabel}</span>
     </button>}
     <PaintDock

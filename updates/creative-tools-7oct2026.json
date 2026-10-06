@@ -1,0 +1,82 @@
+{
+  "version": "creative-tools-7oct2026",
+  "baseUrl": "https://raw.githubusercontent.com/benryaus-cmd/graf-game/main/",
+  "files": [
+    {
+      "source": "src/App.tsx",
+      "target": "src/games/importedGame/upstream/src/App.tsx"
+    },
+    {
+      "source": "src/components/ColorPicker.tsx",
+      "target": "src/games/importedGame/upstream/src/components/ColorPicker.tsx"
+    },
+    {
+      "source": "src/components/EmoteSheet.tsx",
+      "target": "src/games/importedGame/upstream/src/components/EmoteSheet.tsx"
+    },
+    {
+      "source": "src/components/GameHud.tsx",
+      "target": "src/games/importedGame/upstream/src/components/GameHud.tsx"
+    },
+    {
+      "source": "src/components/GameSheet.tsx",
+      "target": "src/games/importedGame/upstream/src/components/GameSheet.tsx"
+    },
+    {
+      "source": "src/components/PaintDock.tsx",
+      "target": "src/games/importedGame/upstream/src/components/PaintDock.tsx"
+    },
+    {
+      "source": "src/components/PaintWorkspaceHud.tsx",
+      "target": "src/games/importedGame/upstream/src/components/PaintWorkspaceHud.tsx"
+    },
+    {
+      "source": "src/components/ReferenceSheet.tsx",
+      "target": "src/games/importedGame/upstream/src/components/ReferenceSheet.tsx"
+    },
+    {
+      "source": "src/components/TutorialOverlay.tsx",
+      "target": "src/games/importedGame/upstream/src/components/TutorialOverlay.tsx"
+    },
+    {
+      "source": "src/components/WorldScene.tsx",
+      "target": "src/games/importedGame/upstream/src/components/WorldScene.tsx"
+    },
+    {
+      "source": "src/components/useRotatedSheetScroll.ts",
+      "target": "src/games/importedGame/upstream/src/components/useRotatedSheetScroll.ts"
+    },
+    {
+      "source": "src/game/colorPicker.ts",
+      "target": "src/games/importedGame/upstream/src/game/colorPicker.ts"
+    },
+    {
+      "source": "src/game/referenceGuide.ts",
+      "target": "src/games/importedGame/upstream/src/game/referenceGuide.ts"
+    },
+    {
+      "source": "src/game/referenceImage.ts",
+      "target": "src/games/importedGame/upstream/src/game/referenceImage.ts"
+    },
+    {
+      "source": "src/game/speechBubble.ts",
+      "target": "src/games/importedGame/upstream/src/game/speechBubble.ts"
+    },
+    {
+      "source": "src/index.css",
+      "target": "src/games/importedGame/upstream/src/index.css"
+    },
+    {
+      "source": "src/multiplayer/chat.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/chat.ts"
+    },
+    {
+      "source": "src/multiplayer/remotePlayers.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/remotePlayers.ts"
+    },
+    {
+      "source": "src/multiplayer/worldSession.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/worldSession.ts"
+    }
+  ]
+}
