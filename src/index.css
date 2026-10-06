@@ -336,6 +336,10 @@ button { color: inherit; -webkit-tap-highlight-color: transparent; }
 .reference-file:focus-within { outline: 2px solid var(--accent); }
 .reference-thumbnail { display: block; width: 100%; height: min(26cqh, 160px); object-fit: contain; margin: 12px 0; background: #101210; border-radius: 6px; }
 .reference-sheet .paint-range { margin: 12px 0; }
+.reference-link { display: grid; gap: 8px; margin-top: 12px; }
+.reference-link label { display: grid; gap: 6px; font-size: 11px; letter-spacing: .06em; }
+.reference-link input { min-width: 0; width: 100%; min-height: 44px; padding: 8px 10px; border: 1px solid var(--edge); border-radius: 6px; background: #101210; color: var(--ink); font: inherit; font-size: 14px; letter-spacing: normal; }
+.reference-link button { min-height: 44px; }
 .reference-move-surface { position: absolute; inset: 0; z-index: 10; touch-action: none; cursor: move; }
 .reference-quick-controls { position: absolute; z-index: 12; top: max(112px, calc(env(safe-area-inset-top) + 104px)); left: 8px; display: flex; flex-wrap: wrap; align-items: center; gap: 5px; max-width: calc(100% - 16px); font-size: 11px; }
 .reference-quick-controls button { min-height: 44px; padding: 8px; border: 1px solid var(--edge); border-radius: 6px; background: #191b19ee; font-size: 11px; }

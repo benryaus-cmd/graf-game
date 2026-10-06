@@ -1,0 +1,18 @@
+{
+  "version": "reference-url-7oct2026",
+  "baseUrl": "https://raw.githubusercontent.com/benryaus-cmd/graf-game/main/",
+  "files": [
+    {
+      "source": "src/components/ReferenceSheet.tsx",
+      "target": "src/games/importedGame/upstream/src/components/ReferenceSheet.tsx"
+    },
+    {
+      "source": "src/game/referenceImage.ts",
+      "target": "src/games/importedGame/upstream/src/game/referenceImage.ts"
+    },
+    {
+      "source": "src/index.css",
+      "target": "src/games/importedGame/upstream/src/index.css"
+    }
+  ]
+}
