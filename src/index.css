@@ -253,6 +253,22 @@ button { color: inherit; -webkit-tap-highlight-color: transparent; }
 .cover-enter { min-height: 56px; display: flex; align-items: center; gap: 24px; padding: 14px 20px; border: 0; border-radius: 7px; background: #f3f0e4; color: #20231f; font-weight: 700; font-size: 13px; letter-spacing: .08em; }
 .cover-enter span { color: #e65838; font-size: 20px; }
 .cover-content small { color: #d8d8cc; font-size: 10px; letter-spacing: .14em; }
+.cover-tutorial { min-height: 44px; padding: 8px 14px; border: 1px solid #ffffff55; border-radius: 7px; background: #101210b8; color: #f3f0e4; font-size: 11px; font-weight: 800; letter-spacing: .09em; }
+
+/* Guided tutorial: spotlight never blocks the real control; only the card takes input. */
+.tutorial-layer { position: absolute; inset: 0; z-index: 80; pointer-events: none; }
+.tutorial-spotlight { position: fixed; z-index: 81; border: 2px solid #fff4de; border-radius: 12px; box-shadow: 0 0 0 3px #ff5c3580, 0 0 0 9999px #00000036; pointer-events: none; transition: left .16s ease, top .16s ease, width .16s ease, height .16s ease; }
+.tutorial-card { position: absolute; z-index: 82; left: max(10px, env(safe-area-inset-left)); right: max(10px, env(safe-area-inset-right)); width: min(430px, calc(100% - 20px)); margin-inline: auto; display: grid; gap: 8px; padding: 14px; border: 1px solid #ffffff35; border-radius: 12px; background: #151715f5; box-shadow: 0 8px 30px #0008; color: #f4f1e7; pointer-events: auto; }
+.tutorial-card.at-bottom { bottom: max(12px, calc(env(safe-area-inset-bottom) + 8px)); }
+.tutorial-card.at-top { top: max(12px, calc(env(safe-area-inset-top) + 8px)); }
+.tutorial-card h2 { margin: 0; font-size: 15px; font-weight: 900; letter-spacing: .08em; }
+.tutorial-card p { margin: 0; color: #d7d6ce; font-size: 13px; line-height: 1.42; }
+.tutorial-progress { color: #ffb49c; font: 800 10px/1 ui-monospace, monospace; letter-spacing: .12em; }
+.tutorial-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 2px; }
+.tutorial-actions button { min-height: 44px; flex: 1; padding: 8px 11px; border: 1px solid var(--edge); border-radius: 6px; background: #ffffff0b; color: var(--ink); font-size: 11px; font-weight: 800; }
+.tutorial-actions .ui-primary { border-color: var(--accent); background: var(--accent); color: #111; }
+.tutorial-actions .tutorial-skip { flex: 0 0 auto; color: #aaa; }
+
 
 @container game (min-width: 700px) {
   .game-sheet-backdrop { align-items: center; justify-content: flex-end; padding: 16px; }
