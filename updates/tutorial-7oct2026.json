@@ -1,0 +1,46 @@
+{
+  "version": "tutorial-7oct2026",
+  "baseUrl": "https://raw.githubusercontent.com/benryaus-cmd/graf-game/694db0e2f5743738c33393d467287c3e09c5080e/",
+  "files": [
+    {
+      "source": "src/App.tsx",
+      "target": "src/games/importedGame/upstream/src/App.tsx"
+    },
+    {
+      "source": "src/components/GameHud.tsx",
+      "target": "src/games/importedGame/upstream/src/components/GameHud.tsx"
+    },
+    {
+      "source": "src/components/LookJoystick.tsx",
+      "target": "src/games/importedGame/upstream/src/components/LookJoystick.tsx"
+    },
+    {
+      "source": "src/components/MovementJoystick.tsx",
+      "target": "src/games/importedGame/upstream/src/components/MovementJoystick.tsx"
+    },
+    {
+      "source": "src/components/PaintDock.tsx",
+      "target": "src/games/importedGame/upstream/src/components/PaintDock.tsx"
+    },
+    {
+      "source": "src/components/PaintWorkspaceHud.tsx",
+      "target": "src/games/importedGame/upstream/src/components/PaintWorkspaceHud.tsx"
+    },
+    {
+      "source": "src/components/RadioControl.tsx",
+      "target": "src/games/importedGame/upstream/src/components/RadioControl.tsx"
+    },
+    {
+      "source": "src/components/TutorialOverlay.tsx",
+      "target": "src/games/importedGame/upstream/src/components/TutorialOverlay.tsx"
+    },
+    {
+      "source": "src/game/tutorial.ts",
+      "target": "src/games/importedGame/upstream/src/game/tutorial.ts"
+    },
+    {
+      "source": "src/index.css",
+      "target": "src/games/importedGame/upstream/src/index.css"
+    }
+  ]
+}
