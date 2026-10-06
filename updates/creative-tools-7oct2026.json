@@ -1,6 +1,6 @@
 {
   "version": "creative-tools-7oct2026",
-  "baseUrl": "https://raw.githubusercontent.com/benryaus-cmd/graf-game/main/",
+  "baseUrl": "https://raw.githubusercontent.com/benryaus-cmd/graf-game/31ec5769f5bc4c93a69a030ecb76cb2494c8f4bf/",
   "files": [
     {
       "source": "src/App.tsx",
