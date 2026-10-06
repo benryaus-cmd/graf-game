@@ -1,6 +1,6 @@
 {
   "version": "tutorial-fixes-7oct2026",
-  "baseUrl": "https://raw.githubusercontent.com/benryaus-cmd/graf-game/main/",
+  "baseUrl": "https://raw.githubusercontent.com/benryaus-cmd/graf-game/7761af0d3a2162754fa58c6ff36c16c019d6667a/",
   "files": [
     {
       "source": "src/App.tsx",
