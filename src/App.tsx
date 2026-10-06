@@ -185,10 +185,10 @@ const App = () => {
   }, [multiplayerView.selectedPlayer?.playerId, multiplayerView.playerPickSequence]);
   useEffect(() => {
     if (!tutorialStep) return;
+    if (['move', 'look', 'select-canvas', 'size-canvas', 'move-canvas', 'start-painting', 'paint', 'finish'].includes(tutorialStep)) setActiveMenu(null);
     if (tutorialStep === 'select-canvas') {
       setPaintMode(true);
       setEraseMode(false);
-      setActiveMenu(null);
     }
     if (tutorialStep === 'size-canvas') {
       tutorialSizeStartRef.current = { width: workspaceView.width, height: workspaceView.height };
