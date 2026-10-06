@@ -29,8 +29,8 @@ export default function PaintWorkspaceHud({ view, painting, onAction, protection
     {!view.selected ? <span>Tap a nearby wall to select your painting area.</span> : <>
       <span>{view.width.toFixed(1)} × {view.height.toFixed(1)} m <small>{protectedUntil && protectedUntil > now ? 'PROTECTED' : 'UNPROTECTED'}</small></span>
       {!compact && !view.started && protectionControls}
-      {!compact && !view.hasPaint && !geometryLocked && <div className="paint-workspace-size-controls">
-        <button type="button" aria-pressed={!!view.moving} onClick={() => onAction('move', view.moving ? 0 : 1)}>
+      {!compact && !view.hasPaint && !geometryLocked && <div className="paint-workspace-size-controls" data-tutorial="canvas-size">
+        <button type="button" data-tutorial="canvas-move" aria-pressed={!!view.moving} onClick={() => onAction('move', view.moving ? 0 : 1)}>
           {view.moving ? 'DONE MOVING' : 'MOVE AREA'}
         </button>
         {view.moving && <small>Drag on this wall to reposition the box.</small>}
@@ -53,9 +53,9 @@ export default function PaintWorkspaceHud({ view, painting, onAction, protection
       {view.started || view.hasPaint || view.active ? <>
         {view.hasPaint && !compact && <label className="piece-title-input"><span>NAME PIECE · OPTIONAL</span><input value={pieceTitle} maxLength={60} placeholder="Add a title" aria-label="Optional piece name" onChange={event => onPieceTitleChange?.(event.target.value)} /></label>}
         <button type="button" onClick={() => onAction(view.active ? 'exit' : 'enter')}>{view.active ? 'BACK TO WALL' : 'ENTER CANVAS'}</button>
-        <button type="button" className={view.hasPaint ? 'ui-primary' : 'ui-secondary'} onClick={() => onAction(view.hasPaint ? 'finish' : 'clear', undefined, undefined, view.hasPaint ? pieceTitle : undefined)}>{view.hasPaint ? 'FINISH PIECE' : 'CANCEL'}</button>
+        <button type="button" data-tutorial={view.hasPaint ? 'piece-finish' : undefined} className={view.hasPaint ? 'ui-primary' : 'ui-secondary'} onClick={() => onAction(view.hasPaint ? 'finish' : 'clear', undefined, undefined, view.hasPaint ? pieceTitle : undefined)}>{view.hasPaint ? 'FINISH PIECE' : 'CANCEL'}</button>
       </> : <>
-        <button type="button" className="ui-primary" disabled={startDisabled} onClick={() => onAction('start', undefined, undefined, undefined, protectionEnabled)}>{startLabel}</button>
+        <button type="button" data-tutorial="canvas-start" className="ui-primary" disabled={startDisabled} onClick={() => onAction('start', undefined, undefined, undefined, protectionEnabled)}>{startLabel}</button>
         <button type="button" onClick={() => onAction('clear')}>CANCEL</button>
       </>}
     </>}
