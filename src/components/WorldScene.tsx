@@ -192,13 +192,16 @@ const WorldScene = (props: WorldSceneProps) => {
     }
     else if (request.action === 'enter') {
       if (world.multiplayerActive && !world.paintWorkspace?.selection?.purchaseApproved) return;
+      if (world.paintWorkspace?.editableUntil) {
+        multiplayerRef.current?.cancelPreparedPieceFlatten();
+      }
       if (world.paintWorkspace?.selection) world.paintWorkspace.selection.started = true;
       if (world.paintWorkspace) world.paintWorkspace.editableUntil = undefined;
       if (world.paintWorkspace?.selection) world.paintWorkspace.selection.preview.visible = true;
       enterPaintWorkspace(world);
     }
     else if (request.action === 'exit') {
-      if (world.paintWorkspace?.editableUntil) { multiplayerRef.current?.completePiece(request.title); clearPaintWorkspace(world); }
+      if (world.paintWorkspace?.editableUntil) { multiplayerRef.current?.finalizePiece(request.title); clearPaintWorkspace(world); }
       else exitPaintWorkspace(world);
     }
     else if (request.action === 'resize') { if (!world.paintWorkspace?.selection?.purchaseApproved) setPaintWorkspaceSize(world, request.size ?? 2, request.height); }
@@ -208,12 +211,13 @@ const WorldScene = (props: WorldSceneProps) => {
     else if (request.action === 'move') { if (!world.paintWorkspace?.selection?.purchaseApproved) setPaintWorkspaceMoving(world, (request.size ?? 0) > 0); }
     else if (request.action === 'finish' && world.paintWorkspace?.selection?.hasPaint) {
       if (request.title) multiplayerRef.current?.setSelectedPieceTitle(request.title);
+      multiplayerRef.current?.preparePieceFlatten();
       exitPaintWorkspace(world);
       const state = world.paintWorkspace;
       state.selection!.preview.visible = false;
       state.editableUntil = editGrace.current.start(() => {
         if (worldRef.current !== world || world.paintWorkspace !== state) return;
-        multiplayerRef.current?.completePiece(request.title);
+        multiplayerRef.current?.finalizePiece(request.title);
         clearPaintWorkspace(world);
       });
       world.onPaintWorkspaceChange?.(state);

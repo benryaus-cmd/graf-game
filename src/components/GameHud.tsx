@@ -8,10 +8,10 @@ import type { ShopItem, GameProgress } from '@/game/progression';
 import type { CameraMode, MovementInput, SkyMode, AvatarEmote } from '@/game/worldTypes';
 import type { BrushHead } from '@/game/sprayHeads';
 import type { ReactNode } from 'react';
-import RadioControl from '@/components/RadioControl';
+
 import type { LiveRadioController } from '@/game/liveRadio';
 
-export type HudMenu = 'paint' | 'bots' | 'avatar' | 'sky' | null;
+export type HudMenu = 'paint' | 'bots' | 'avatar' | 'sky' | 'chat' | 'art' | 'player' | 'settings' | null;
 type PaintTool = 'paint' | 'eraser' | 'off' | 'admin';
 interface PaintLayerControl { name: string; visible: boolean }
 interface GameHudProps {
@@ -21,6 +21,7 @@ interface GameHudProps {
   radioUrl?: string;
   radioVolume?: number;
   topControls?: ReactNode;
+  workspaceControls?: ReactNode;
   onEyedropper?: () => void;
   eyedropperActive?: boolean;
   brushHead?: BrushHead;
@@ -49,58 +50,20 @@ interface GameHudProps {
 const GameHud = (props: GameHudProps) => (
   <div className={`game-hud ${props.activeMenu ? `game-hud-menu-open game-menu-${props.activeMenu}` : ''}`}>
     <div className="world-grain" aria-hidden="true" />
-    {props.activeMenu && (
-      <button
-        type="button" className="hud-menu-scrim" aria-label="Close open menu"
-        onClick={props.onMenuClose}
-      />
-    )}
     {props.showCrosshair && (
       <div className={`reticle ${props.paintMode ? 'reticle-paint' : ''}`} aria-hidden="true">
         <i /><b />
       </div>
     )}
     <header className="top-hud">
-      <div className="top-actions">
-        <div className="paint-quick-controls" aria-label="Paint mode and color">
-          <button
-            type="button" className="paint-mode-switch"
-            aria-pressed={props.paintMode}
-            aria-label={props.paintMode ? 'Switch to explore mode' : 'Switch to paint mode'}
-            onClick={() => props.onToolChange(props.paintMode ? 'off' : 'paint')}
-          >{props.paintMode ? 'EXPLORE' : 'PAINT'}</button>
-          {props.canAdminPaint && <button type="button" className="paint-mode-switch" aria-pressed={!!props.adminFreePaint}
-            aria-label="Admin free painting" onClick={() => props.onToolChange(props.adminFreePaint ? 'off' : 'admin')}>ADMIN</button>}
-          <button
-            type="button" className="paint-color-trigger"
-            onClick={() => props.onMenuToggle('paint')}
-            aria-label={`Open paint selector, current color ${props.color}`}
-            aria-expanded={props.activeMenu === 'paint'}
-          ><i style={{ backgroundColor: props.color }} /><span>PAINT TOOLS</span></button>
-        </div>
-        {props.radioUrl ? <RadioControl controller={props.radioController ?? undefined} url={props.radioUrl} initialVolume={props.radioVolume ?? .6} /> : <span className="sound-status" title="Lo-fi music" aria-label="Lo-fi music">♪</span>}
-        <SkyMenu
-          sky={props.sky} open={props.activeMenu === 'sky'} panelColor={props.panelColor}
-          onToggle={() => props.onMenuToggle('sky')} onClose={props.onMenuClose}
-          onSelect={props.onSkySelect}
-        />
-    <div className="game-actions">
-      <button
-        type="button" className="view-switch" onClick={props.onViewChange}
-        aria-label={`Change view, now ${props.cameraLabel}`}
-      >
-        <span aria-hidden="true">◉</span><span className="view-label">{props.viewMode === 'first' ? '1ST' : props.viewMode === 'third' ? '3RD' : 'MAP'}</span>
-      </button>
-      <button
-        type="button" className="avatar-open" onClick={() => props.onMenuToggle('avatar')}
-        aria-expanded={props.activeMenu === 'avatar'}
-      >
-        <span aria-hidden="true">♙</span><b>AVATAR</b>
-      </button>
-    </div>
-    {props.topControls}
+      <div className="top-actions">{props.topControls}
+        <button type="button" className="hud-menu-button" aria-label="Open game menu" aria-expanded={props.activeMenu === 'settings'} onClick={() => props.onMenuToggle('settings')}>☰</button>
       </div>
     </header>
+    <div className="paint-quick-controls" aria-label="Paint mode and color">
+      <button type="button" className="paint-mode-switch" aria-pressed={props.paintMode} aria-label={props.paintMode ? 'Switch to explore mode' : 'Switch to paint mode'} onClick={() => props.onToolChange(props.paintMode ? 'off' : 'paint')}>{props.paintMode ? 'EXPLORE' : 'PAINT'}</button>
+      <button type="button" className="paint-color-trigger" onClick={() => props.onMenuToggle('paint')} aria-label={`Open paint selector, current color ${props.color}`} aria-expanded={props.activeMenu === 'paint'}><i style={{ backgroundColor: props.color }} /><span>TOOLS</span><small>{props.eraseMode ? 'Erase' : props.brushHead ?? 'soft'} · L{props.selectedLayer + 1}</small></button>
+    </div>
     {props.viewMode === 'map' && (
       <label className="map-zoom-control">
         <span>MAP VIEW SIZE</span>
@@ -112,6 +75,7 @@ const GameHud = (props: GameHudProps) => (
         <b>{Math.round(props.mapZoom * 100)}%</b>
       </label>
     )}
+    {props.activeMenu === 'sky' && <SkyMenu sky={props.sky} open panelColor={props.panelColor} onToggle={() => props.onMenuToggle('sky')} onClose={props.onMenuClose} onSelect={props.onSkySelect} />}
     {props.activeMenu === 'avatar' && (
       <AvatarMenu
         progress={props.progress} panelColor={props.panelColor} onClose={props.onMenuClose}
@@ -130,9 +94,10 @@ const GameHud = (props: GameHudProps) => (
       <span className="jump-arrow">↑</span><span>{props.jumpLabel}</span>
     </button>}
     <PaintDock
+      workspaceControls={props.workspaceControls}
       onEyedropper={props.onEyedropper} eyedropperActive={props.eyedropperActive}
       brushHead={props.brushHead} onBrushHeadChange={props.onBrushHeadChange}
-      open={props.activeMenu === 'paint'} onToggle={() => props.onMenuToggle('paint')}
+      open={props.activeMenu === 'paint'} onToggle={() => props.onMenuToggle('paint')} onClose={props.onMenuClose}
       color={props.color} paintMode={props.paintMode} eraseMode={props.eraseMode}
       brushSize={props.brushSize} opacity={props.opacity} panelColor={props.panelColor}
       accentColor={props.accentColor} layers={props.layers} selectedLayer={props.selectedLayer}

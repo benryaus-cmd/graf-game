@@ -46,7 +46,14 @@ function canvasFixture() {
   canvas.getContext = () => context; canvas.toDataURL = () => 'data:image/png;base64,fixture';
   return canvas;
 }
-(globalThis as any).document = { createElement: () => canvasFixture() };
+const fixtureElements = new Map<string, any>();
+(globalThis as any).document = {
+  getElementById: (id: string) => fixtureElements.get(id) ?? null,
+  body: { appendChild(element: any) { fixtureElements.set(element.id, element); } },
+  createElement: (tag: string) => tag === 'canvas' ? canvasFixture() : {
+    style: {}, id: '', textContent: '', remove() { fixtureElements.delete(this.id); },
+  },
+};
 (globalThis as any).window = { localStorage: { getItem: () => null, setItem: () => {}, removeItem: () => {} } };
 
 class Socket {
@@ -625,14 +632,14 @@ test('poster image decoding starts in a bounded queue and advances as loads sett
   const sync = new ArtworkSync(() => true, () => {}, () => { const image: any = {}; images.push(image); return image; });
   const chunk = createCityChunk(0, 0, materials()); const wall = chunk.walls[0];
   const saved = (id: string, sequence: number) => ({ id, assetRef: 'https://example.test/' + id + '.png', surfaceId: encodeSurface(wall.surfaceId!,0,0), face:'0', position:[0,0,0], rotation:[0,0,0,1], width:1, height:1, sequence });
-  sync.snapshot(['a','b','c','d','e'].map((id, index) => saved(id, index)));
+  sync.snapshot(Array.from({ length: 12 }, (_, index) => saved(String(index), index)));
   const walls = new Map([[wall.surfaceId!,wall]]);
   sync.refresh(walls); sync.refresh(walls);
-  assert.equal(images.length, 3);
+  assert.equal(images.length, 10);
   images[0].onload(); sync.refresh(walls);
-  assert.equal(images.length, 4);
+  assert.equal(images.length, 11);
   images[1].onerror(); sync.refresh(walls);
-  assert.equal(images.length, 5);
+  assert.equal(images.length, 12);
   sync.clear();
 });
 
@@ -678,14 +685,14 @@ test('timed out artwork loads release their concurrency slot and queued images c
     callback => { timers.push(callback); return timers.length as any; }, () => {});
   const wall = createCityChunk(0, 0, materials()).walls[0];
   const saved = (id: string) => ({ id, assetRef:`https://example.test/${id}.png`, surfaceId:encodeSurface(wall.surfaceId!,0,0), face:'0', position:[0,0,0], rotation:[0,0,0,1], width:1, height:1 });
-  sync.snapshot(['a','b','c','d'].map(saved));
+  sync.snapshot(Array.from({ length: 11 }, (_, index) => saved(String(index))));
   const walls = new Map([[wall.surfaceId!, wall]]);
   sync.refresh(walls);
-  assert.equal(images.length, 3);
+  assert.equal(images.length, 10);
   timers[0](); sync.refresh(walls);
   assert.equal(images[0].src, '');
-  assert.equal(images.length, 4);
-  images[3].onload();
+  assert.equal(images.length, 11);
+  images[10].onload();
   assert.ok((wall.layers[0]?.mesh ?? wall.mesh).children.some(child => child.userData.posterArtwork));
   sync.clear();
 });
@@ -751,6 +758,28 @@ test('protocol 2 role changes use exact server wire and remote role broadcasts w
     session.leave();
     assert.equal(statuses.at(-1).role, undefined);
     assert.equal(session.setRole('artist', 'moderator'), false);
+  } finally { session.dispose(); globalThis.WebSocket = previousSocket; }
+});
+
+test('repeated player picks notify the UI, ordinary updates stay silent and departures clear selection', () => {
+  const sockets: Socket[] = [], previousSocket = globalThis.WebSocket;
+  (globalThis as any).WebSocket = class extends Socket { constructor() { super(); sockets.push(this); } };
+  const world: any = { scene: new THREE.Scene(), walls: [], setPaintSession() {}, playerPosition: new THREE.Vector3(), playerYaw: 0, playerPitch: 0, paintRevision: 0, renderer: { domElement: {} } };
+  const views: any[] = [];
+  const session = new WorldMultiplayerSession(world, () => {}, view => views.push(view));
+  try {
+    session.join('Artist'); const socket = sockets[0]; socket.readyState = 1;
+    socket.receive({ type: 'hello', protocol: 2, playerId: 'self' });
+    socket.receive({ type: 'world_snapshot', protocol: 2, roomId: 'public', playerId: 'self', sequence: 0, revision: 0, strokes: [], players: [{ playerId: 'target', username: 'artist', nickName: 'Artist', role: 'player' }] });
+    (session as any).players.pick = () => (session as any).players.get('target');
+    assert.equal(world.onPlayerPick({}), true);
+    const first = views.at(-1).playerPickSequence;
+    assert.equal(world.onPlayerPick({}), true);
+    assert.equal(views.at(-1).playerPickSequence, first + 1);
+    socket.receive({ type: 'player_role_changed', playerId: 'target', username: 'artist', role: 'moderator' });
+    assert.equal(views.at(-1).playerPickSequence, first + 1);
+    socket.receive({ type: 'player_left', playerId: 'target' });
+    assert.equal(views.at(-1).selectedPlayer, null);
   } finally { session.dispose(); globalThis.WebSocket = previousSocket; }
 });
 

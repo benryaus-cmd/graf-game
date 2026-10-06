@@ -307,7 +307,7 @@ const PosterStudio = ({ size, onSizeChange, onStartPlacement }: PosterStudioProp
     if (selectedId === design.id) chooseNewCanvas();
   };
 
-  const buttonStyle: React.CSSProperties = { minHeight: 36, border: '1px solid rgba(255,255,255,.25)', borderRadius: 3, background: 'rgba(255,255,255,.06)', color: '#f3f1e9', fontSize: 9, fontWeight: 850, letterSpacing: '.07em', padding: '6px 9px' };
+  const buttonStyle: React.CSSProperties = { minHeight: 36, border: '1px solid rgba(255,255,255,.25)', borderRadius: 3, background: 'rgba(255,255,255,.06)', color: '#f3f1e9', fontSize: 12, fontWeight: 850, letterSpacing: '.07em', padding: '6px 9px' };
   const activeButton: React.CSSProperties = { ...buttonStyle, borderColor: '#ff704b', background: 'rgba(255,92,53,.22)', color: '#ffd2c3' };
   return (
     <div className="poster-studio" style={{ gap: 10 }}>
@@ -315,19 +315,19 @@ const PosterStudio = ({ size, onSizeChange, onStartPlacement }: PosterStudioProp
       <p>Draw a tag by hand, then keep it in your personal library on this browser.</p>
       <div aria-label="Drawing tools" style={{ display: 'grid', gap: 8 }}>
         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6 }}>
-          <span style={{ color: '#aeb2a9', fontSize: 8, fontWeight: 900, letterSpacing: '.12em', marginRight: 3 }}>INK</span>
+          <span style={{ color: '#aeb2a9', fontSize: 11, fontWeight: 900, letterSpacing: '.12em', marginRight: 3 }}>INK</span>
           {COLORS.map((value) => <button key={value} type="button" aria-label={`Ink ${value}`} aria-pressed={color === value && !eraser} onClick={() => { setColor(value); setEraser(false); }} style={{ width: 27, height: 27, borderRadius: '50%', border: color === value && !eraser ? '2px solid #ff704b' : '1px solid rgba(255,255,255,.45)', background: value }} />)}
-          <label title="Choose any ink color" style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#aeb2a9', fontSize: 8, fontWeight: 850 }}>
+          <label title="Choose any ink color" style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#aeb2a9', fontSize: 11, fontWeight: 850 }}>
             CUSTOM <input aria-label="Custom ink color" type="color" value={color} onChange={(event) => { setColor(event.target.value); setEraser(false); }} style={{ width: 28, height: 27, padding: 1, border: '1px solid rgba(255,255,255,.35)', background: 'transparent' }} />
           </label>
           <button type="button" onClick={() => setEraser((value) => !value)} aria-pressed={eraser} style={eraser ? activeButton : buttonStyle}>ERASER</button>
         </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 5 }} aria-label="Brush head">
-          <span style={{ color: '#aeb2a9', fontSize: 8, fontWeight: 900, letterSpacing: '.12em', marginRight: 3 }}>HEAD</span>
+          <span style={{ color: '#aeb2a9', fontSize: 11, fontWeight: 900, letterSpacing: '.12em', marginRight: 3 }}>HEAD</span>
           {(['marker', 'fine', 'spray', 'roller', 'drip'] as const).map((value) => <button key={value} type="button" aria-pressed={head === value} onClick={() => setHead(value)} style={head === value ? activeButton : buttonStyle}>{value.toUpperCase()}</button>)}
         </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6 }}>
-          <span style={{ color: '#aeb2a9', fontSize: 8, fontWeight: 900, letterSpacing: '.12em', marginRight: 3 }}>SIZE</span>
+          <span style={{ color: '#aeb2a9', fontSize: 11, fontWeight: 900, letterSpacing: '.12em', marginRight: 3 }}>SIZE</span>
           {BRUSHES.map((value) => <button key={value} type="button" aria-label={`Brush size ${value}`} aria-pressed={brush === value} onClick={() => setBrush(value)} style={brush === value ? activeButton : buttonStyle}>{value}px</button>)}
           <button type="button" disabled={!undoRef.current.length} onClick={undo} style={{ ...buttonStyle, opacity: undoRef.current.length ? 1 : .45 }}>UNDO</button>
           <button type="button" disabled={!redoRef.current.length} onClick={redo} style={{ ...buttonStyle, opacity: redoRef.current.length ? 1 : .45 }}>REDO</button>
@@ -335,7 +335,7 @@ const PosterStudio = ({ size, onSizeChange, onStartPlacement }: PosterStudioProp
         </div>
       </div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span style={{ color: '#aeb2a9', fontSize: 8, fontWeight: 900, letterSpacing: '.12em' }}>TRANSPARENT CANVAS · {orientation.toUpperCase()}</span>
+        <span style={{ color: '#aeb2a9', fontSize: 11, fontWeight: 900, letterSpacing: '.12em' }}>TRANSPARENT CANVAS · {orientation.toUpperCase()}</span>
         <button type="button" onClick={rotateWorkspace} style={buttonStyle}>ROTATE WORKSPACE</button>
       </div>
       <div style={{ padding: 5, border: '1px solid rgba(255,255,255,.2)', background: 'repeating-conic-gradient(#282a27 0% 25%, #20211f 0% 50%) 50% / 18px 18px', maxHeight: 360, overflow: 'hidden' }}>
@@ -345,14 +345,14 @@ const PosterStudio = ({ size, onSizeChange, onStartPlacement }: PosterStudioProp
           style={{ display: 'block', width: '100%', maxHeight: 350, aspectRatio: `${orientation === 'portrait' ? '2 / 3' : '3 / 2'}`, objectFit: 'contain', touchAction: 'none', cursor: selected ? 'default' : eraser ? 'cell' : 'crosshair', opacity: selected ? .82 : 1 }}
         />
       </div>
-      {selected && <small style={{ color: '#a8e9bf', fontSize: 9 }}>Viewing saved design: {selected.name}. Choose “NEW DRAWING” to edit a fresh canvas.</small>}
+      {selected && <small style={{ color: '#a8e9bf', fontSize: 12 }}>Viewing saved design: {selected.name}. Choose “NEW DRAWING” to edit a fresh canvas.</small>}
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) auto', gap: 6 }}>
         <input aria-label="Design name" placeholder="Name this design" maxLength={40} value={name} onChange={(event) => setName(event.target.value)} style={{ minWidth: 0, padding: '8px', border: '1px solid rgba(255,255,255,.2)', borderRadius: 3, background: 'rgba(0,0,0,.24)', color: '#f3f1e9', fontSize: 11 }} />
         <button type="button" disabled={!hasContent || !name.trim()} onClick={saveDesign} style={{ ...buttonStyle, background: '#ff5c35', color: '#1b1c19', opacity: hasContent && name.trim() ? 1 : .48 }}>SAVE DESIGN</button>
       </div>
       {error && <div className="poster-error" role="alert"><span>{error}</span></div>}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <b style={{ color: '#aeb2a9', fontSize: 8, letterSpacing: '.12em' }}>MY DESIGNS · THIS BROWSER</b>
+        <b style={{ color: '#aeb2a9', fontSize: 11, letterSpacing: '.12em' }}>MY DESIGNS · THIS BROWSER</b>
         <button type="button" onClick={chooseNewCanvas} style={buttonStyle}>NEW DRAWING</button>
       </div>
       {library.designs.length === 0 ? <small style={{ color: '#929890', fontSize: 10 }}>Your personal tag library is empty.</small> : (
@@ -360,11 +360,11 @@ const PosterStudio = ({ size, onSizeChange, onStartPlacement }: PosterStudioProp
           {library.designs.map((design) => <div key={design.id} style={{ minWidth: 0, border: selectedId === design.id ? '1px solid #ff704b' : '1px solid rgba(255,255,255,.16)', borderRadius: 3, background: 'rgba(0,0,0,.2)', padding: 5 }}>
             <button type="button" onClick={() => selectDesign(design)} aria-pressed={selectedId === design.id} style={{ width: '100%', padding: 0, border: 0, background: 'transparent', color: '#f3f1e9', textAlign: 'left' }}>
               <img src={design.dataUrl} alt="" style={{ display: 'block', width: '100%', height: 62, objectFit: 'contain', background: 'repeating-conic-gradient(#282a27 0% 25%, #20211f 0% 50%) 50% / 12px 12px' }} />
-              <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingTop: 5, fontSize: 9 }}>{design.name}{library.logoId === design.id ? ' ★ LOGO' : ''}</span>
+              <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingTop: 5, fontSize: 12 }}>{design.name}{library.logoId === design.id ? ' ★ LOGO' : ''}</span>
             </button>
             <div style={{ display: 'flex', gap: 3, marginTop: 5 }}>
-              <button type="button" aria-label={`${library.logoId === design.id ? 'Unmark' : 'Mark'} ${design.name} as logo`} onClick={() => toggleLogo(design)} style={{ ...buttonStyle, flex: 1, minHeight: 28, padding: 3 }}>{library.logoId === design.id ? 'UNMARK' : 'USE AS LOGO'}</button>
-              <button type="button" aria-label={`Delete ${design.name}`} onClick={() => removeDesign(design)} style={{ ...buttonStyle, minHeight: 28, padding: '3px 6px' }}>×</button>
+              <button type="button" aria-label={`${library.logoId === design.id ? 'Unmark' : 'Mark'} ${design.name} as logo`} onClick={() => toggleLogo(design)} style={{ ...buttonStyle, flex: 1, minHeight: 40, padding: 3 }}>{library.logoId === design.id ? 'UNMARK' : 'USE AS LOGO'}</button>
+              <button type="button" aria-label={`Delete ${design.name}`} onClick={() => removeDesign(design)} style={{ ...buttonStyle, minHeight: 40, padding: '3px 6px' }}>×</button>
             </div>
           </div>)}
         </div>

@@ -16,6 +16,7 @@ import { aippyDisplayName } from '@/multiplayer/profile';
 import type { MultiplayerStatus, MultiplayerView } from '@/multiplayer/protocol';
 import type { ServerRole } from '@/multiplayer/permissions';
 import SettingsModal from '@/components/SettingsModal';
+import RadioControl from '@/components/RadioControl';
 import { useSprayAudio } from '@/components/useSprayAudio';
 import { usePosterPlacement } from '@/game/usePosterPlacement';
 import { getAvatarAppearance, loadGameProgress, saveGameProgress, type GameProgress, type ShopItem } from '@/game/progression';
@@ -82,11 +83,6 @@ const App = () => {
   const [portrait, setPortrait] = useState(false);
   const [screenPortrait, setScreenPortrait] = useState(() => window.innerHeight >= window.innerWidth);
   const rotatedPortrait = portrait ? !screenPortrait : screenPortrait;
-  useEffect(() => {
-    const update = () => setScreenPortrait(window.innerHeight >= window.innerWidth);
-    window.addEventListener('resize', update);
-    return () => window.removeEventListener('resize', update);
-  }, []);
   const [workspaceView, setWorkspaceView] = useState<PaintWorkspaceView>({ selected: false, active: false, width: 0, height: 0 });
   const [localPieceNames, setLocalPieceNames] = useState<Record<string, string>>(readLocalPieceNames);
   const [pieceTitleDraft, setPieceTitleDraft] = useState('');
@@ -145,7 +141,6 @@ const App = () => {
   const [selectedLayer, setSelectedLayer] = useState(2);
   const [progress, setProgress] = useState<GameProgress>(loadGameProgress);
   const [emoteSignal, setEmoteSignal] = useState<EmoteSignal | null>(null);
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const [devViewerOpen, setDevViewerOpen] = useState(false);
   const audioStartedRef = useRef(false);
   const lastCoinAtRef = useRef(0);
@@ -161,14 +156,25 @@ const App = () => {
   }, []);
   useEffect(() => {
     const shell = shellRef.current;
-    const header = shell?.querySelector<HTMLElement>('.top-hud');
-    if (!shell || !header) return;
-    const update = () => shell.style.setProperty('--hud-height', `${header.offsetTop + header.offsetHeight + 8}px`);
+    const container = shell?.parentElement;
+    if (!shell || !container) return;
+    const update = () => {
+      shell.style.setProperty('--game-container-width', `${container.clientWidth}px`);
+      shell.style.setProperty('--game-container-height', `${container.clientHeight}px`);
+      setScreenPortrait(container.clientHeight >= container.clientWidth);
+    };
     update();
     const observer = new ResizeObserver(update);
-    observer.observe(header);
+    observer.observe(container);
     return () => observer.disconnect();
-  }, [hasJoined, portrait]);
+  }, []);
+  useEffect(() => {
+    if (multiplayerView.selectedPieceId) setActiveMenu('art');
+  }, [multiplayerView.selectedPieceId, multiplayerView.piecePickSequence]);
+  useEffect(() => {
+    if (multiplayerView.selectedPlayer) setActiveMenu('player');
+    else setActiveMenu(current => current === 'player' ? null : current);
+  }, [multiplayerView.selectedPlayer?.playerId, multiplayerView.playerPickSequence]);
 
   const startAudioOnFirstClick = () => {
     const radioState = radioController?.getState();
@@ -254,6 +260,18 @@ const App = () => {
   const jumpLabel = progress.outfit === 'jax' ? 'FLY' : progress.outfit === 'ringmaster' ? 'LEVITATE'
     : progress.outfit === 'pomni' ? 'HIGH JUMP' : 'JUMP';
 
+  const workspaceHud = <PaintWorkspaceHud compact={activeMenu === 'paint'} view={workspaceView} painting={paintMode && !adminFreePaint} onAction={requestWorkspace}
+            protectionEnabled={protectionEnabled} startDisabled={protectionStartDisabled} startLabel={protectionStartLabel}
+            pieceTitle={pieceTitleDraft} onPieceTitleChange={setPieceTitleDraft}
+            protectedUntil={multiplayerView.protection?.protectedUntil} geometryLocked={!!multiplayerView.protection?.pendingPurchase || !!multiplayerView.protection?.purchased}
+            protectionControls={multiplayerStatus.phase === 'connected' && !adminFreePaint && (!workspaceView.hasPaint || !!multiplayerView.protection?.protectedUntil) ? <ProtectionControls
+              balance={multiplayerView.protection?.creditBalance ?? null} quote={activeProtectionQuote}
+              quotes={multiplayerView.protection?.quotes ?? { unprotected: null, protected: null }} protectionEnabled={protectionEnabled}
+              pending={!!multiplayerView.protection?.pendingQuote} pendingPurchase={!!multiplayerView.protection?.pendingPurchase} purchased={!!multiplayerView.protection?.purchased}
+              protectedUntil={multiplayerView.protection?.protectedUntil ?? null} notice={multiplayerView.protection?.notice ?? null}
+              onQuote={() => requestMultiplayer('quote-protection', undefined, undefined, undefined, protectionEnabled)}
+              onProtectionEnabledChange={setProtectionEnabled} /> : undefined} />;
+
   return (
     <main
       ref={shellRef}
@@ -298,7 +316,7 @@ const App = () => {
           <GameHud
             eyedropperActive={eyedropperActive} onEyedropper={() => { setMovement({ x: 0, y: 0 }); setLookInput({ x: 0, y: 0 }); setEyedropperNotice('Tap existing paint to pick its colour.'); setEyedropperActive(true); }}
             brushHead={brushHead} onBrushHeadChange={setBrushHead}
-            hideTouchControls={workspaceView.active || activeMenu === 'paint' || eyedropperActive}
+            hideTouchControls={workspaceView.active || !!activeMenu || eyedropperActive}
             panelColor={panelColor} accentColor={accentColor} sky={sky} activeMenu={activeMenu}
             canAdminPaint={!!multiplayerStatus.canAdminPaint} adminFreePaint={adminFreePaint} musicReady={false} radioController={radioController} radioUrl={radioController ? RADIO_STREAM_URL : undefined} radioVolume={musicVolume} paintMode={paintMode} eraseMode={eraseMode}
             showCrosshair={showCrosshair} color={color} brushSize={brushSize * 3} opacity={opacity}
@@ -317,35 +335,22 @@ const App = () => {
             onPurchase={purchaseItem} onEquip={equipItem} onEmote={playEmote}
             onMovement={setMovement} onJump={() => setJumpSignal(signal => signal + 1)}
             onBotsToggle={() => setBotsEnabled(enabled => !enabled)}
+            workspaceControls={activeMenu === 'paint' ? workspaceHud : undefined}
             topControls={<>
-              <button type="button" className="portrait-toggle" aria-pressed={portrait} title={rotatedPortrait ? 'Rotate left to landscape' : 'Rotate left to portrait'}
-                aria-label={rotatedPortrait ? 'Rotate left to landscape' : 'Rotate left to portrait'}
-                onClick={() => { setMovement({ x: 0, y: 0 }); setLookInput({ x: 0, y: 0 }); setPortrait(value => !value); }}>↶ <span>{rotatedPortrait ? 'LANDSCAPE' : 'PORTRAIT'}</span></button>
-              <button type="button" className="settings-trigger" aria-label="Settings" onClick={() => setSettingsOpen(true)}>⚙</button>
-              <div className="top-network-controls" hidden={activeMenu === 'paint'}>
-                {multiplayerStatus.phase !== 'solo' && <CanvasCredits balance={multiplayerView.protection?.creditBalance ?? null} />}
-                {<GraffitiPieces canPaintOver={!!multiplayerStatus.canAdminPaint} paintColour={color} onPaintOver={(pieceId, colour) => { if (!multiplayerStatus.canAdminPaint) return false; requestMultiplayer('paint-over', pieceId, undefined, colour); return true; }} selectedPieceId={multiplayerView.selectedPieceId} piecePickSequence={multiplayerView.piecePickSequence} pieces={multiplayerView.pieces ?? []} connected={multiplayerStatus.phase === 'connected'} role={multiplayerStatus.role} canDeletePieces={multiplayerStatus.canDeletePieces} onDelete={pieceId => { if (multiplayerStatus.phase !== 'connected' || !multiplayerStatus.canDeletePieces) return false; requestMultiplayer('delete-piece', pieceId); return true; }} onLike={pieceId => { if (multiplayerStatus.phase !== 'connected') return false; requestMultiplayer('like', pieceId); return true; }} onResync={() => requestMultiplayer('resync')} onView={pieceId => requestMultiplayer('inspect', pieceId)} />}
-                <MultiplayerControls status={multiplayerStatus} displayName={displayName} avatar={aippyUser.avatar} profileLoading={aippyUser.isLoading}
+              <div className="top-network-controls">
+                {multiplayerStatus.phase !== 'solo' ? <CanvasCredits balance={multiplayerView.protection?.creditBalance ?? null} /> : <span className="canvas-credit-status" aria-label="Solo coins">🪙 {progress.coins}</span>}
+                {<GraffitiPieces open={activeMenu === 'art'} onOpenChange={open => setActiveMenu(open ? 'art' : null)} canPaintOver={!!multiplayerStatus.canAdminPaint} paintColour={color} onPaintOver={(pieceId, colour) => { if (!multiplayerStatus.canAdminPaint) return false; requestMultiplayer('paint-over', pieceId, undefined, colour); return true; }} selectedPieceId={multiplayerView.selectedPieceId} piecePickSequence={multiplayerView.piecePickSequence} pieces={multiplayerView.pieces ?? []} connected={multiplayerStatus.phase === 'connected'} role={multiplayerStatus.role} canDeletePieces={multiplayerStatus.canDeletePieces} onDelete={pieceId => { if (multiplayerStatus.phase !== 'connected' || !multiplayerStatus.canDeletePieces) return false; requestMultiplayer('delete-piece', pieceId); return true; }} onLike={pieceId => { if (multiplayerStatus.phase !== 'connected') return false; requestMultiplayer('like', pieceId); return true; }} onResync={() => requestMultiplayer('resync')} onView={pieceId => requestMultiplayer('inspect', pieceId)} />}
+                <MultiplayerControls chatOpen={activeMenu === 'chat'} onChatToggle={() => toggleMenu('chat')} onChatClose={closeMenu} onOpenMenu={() => toggleMenu('settings')} status={multiplayerStatus} displayName={displayName} avatar={aippyUser.avatar} profileLoading={aippyUser.isLoading}
                   onJoin={() => requestMultiplayer('join')} onLeave={() => requestMultiplayer('leave')}
                   messages={multiplayerView.chat} onChat={text => requestMultiplayer('chat', text)} onResync={() => requestMultiplayer('resync')} />
               </div>
             </>}
           />
-          {activeMenu !== 'paint' && <LookJoystick onLook={setLookInput} canvasMode={workspaceView.active} />}
-          {activeMenu !== 'paint' && <PaintWorkspaceHud view={workspaceView} painting={paintMode && !adminFreePaint} onAction={requestWorkspace}
-            protectionEnabled={protectionEnabled} startDisabled={protectionStartDisabled} startLabel={protectionStartLabel}
-            pieceTitle={pieceTitleDraft} onPieceTitleChange={setPieceTitleDraft}
-            protectedUntil={multiplayerView.protection?.protectedUntil} geometryLocked={!!multiplayerView.protection?.pendingPurchase || !!multiplayerView.protection?.purchased}
-            protectionControls={multiplayerStatus.phase === 'connected' && !adminFreePaint && (!workspaceView.hasPaint || !!multiplayerView.protection?.protectedUntil) ? <ProtectionControls
-              balance={multiplayerView.protection?.creditBalance ?? null} quote={activeProtectionQuote}
-              quotes={multiplayerView.protection?.quotes ?? { unprotected: null, protected: null }} protectionEnabled={protectionEnabled}
-              pending={!!multiplayerView.protection?.pendingQuote} pendingPurchase={!!multiplayerView.protection?.pendingPurchase} purchased={!!multiplayerView.protection?.purchased}
-              protectedUntil={multiplayerView.protection?.protectedUntil ?? null} notice={multiplayerView.protection?.notice ?? null}
-              onQuote={() => requestMultiplayer('quote-protection', undefined, undefined, undefined, protectionEnabled)}
-              onProtectionEnabledChange={setProtectionEnabled} /> : undefined} />}
+          {!activeMenu && <LookJoystick onLook={setLookInput} canvasMode={workspaceView.active} />}
+          {activeMenu !== 'paint' && workspaceHud}
           {eyedropperActive && <aside className="eyedropper-hint" role="status"><span>{eyedropperNotice}</span><button type="button" onClick={() => setEyedropperActive(false)}>CANCEL</button></aside>}
           <div hidden={activeMenu === 'paint'}>
-          <PlayerInteractionCard adminResult={multiplayerView.adminResult} onAdminAction={(action, targetUsername, options) => {
+          <PlayerInteractionCard open={activeMenu === 'player'} onClose={closeMenu} adminResult={multiplayerView.adminResult} onAdminAction={(action, targetUsername, options) => {
             if (multiplayerStatus.phase !== 'connected' || !['admin', 'owner'].includes(multiplayerStatus.role ?? '')) return false;
             setMultiplayerRequest(previous => ({ action: 'admin-action', text: targetUsername, adminAction: action, options, sequence: (previous?.sequence ?? 0) + 1 }));
             return true;
@@ -356,12 +361,27 @@ const App = () => {
               requestMultiplayer('set-role', username, role); return true;
             }} />
           </div>
-          {settingsOpen && !devViewerOpen && (
+          {activeMenu === 'settings' && !devViewerOpen && (
             <SettingsModal
-              onClose={() => setSettingsOpen(false)}
-              onUnlock={() => setDevViewerOpen(true)}
+              onClose={closeMenu}
+              onUnlock={() => { closeMenu(); setDevViewerOpen(true); }}
               radioVolume={radioVolume} onRadioVolume={volume => radioController?.setVolume(volume)}
-            />
+            >
+              <div className="menu-profile">{aippyUser.avatar && <img src={aippyUser.avatar} alt="" referrerPolicy="no-referrer" />}<div><strong>{displayName}</strong><small>GraffCiti</small></div></div>
+              <section className="tool-section"><h3>PLAY</h3><div className="menu-grid">
+                <button type="button" onClick={() => toggleMenu('avatar')}>PROFILE &amp; CLOSET</button>
+                <button type="button" onClick={() => toggleMenu('art')}>NEARBY ART</button>
+                <button type="button" onClick={changeView}>{CAMERA_LABELS[viewMode]}</button>
+                <button type="button" onClick={() => toggleMenu('sky')}>CHANGE SKY</button>
+                <button type="button" aria-pressed={portrait} onClick={() => { setMovement({ x: 0, y: 0 }); setLookInput({ x: 0, y: 0 }); setPortrait(value => !value); closeMenu(); }}>{rotatedPortrait ? 'ROTATE TO LANDSCAPE' : 'ROTATE TO PORTRAIT'}</button>
+                {multiplayerStatus.canAdminPaint && <button type="button" aria-pressed={adminFreePaint} onClick={() => selectPaintTool(adminFreePaint ? 'off' : 'admin')}>ADMIN PAINT</button>}
+              </div></section>
+              <section className="tool-section"><h3>MULTIPLAYER</h3><div className="button-row">
+                {multiplayerStatus.phase === 'solo' || multiplayerStatus.phase === 'disconnected' ? <button type="button" disabled={aippyUser.isLoading} onClick={() => requestMultiplayer('join')}>{multiplayerStatus.phase === 'solo' ? 'JOIN MULTIPLAYER' : 'RECONNECT'}</button> : <button type="button" onClick={() => requestMultiplayer('leave')}>{multiplayerStatus.phase === 'connecting' ? 'CANCEL JOINING' : 'PLAY SOLO'}</button>}
+                <button type="button" onClick={() => toggleMenu('chat')}>ROOM CHAT</button>
+              </div>{multiplayerStatus.notice && <p className="ui-notice" role="status">{multiplayerStatus.notice}</p>}</section>
+              <section className="tool-section"><h3>RADIO</h3>{radioController && <RadioControl controller={radioController} url={RADIO_STREAM_URL} initialVolume={musicVolume} />}</section>
+            </SettingsModal>
           )}
           {devViewerOpen && (
             <Suspense fallback={(

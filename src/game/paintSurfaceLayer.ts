@@ -1,12 +1,17 @@
 import * as THREE from 'three';
 import type { PaintSurfaceLayer } from '@/game/worldTypes';
 
+export interface PaintFaceResolution {
+  width: number;
+  height: number;
+}
+
 export function createPaintSurfaceLayer(
   parent: THREE.Object3D,
   geometry: THREE.BufferGeometry,
   faceCount: number,
   paintFaces: number[],
-  resolution: number,
+  resolution: number | readonly PaintFaceResolution[],
   doubleSided: boolean,
   layerIndex: number,
   planeOffset = 0,
@@ -41,9 +46,13 @@ export function createPaintSurfaceLayer(
     const validFace = Number.isFinite(face) ? face : 0;
     if (validFace < 0 || validFace >= faceCount || !paintFaces.includes(validFace)) return null;
     if (contexts[validFace]) return contexts[validFace];
+    const faceResolution =
+      typeof resolution === 'number'
+        ? { width: resolution, height: resolution }
+        : (resolution[validFace] ?? { width: 256, height: 256 });
     const canvas = document.createElement('canvas');
-    canvas.width = resolution;
-    canvas.height = resolution;
+    canvas.width = Math.max(1, Math.round(faceResolution.width));
+    canvas.height = Math.max(1, Math.round(faceResolution.height));
     const context = canvas.getContext('2d');
     if (!context) return null;
     const texture = new THREE.CanvasTexture(canvas);

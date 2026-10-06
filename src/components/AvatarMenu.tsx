@@ -1,5 +1,6 @@
 import type { AvatarEmote } from '@/game/worldTypes';
 import { useState } from 'react';
+import GameSheet from './GameSheet';
 import { SHOP_ITEMS, type GameProgress, type ShopCategory, type ShopItem } from '@/game/progression';
 
 interface AvatarMenuProps {
@@ -33,14 +34,7 @@ const AvatarMenu = ({ progress, panelColor, purchasesDisabled, onClose, onPurcha
   const equipped = category === 'emote' ? '' : progress[category];
 
   return (
-    <section className="avatar-panel" style={{ backgroundColor: panelColor }} aria-label="Avatar skin editor">
-      <header className="avatar-panel-header">
-        <div>
-          <p>YOUR LOOK</p>
-          <h2>STREET CLOSET</h2>
-        </div>
-        <button type="button" className="avatar-close" onClick={onClose} aria-label="Close closet">×</button>
-      </header>
+    <GameSheet title="STREET CLOSET" subtitle="Your look" onClose={onClose} closeLabel="Close closet" className="avatar-sheet">
       <div className="closet-balance"><span>🪙</span> {progress.coins} SOLO COINS <small>{purchasesDisabled ? 'SOLO SHOP PAUSED' : 'EARN BY PAINTING'}</small></div>
       {purchasesDisabled && <p className="closet-footnote">Inventory, purchases, pickups and trading are unavailable until verified Aippy accounts are connected. You can still wear your existing solo looks.</p>}
       <nav className="closet-tabs" aria-label="Closet categories">
@@ -96,7 +90,7 @@ const AvatarMenu = ({ progress, panelColor, purchasesDisabled, onClose, onPurcha
         </div>
       )}
       <p className="closet-footnote">{category === 'emote' ? 'Pick a mood and let your avatar express it.' : 'Special looks come with their own movement powers.'}</p>
-    </section>
+    </GameSheet>
   );
 };
 

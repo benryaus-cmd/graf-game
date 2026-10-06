@@ -28,7 +28,7 @@ test('normal HUD prioritises paint controls rather than branding and bot spawnin
   assert.ok(!html.includes('DISTRICT 04'));
   assert.ok(!html.includes('FREE ROAM'));
   assert.ok(!html.includes('BotControls'));
-  assert.ok(html.includes('PAINT'));
+  assert.ok(html.includes('EXPLORE'), 'active painting offers Explore without changing the paint tool');
   assert.ok(html.includes('TOOLS'));
   assert.ok(!collect(GameHud({ ...props, hideTouchControls: true } as Parameters<typeof GameHud>[0])).includes('MovementJoystick'));
 });

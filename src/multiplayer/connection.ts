@@ -59,12 +59,29 @@ export class MultiplayerConnection {
         }
         this.sendRaw(join);
       } else if (message.type === 'world_snapshot') {
-        if (!this.playerId || message.playerId !== this.playerId || message.roomId !== this.roomId) return;
-        if (!Array.isArray(message.strokes) || !Array.isArray(message.players)) return;
+        if (
+          !this.playerId ||
+          message.playerId !== this.playerId ||
+          message.roomId !== this.roomId
+        ) return;
+
+        if (!Array.isArray(message.strokes)) return;
+
         this.clearTimeout();
         this.connected = true;
+
+        const playerCount =
+          typeof message.playerCount === 'number'
+            ? message.playerCount
+            : Array.isArray(message.players)
+              ? message.players.length
+              : 1;
+
         this.onMessage(message);
-        this.onStatus({ phase: 'connected', playerCount: message.players.length + 1 });
+        this.onStatus({
+          phase: 'connected',
+          playerCount,
+        });
       } else if (message.type === 'error') {
         const notices: Record<string, string> = {
           room_full: 'The public room is full. Try again later.', verified_account_required: 'Verified Aippy accounts are required for inventory and trading.',

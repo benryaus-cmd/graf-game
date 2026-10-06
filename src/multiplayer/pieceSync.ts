@@ -1,4 +1,5 @@
 import type { Message } from './protocol';
+import { artworkAssetRef } from './artworkAssets';
 
 export interface PieceBounds { min: [number, number, number]; max: [number, number, number] }
 export interface PieceMetadata {
@@ -24,6 +25,15 @@ export interface PieceMetadata {
   protectedUntil?: number;
   protectionBounds?: PieceBounds;
   protectionAddedSeconds?: number;
+  flattened?: boolean;
+  assetRef?: string;
+  surfaceId?: string;
+  face?: string;
+  position?: [number, number, number];
+  quaternion?: [number, number, number, number];
+  width?: number;
+  height?: number;
+  flattenedAt?: number;
 }
 
 export function choosePieceAtWorldPoint(
@@ -81,6 +91,16 @@ function safeRevision(value: unknown): number | undefined {
   return Number.isSafeInteger(value) && (value as number) >= 0 ? value as number : undefined;
 }
 
+function quaternionVector(value: unknown): [number, number, number, number] | undefined {
+  if (
+    !Array.isArray(value) ||
+    value.length !== 4 ||
+    !value.every(v => typeof v === 'number' && Number.isFinite(v))
+  ) return undefined;
+
+  return [value[0], value[1], value[2], value[3]];
+}
+
 export function readPieceMetadata(value: unknown): PieceMetadata | null {
   if (!value || typeof value !== 'object') return null;
   const v = value as Record<string, unknown>;
@@ -102,6 +122,46 @@ export function readPieceMetadata(value: unknown): PieceMetadata | null {
   if (currentWindowStartedAt !== undefined && currentWindowEndsAt !== undefined && currentWindowEndsAt < currentWindowStartedAt) return null;
   const owner = typeof v.owner === 'string' && v.owner.length <= 120 ? v.owner
     : typeof v.owner === 'number' && Number.isFinite(v.owner) ? v.owner : undefined;
+
+  const flatAssetRef = artworkAssetRef(v.assetRef);
+  const flatSurfaceId =
+    typeof v.surfaceId === 'string' && v.surfaceId.length <= 200
+      ? v.surfaceId
+      : undefined;
+
+  const flatFace =
+    typeof v.face === 'string' && v.face.length <= 40
+      ? v.face
+      : undefined;
+
+  const flatPosition = vector(v.position) ?? undefined;
+  const flatQuaternion = quaternionVector(v.quaternion);
+
+  const flatWidth =
+    typeof v.width === 'number' &&
+    Number.isFinite(v.width) &&
+    v.width > 0 &&
+    v.width <= 100
+      ? v.width
+      : undefined;
+
+  const flatHeight =
+    typeof v.height === 'number' &&
+    Number.isFinite(v.height) &&
+    v.height > 0 &&
+    v.height <= 100
+      ? v.height
+      : undefined;
+
+  const flattened =
+    v.flattened === true &&
+    !!flatAssetRef &&
+    !!flatSurfaceId &&
+    !!flatPosition &&
+    !!flatQuaternion &&
+    flatWidth !== undefined &&
+    flatHeight !== undefined;
+
   return {
     pieceId: v.pieceId.trim(), anchor, bounds: { min, max },
     chunkX: safeOptionalInt(v.chunkX), chunkZ: safeOptionalInt(v.chunkZ), owner,
@@ -115,6 +175,15 @@ export function readPieceMetadata(value: unknown): PieceMetadata | null {
     protectedUntil: timestamp(v.protectedUntil),
     protectionBounds: readProtectionBounds(v.protectionBounds),
     protectionAddedSeconds: count(v.protectionAddedSeconds),
+    flattened: flattened || undefined,
+    assetRef: flattened ? flatAssetRef! : undefined,
+    surfaceId: flattened ? flatSurfaceId! : undefined,
+    face: flattened ? flatFace : undefined,
+    position: flattened ? flatPosition : undefined,
+    quaternion: flattened ? flatQuaternion : undefined,
+    width: flattened ? flatWidth : undefined,
+    height: flattened ? flatHeight : undefined,
+    flattenedAt: flattened ? timestamp(v.flattenedAt) : undefined,
   };
 }
 
@@ -179,18 +248,34 @@ export class PieceSync {
       this.notify(removedIds);
       return;
     }
-    if (!['piece_created', 'piece_updated', 'piece_completed', 'piece_liked'].includes(message.type)) return;
+    if (!['piece_created', 'piece_updated', 'piece_completed', 'piece_liked', 'piece_flattened'].includes(message.type)) return;
     const raw = message.piece ?? message.metadata;
     if (!raw || typeof raw !== 'object') return;
     const candidate = raw as Record<string, unknown>;
     const id = typeof candidate.pieceId === 'string' ? candidate.pieceId : '';
     const existing = this.pieces.get(id);
+    const removedStrokeIds = message.type === 'piece_flattened'
+      ? [...new Set([
+          ...(existing?.strokeIds ?? []),
+          ...(Array.isArray(message.strokeIds)
+            ? message.strokeIds.filter(
+                (strokeId): strokeId is string =>
+                  typeof strokeId === 'string' &&
+                  strokeId.length > 0 &&
+                  strokeId.length <= 120,
+              )
+            : []),
+        ])]
+      : undefined;
     const piece = readPieceMetadata(existing ? { ...existing, ...candidate } : raw);
     if (!piece) return;
-    if (piece.title) this.localTitles.set(piece.pieceId, piece.title);
-    this.pieces.set(piece.pieceId, piece);
-    this.optimistic.delete(piece.pieceId);
-    this.notify();
+    const storedPiece = message.type === 'piece_flattened'
+      ? { ...piece, strokeIds: [] }
+      : piece;
+    if (storedPiece.title) this.localTitles.set(storedPiece.pieceId, storedPiece.title);
+    this.pieces.set(storedPiece.pieceId, storedPiece);
+    this.optimistic.delete(storedPiece.pieceId);
+    this.notify(removedStrokeIds);
   }
 
   create(anchorValue: unknown, boundsValue: unknown): string | null {

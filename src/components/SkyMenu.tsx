@@ -1,3 +1,4 @@
+import GameSheet from './GameSheet';
 import type { SkyMode } from '@/game/worldTypes';
 
 export const SKY_OPTIONS: Array<{ id: SkyMode; label: string; detail: string; swatch: string }> = [
@@ -19,16 +20,8 @@ interface SkyMenuProps {
 
 const SkyMenu = ({ sky, open, panelColor, onToggle, onClose, onSelect }: SkyMenuProps) => (
   <>
-    <button className="sky-trigger" type="button" aria-expanded={open} onClick={onToggle}
-      title={SKY_OPTIONS.find(option => option.id === sky)?.label} aria-label={`Weather: ${SKY_OPTIONS.find(option => option.id === sky)?.label}`}>
-      <span className="sky-symbol">{sky === 'night' ? '☾' : sky === 'rain' ? '☂' : sky === 'sunset' ? '◒' : sky === 'pastel' ? '☁' : '☼'}</span>
-    </button>
     {open && (
-      <section className="sky-menu" style={{ backgroundColor: panelColor }} aria-label="Choose the sky">
-        <div className="menu-heading">
-          <span>THE SKY</span><span>01 — 05</span>
-          <button type="button" className="sky-close" aria-label="Close sky menu" onClick={onClose}>×</button>
-        </div>
+      <GameSheet title="THE SKY" onClose={onClose} closeLabel="Close sky menu" className="sky-sheet">
         {SKY_OPTIONS.map((option, index) => (
           <button
             className={`sky-option ${sky === option.id ? 'sky-option-active' : ''}`}
@@ -41,7 +34,7 @@ const SkyMenu = ({ sky, open, panelColor, onToggle, onClose, onSelect }: SkyMenu
             <span className="sky-number">0{index + 1}</span>
           </button>
         ))}
-      </section>
+      </GameSheet>
     )}
   </>
 );

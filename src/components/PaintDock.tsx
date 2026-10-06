@@ -1,7 +1,8 @@
-import { useState, useRef, useEffect, type PointerEvent as ReactPointerEvent } from 'react';
+import { useState, useEffect, type ReactNode } from 'react';
 import type { BrushHead } from '@/game/sprayHeads';
 import assetsData from '@/config/assets';
 import BrushTuning from '@/components/BrushTuning';
+import GameSheet from '@/components/GameSheet';
 import PosterStudio from '@/components/PosterStudio';
 import { hexToHsl, paintColor } from '@/game/paintColor';
 import {
@@ -17,9 +18,10 @@ const HEADS: Array<{ id: BrushHead; label: string }> = [
 ];
 
 interface PaintDockProps {
+  workspaceControls?: ReactNode;
   brushHead?: BrushHead;
   onBrushHeadChange?: (head: BrushHead) => void;
-  open: boolean; onToggle: () => void;
+  open: boolean; onToggle: () => void; onClose?: () => void;
   color: string; paintMode: boolean; eraseMode: boolean;
   brushSize: number; opacity: number; panelColor: string; accentColor: string;
   layers: PaintLayerControl[]; selectedLayer: number;
@@ -52,7 +54,6 @@ const PaintDock = (props: PaintDockProps) => {
   const [paletteName, setPaletteName] = useState('');
   const [paletteMessage, setPaletteMessage] = useState('');
   useEffect(() => setColorDraft(props.color), [props.color]);
-  const swipeStart = useRef<{ id: number; x: number; y: number } | null>(null);
   const selectBaseColor = (next: string) => {
     setBaseColor(next); setHue(hexToHsl(next).h); setDarkness(0); setPaleness(0); props.onColorChange(next);
     setRecentColors(previous => [next, ...previous.filter(color => color !== next)].slice(0, 6));
@@ -66,18 +67,6 @@ const PaintDock = (props: PaintDockProps) => {
   const refreshPalettes = () => {
     const storage = paletteStorage();
     if (storage) setPaletteSettings(loadPaletteSettings(storage));
-  };
-  const pointerDown = (event: ReactPointerEvent<HTMLElement>) => {
-    if (event.target instanceof HTMLElement && event.target.closest('button, input, textarea, select')) return;
-    swipeStart.current = { id: event.pointerId, x: event.clientX, y: event.clientY };
-  };
-  const pointerUp = (event: ReactPointerEvent<HTMLElement>) => {
-    const start = swipeStart.current;
-    swipeStart.current = null;
-    if (!start || start.id !== event.pointerId) return;
-    const horizontal = event.clientX - start.x;
-    if (Math.abs(horizontal) < 70 || Math.abs(event.clientY - start.y) > 55) return;
-    setPosterMode(horizontal < 0);
   };
   const addCurrentColorToPalette = () => {
     if (paletteColors.includes(props.color.toLowerCase())) { setPaletteMessage('That colour is already in this palette.'); return; }
@@ -123,66 +112,51 @@ const PaintDock = (props: PaintDockProps) => {
   if (!props.open) return null;
 
   return (
-    <section
-      className="paint-dock paint-dock-expanded"
-      aria-label="Paint controls"
-      onPointerDown={pointerDown} onPointerUp={pointerUp}
-      onPointerCancel={() => { swipeStart.current = null; }}
-    >
-      <div className="dock-topline">
-        <span>{posterMode ? 'TAG STUDIO · HANDMADE WALL ART' : props.eraseMode ? 'ERASER READY' : `LAYER ${props.selectedLayer + 1} · YOUR PALETTE`}</span>
-        <div className="dock-tools">
-          {!posterMode && <span className="color-readout"><i style={{ backgroundColor: props.color }} />{props.color.toUpperCase()}</span>}
-          <button className="poster-page-toggle" type="button" onClick={() => setPosterMode((value) => !value)} aria-label={posterMode ? 'Return to painting tools' : 'Open tag studio'}>{posterMode ? '← PAINT' : 'TAGS →'}</button>
-          {!posterMode && <button className="tune-toggle" type="button" aria-expanded={tuningOpen} onClick={() => setTuningOpen((value) => !value)}>{tuningOpen ? 'LESS' : 'MORE'}</button>}
-          {!posterMode && props.onEyedropper && <button className="tune-toggle" type="button" aria-pressed={!!props.eyedropperActive} onClick={() => { props.onEyedropper?.(); props.onToggle(); }}>{props.eyedropperActive ? 'PICK ACTIVE' : 'PICK COLOUR'}</button>}
-          <button className="dock-close" type="button" aria-label="Close paint panel" onClick={props.onToggle}>×</button>
-        </div>
-      </div>
+    <GameSheet title="PAINT TOOLS" subtitle={`${props.eraseMode ? 'Eraser' : props.brushHead ?? 'soft'} · Layer ${props.selectedLayer + 1}`} onClose={props.onToggle} closeLabel="Close paint panel" className="paint-sheet" footer={props.workspaceControls}>
+      <nav className="sheet-tabs" aria-label="Paint workspace tools">
+        <button type="button" aria-pressed={!posterMode} onClick={() => setPosterMode(false)}>PAINT</button>
+        <button type="button" aria-pressed={posterMode} onClick={() => setPosterMode(true)}>TAGS</button>
+      </nav>
       {posterMode ? <PosterStudio size={props.posterSize} onSizeChange={props.onPosterSizeChange} onStartPlacement={props.onStartPosterPlacement} /> : <>
-        <div className="paint-heads" aria-label="Spray heads">
-          {HEADS.map(head => <button key={head.id} type="button" aria-pressed={(props.brushHead ?? 'soft') === head.id} onClick={() => props.onBrushHeadChange?.(head.id)}>{head.label}</button>)}
-        </div>
-        <div className="dock-controls" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 7 }}>
-          <div className="swatches" aria-label="Color palette" style={{ display: 'grid', gridTemplateColumns: 'repeat(9, minmax(0, 1fr))', gap: 5, width: '100%', minWidth: 0, flex: 'none', overflow: 'visible', justifyContent: 'stretch' }}>
-            {paletteColors.map((swatch) => <button key={swatch} type="button" aria-label={`Select paint colour ${swatch}`} title={swatch} aria-pressed={props.color === swatch} className={`swatch ${props.color === swatch ? 'swatch-selected' : ''}`} style={{ backgroundColor: swatch, width: '100%', height: 33, minWidth: 0, flex: 'none' }} onClick={() => selectBaseColor(swatch)} />)}
-            <label className="wheel-picker" aria-label="Choose any paint color" style={{ width: '100%', height: 33, minWidth: 0, flex: 'none' }}>
-              <input type="color" value={props.color} onChange={(event) => selectBaseColor(event.target.value)} /><span>◉</span>
-            </label>
+        <section className="tool-section"><h3>BRUSH</h3>
+          <div className="paint-heads" aria-label="Brush heads">
+            {HEADS.map(head => <button key={head.id} type="button" aria-pressed={(props.brushHead ?? 'soft') === head.id} onClick={() => props.onBrushHeadChange?.(head.id)}>{head.label}</button>)}
           </div>
-          <div className="dock-tool-buttons">
-            <button className={`paint-toggle ${selectedTool === 'paint' ? 'paint-toggle-active' : ''}`} type="button" aria-pressed={selectedTool === 'paint'} onClick={() => { props.onToolChange('paint'); props.onToggle(); }}><img src={assetsData.IMAGE_ERCF} alt="" /><span>SPRAY</span></button>
-            <button className={`eraser-toggle ${selectedTool === 'eraser' ? 'eraser-toggle-active' : ''}`} type="button" aria-pressed={selectedTool === 'eraser'} onClick={() => { props.onToolChange('eraser'); props.onToggle(); }}><span aria-hidden="true">◩</span><span>ERASE</span></button>
+        </section>
+        <section className="tool-section"><h3>COLOUR <span className="color-readout"><i style={{ backgroundColor: props.color }} />{props.color.toUpperCase()}</span></h3>
+          <div className="swatches" aria-label="Color palette">
+            {paletteColors.map(swatch => <button key={swatch} type="button" aria-label={`Select paint colour ${swatch}`} title={swatch} aria-pressed={props.color === swatch} className={`swatch ${props.color === swatch ? 'swatch-selected' : ''}`} style={{ backgroundColor: swatch }} onClick={() => selectBaseColor(swatch)} />)}
+            <label className="wheel-picker" aria-label="Choose any paint color"><input aria-label="Custom paint colour" type="color" value={props.color} onChange={event => selectBaseColor(event.target.value)} /><span>＋</span></label>
           </div>
-        </div>
-        <div className="paint-color-details">
-          <label>HEX <input aria-label="Hex paint colour" value={colorDraft} maxLength={7} spellCheck={false} onBlur={() => setColorDraft(props.color)} onChange={event => { const next = event.target.value.toLowerCase(); setColorDraft(next); if (/^#[0-9a-f]{6}$/.test(next)) selectBaseColor(next); }} /></label>
-          <div aria-label="Recent colours">{recentColors.map(recent => <button type="button" key={recent} aria-label={`Reuse ${recent}`} style={{ backgroundColor: recent }} onClick={() => selectBaseColor(recent)} />)}</div>
-        </div>
-        <div aria-label="Saved palettes" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto auto', alignItems: 'center', gap: 5, marginTop: 7 }}>
-          <select aria-label="Load saved palette" value={paletteSettings.activePaletteId ?? ''} onChange={(event) => changePalette(event.target.value)} style={{ minWidth: 0, minHeight: 34, padding: '4px 7px', border: '1px solid rgba(255,255,255,.22)', borderRadius: 3, background: 'rgba(0,0,0,.25)', color: '#f3f1e9', fontSize: 9 }}>
-            <option value="">DEFAULT PALETTE</option>{paletteSettings.palettes.map(palette => <option key={palette.id} value={palette.id}>{palette.name}</option>)}
-          </select>
-          <button type="button" className="tune-toggle" onClick={addCurrentColorToPalette}>ADD COLOUR</button>
-          <button type="button" className="tune-toggle" disabled={!paletteSettings.activePaletteId} onClick={removeActivePalette} aria-label="Delete selected palette" style={{ opacity: paletteSettings.activePaletteId ? 1 : .45 }}>DELETE</button>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) auto', gap: 5, marginTop: 5 }}>
-          <input aria-label="New palette name" placeholder="Name current palette" value={paletteName} maxLength={32} onChange={event => setPaletteName(event.target.value)} style={{ minWidth: 0, minHeight: 34, padding: '5px 7px', border: '1px solid rgba(255,255,255,.22)', borderRadius: 3, background: 'rgba(0,0,0,.25)', color: '#f3f1e9', fontSize: 9 }} />
-          <button type="button" className="tune-toggle" onClick={saveCurrentPalette}>SAVE PALETTE</button>
-        </div>
-        {paletteMessage && <small role="status" style={{ color: '#c9d6c7', fontSize: 8 }}>{paletteMessage}</small>}
-        <BrushTuning advanced={tuningOpen} color={props.color} hue={hue} darkness={darkness} paleness={paleness} brushSize={props.brushSize} opacity={props.opacity} onHueChange={updateHue} onSizeChange={props.onBrushSizeChange} onOpacityChange={props.onOpacityChange} onDarknessChange={updateDarkness} onPalenessChange={updatePaleness} />
-        <div className="layer-toolbar" aria-label="Drawing layers">
-          <div className="layer-list">
-            {props.layers.slice(0, 5).map((layer, index) => <div className={`layer-chip ${props.selectedLayer === index ? 'layer-chip-selected' : ''}`} key={layer.name}>
-              <button className="layer-select" type="button" aria-pressed={props.selectedLayer === index} onClick={() => props.onLayerSelect(index)}>{layer.name}</button>
-              <button className={`layer-visibility ${layer.visible ? '' : 'layer-hidden'}`} type="button" aria-label={`${layer.visible ? 'Hide' : 'Show'} ${layer.name}`} aria-pressed={layer.visible} onClick={() => props.onLayerToggle(index)}>{layer.visible ? '●' : '○'}</button>
-            </div>)}
+          <div className="colour-actions">
+            {props.onEyedropper && <button type="button" className="ui-button" aria-pressed={!!props.eyedropperActive} onClick={() => { props.onEyedropper?.(); props.onToggle(); }}>PICK COLOUR</button>}
+            <label className="hex-control"><span>HEX</span><input aria-label="Hex paint colour" value={colorDraft} maxLength={7} spellCheck={false} onBlur={() => setColorDraft(props.color)} onChange={event => { const next = event.target.value.toLowerCase(); setColorDraft(next); if (/^#[0-9a-f]{6}$/.test(next)) selectBaseColor(next); }} /></label>
           </div>
+          {recentColors.length > 0 && <div className="recent-colours" aria-label="Recent colours">{recentColors.map(recent => <button type="button" key={recent} aria-label={`Reuse ${recent}`} style={{ backgroundColor: recent }} onClick={() => selectBaseColor(recent)} />)}</div>}
+        </section>
+        <div className="tool-mode" aria-label="Paint operation">
+          <button type="button" aria-pressed={selectedTool === 'paint'} onClick={() => { props.onToolChange('paint'); (props.onClose ?? props.onToggle)(); }}><img src={assetsData.IMAGE_ERCF} alt="" />SPRAY</button>
+          <button type="button" aria-pressed={selectedTool === 'eraser'} onClick={() => { props.onToolChange('eraser'); (props.onClose ?? props.onToggle)(); }}>ERASE</button>
         </div>
+        <section className="tool-section"><h3>BRUSH SETTINGS</h3>
+          <BrushTuning advanced={tuningOpen} color={props.color} hue={hue} darkness={darkness} paleness={paleness} brushSize={props.brushSize} opacity={props.opacity} onHueChange={updateHue} onSizeChange={props.onBrushSizeChange} onOpacityChange={props.onOpacityChange} onDarknessChange={updateDarkness} onPalenessChange={updatePaleness} />
+          <button type="button" className="disclosure-button" aria-expanded={tuningOpen} onClick={() => setTuningOpen(value => !value)}>{tuningOpen ? 'Less colour tuning' : 'Advanced colour tuning'} <span>{tuningOpen ? '−' : '+'}</span></button>
+        </section>
+        <section className="tool-section"><h3>LAYERS <small>LAYER {props.selectedLayer + 1}</small></h3>
+          <div className="layer-list" aria-label="Drawing layers">{props.layers.slice(0, 5).map((layer, index) => <div className={`layer-chip ${props.selectedLayer === index ? 'layer-chip-selected' : ''}`} key={layer.name}>
+            <button className="layer-select" type="button" aria-label={`Select ${layer.name}`} aria-pressed={props.selectedLayer === index} onClick={() => props.onLayerSelect(index)}>{index + 1}</button>
+            <button className="layer-visibility" type="button" aria-label={`${layer.visible ? 'Hide' : 'Show'} ${layer.name}`} aria-pressed={layer.visible} onClick={() => props.onLayerToggle(index)}>{layer.visible ? '●' : '○'}</button>
+          </div>)}</div>
+        </section>
+        <details className="palette-manager"><summary>Manage palettes</summary>
+          <label className="ui-field">PALETTE<select aria-label="Load saved palette" value={paletteSettings.activePaletteId ?? ''} onChange={event => changePalette(event.target.value)}><option value="">DEFAULT PALETTE</option>{paletteSettings.palettes.map(palette => <option key={palette.id} value={palette.id}>{palette.name}</option>)}</select></label>
+          <div className="button-row"><button type="button" onClick={addCurrentColorToPalette}>ADD COLOUR</button><button type="button" disabled={!paletteSettings.activePaletteId} onClick={removeActivePalette} aria-label="Delete selected palette">DELETE</button></div>
+          <label className="ui-field">SAVE CURRENT PALETTE<input aria-label="New palette name" placeholder="Palette name" value={paletteName} maxLength={32} onChange={event => setPaletteName(event.target.value)} /></label>
+          <button type="button" onClick={saveCurrentPalette}>SAVE PALETTE</button>
+          {paletteMessage && <p className="ui-notice" role="status">{paletteMessage}</p>}
+        </details>
       </>}
-      <span className="dock-accent" style={{ backgroundColor: props.accentColor }} />
-    </section>
+    </GameSheet>
   );
 };
 

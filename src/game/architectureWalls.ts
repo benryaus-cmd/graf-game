@@ -10,6 +10,49 @@ export interface CreatedWall {
 
 const PAINT_FACES = [0, 1, 2, 3, 4, 5];
 
+const PAINT_REFERENCE_WORLD_SIZE = 4;
+const MAX_PAINT_FACE_RESOLUTION = 2048;
+const MIN_PAINT_FACE_RESOLUTION = 32;
+
+function paintFaceResolutions(
+  faceSizes: number[][],
+  referenceResolution: number,
+): Array<{ width: number; height: number }> {
+  const pixelsPerWorldUnit =
+    referenceResolution / PAINT_REFERENCE_WORLD_SIZE;
+
+  return faceSizes.map(([worldWidth, worldHeight]) => {
+    let width =
+      Math.max(0.01, worldWidth) *
+      pixelsPerWorldUnit;
+
+    let height =
+      Math.max(0.01, worldHeight) *
+      pixelsPerWorldUnit;
+
+    const largest = Math.max(width, height);
+
+    if (largest > MAX_PAINT_FACE_RESOLUTION) {
+      const scale =
+        MAX_PAINT_FACE_RESOLUTION / largest;
+
+      width *= scale;
+      height *= scale;
+    }
+
+    return {
+      width: Math.max(
+        MIN_PAINT_FACE_RESOLUTION,
+        Math.round(width),
+      ),
+      height: Math.max(
+        MIN_PAINT_FACE_RESOLUTION,
+        Math.round(height),
+      ),
+    };
+  });
+}
+
 export function createPaintWall(
   group: THREE.Object3D,
   x: number,
@@ -33,9 +76,10 @@ export function createPaintWall(
     [width, depth], [width, height], [width, height],
   ];
   const uvScales = faceSizes.map(([u, v]) => ({ u: u / 4, v: v / 4 }));
+  const faceResolutions = paintFaceResolutions(faceSizes, resolution);
   const layers: PaintWall['layers'] = [];
   const createLayer = () => {
-    const layer = createPaintSurfaceLayer(mesh, paintGeometry, 6, PAINT_FACES, resolution, false, layers.length);
+    const layer = createPaintSurfaceLayer(mesh, paintGeometry, 6, PAINT_FACES, faceResolutions, false, layers.length);
     layers.push(layer);
     return layer;
   };

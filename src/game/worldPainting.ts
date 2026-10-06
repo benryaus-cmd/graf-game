@@ -3,7 +3,13 @@ import type { LiveSettings, PaintWall, WorldEngine } from '@/game/worldTypes';
 import { isPaintTargetReachable } from '@/game/paintTargeting';
 import { elementPointerPoint } from '@/game/pointerCoordinates';
 import { isPaintWorkspaceHitAllowed } from '@/game/paintWorkspace';
-import { drawPaintHead, headForTool, nextHoldSamples, type PaintHead } from '@/game/sprayHeads';
+import {
+  drawPaintHead,
+  headForTool,
+  nextHoldSamples,
+  paintHeadFootprint,
+  type PaintHead,
+} from '@/game/sprayHeads';
 
 export interface PaintPoint {
   object: THREE.Object3D;
@@ -17,6 +23,26 @@ export interface PaintPoint {
 
 export function paintRadius(brushSize: number): number {
   return Math.max(brushSize >= 1 ? .025 : .002, brushSize / 50);
+}
+
+const MAX_INTERPOLATED_HEAD_STAMPS = 96;
+
+function paintHeadStampSpacing(
+  head: PaintHead,
+  radius: number,
+): number {
+  const [, scale] = paintHeadFootprint(head);
+
+  const footprintRadius = Math.max(0.002, radius * scale);
+
+  const spacingFactor =
+    head === 'roller' || head === 'marker'
+      ? 0.42
+      : head === 'fine'
+        ? 0.48
+        : 0.52;
+
+  return Math.max(0.0015, footprintRadius * spacingFactor);
 }
 
 export function stampPaintHit(
@@ -74,7 +100,38 @@ export function stampPaintHit(
   const holdSamples = dwellSamples === undefined
     ? nextHoldSamples(continues ? previous : null, worldPoint)
     : Math.max(1, Math.min(60, dwellSamples));
-  if (head) drawPaintHead(context, worldX, worldY, radius, head, holdSamples);
+  if (head) {
+    if (continues && previous) {
+      const previousWorldX = previous.x / pixelsPerWorldX;
+      const previousWorldY = previous.y / pixelsPerWorldY;
+
+      const deltaX = worldX - previousWorldX;
+      const deltaY = worldY - previousWorldY;
+
+      const distance = Math.hypot(deltaX, deltaY);
+      const spacing = paintHeadStampSpacing(head, radius);
+
+      const segments = Math.min(
+        MAX_INTERPOLATED_HEAD_STAMPS,
+        Math.max(1, Math.ceil(distance / spacing)),
+      );
+
+      for (let segment = 1; segment < segments; segment += 1) {
+        const progress = segment / segments;
+
+        drawPaintHead(
+          context,
+          previousWorldX + deltaX * progress,
+          previousWorldY + deltaY * progress,
+          radius,
+          head,
+          1,
+        );
+      }
+    }
+
+    drawPaintHead(context, worldX, worldY, radius, head, holdSamples);
+  }
   context.restore();
   wall.dirty = true;
   layer.textures[face].needsUpdate = true;

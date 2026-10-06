@@ -110,20 +110,81 @@ const ProjectFileViewer = ({ onClose }: { onClose: () => void }) => {
     flashNote(setNote, ok ? 'COPIED' : 'COPY FAILED');
   };
 
-  const downloadZip = () => {
+  const downloadZip = async () => {
     const encoder = new TextEncoder();
+
     const entries = manifest.files.map(file => ({
       name: file.path,
       data: file.status === 'TEXT' && file.content !== undefined
         ? encoder.encode(file.content)
         : new Uint8Array(0),
     }));
-    const url = URL.createObjectURL(createZip(entries));
+
+    const blob = createZip(entries);
+
+    const file = new File(
+      [blob],
+      'project-files.zip',
+      { type: 'application/zip' },
+    );
+
+    /*
+     * Android WebViews often cannot download blob: URLs via
+     * synthetic <a download> clicks.
+     *
+     * Prefer the native Android share/save sheet when file
+     * sharing is available.
+     */
+    if (
+      typeof navigator.share === 'function' &&
+      typeof navigator.canShare === 'function' &&
+      navigator.canShare({ files: [file] })
+    ) {
+      try {
+        await navigator.share({
+          files: [file],
+          title: 'Project files',
+        });
+
+        flashNote(setNote, 'ZIP READY ✓');
+        return;
+      } catch (error) {
+        /*
+         * AbortError means the user simply closed the share sheet.
+         * Do not automatically trigger a second download in that case.
+         */
+        if (
+          error instanceof DOMException &&
+          error.name === 'AbortError'
+        ) {
+          return;
+        }
+
+        /*
+         * Otherwise continue to the normal browser download fallback.
+         */
+      }
+    }
+
+    const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
+
     link.href = url;
     link.download = 'project-files.zip';
+    link.style.display = 'none';
+
+    document.body.appendChild(link);
     link.click();
-    URL.revokeObjectURL(url);
+    link.remove();
+
+    /*
+     * Do NOT revoke immediately after click.
+     * Some browsers/WebViews have not consumed the blob yet.
+     */
+    window.setTimeout(() => {
+      URL.revokeObjectURL(url);
+    }, 30_000);
+
     flashNote(setNote, 'ZIP ✓');
   };
 
@@ -141,7 +202,7 @@ const ProjectFileViewer = ({ onClose }: { onClose: () => void }) => {
         <span className="shrink-0 text-[11px] text-neutral-500">
           {results.length}/{manifest.files.length}
         </span>
-        <button type="button" onClick={downloadZip} className="min-h-11 shrink-0 rounded bg-neutral-800 px-2.5 text-[11px]">
+        <button type="button" onClick={() => void downloadZip()} className="min-h-11 shrink-0 rounded bg-neutral-800 px-2.5 text-[11px]">
           ZIP
         </button>
       </div>

@@ -4,7 +4,7 @@ import reactHooks from "eslint-plugin-react-hooks";
 import tseslint from "typescript-eslint";
 
 export default [
-  { ignores: ["dist", "public", "**/*.js", "**/*.d.ts"] },
+  { ignores: ["dist", "public", "updates/mobile-ui-host/**", "**/*.js", "**/*.d.ts"] },
   js.configs.recommended,
   ...tseslint.configs.recommended.map((config) => ({
     ...config,

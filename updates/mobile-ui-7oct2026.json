@@ -1,0 +1,134 @@
+{
+  "version": "mobile-ui-7oct2026",
+  "baseUrl": "https://raw.githubusercontent.com/benryaus-cmd/graf-game/main/",
+  "files": [
+    {
+      "source": "src/App.tsx",
+      "target": "src/games/importedGame/upstream/src/App.tsx"
+    },
+    {
+      "source": "src/components/AvatarMenu.tsx",
+      "target": "src/games/importedGame/upstream/src/components/AvatarMenu.tsx"
+    },
+    {
+      "source": "src/components/GameHud.tsx",
+      "target": "src/games/importedGame/upstream/src/components/GameHud.tsx"
+    },
+    {
+      "source": "src/components/GameSheet.tsx",
+      "target": "src/games/importedGame/upstream/src/components/GameSheet.tsx"
+    },
+    {
+      "source": "src/components/GraffitiPieces.tsx",
+      "target": "src/games/importedGame/upstream/src/components/GraffitiPieces.tsx"
+    },
+    {
+      "source": "src/components/MultiplayerChat.tsx",
+      "target": "src/games/importedGame/upstream/src/components/MultiplayerChat.tsx"
+    },
+    {
+      "source": "src/components/MultiplayerControls.tsx",
+      "target": "src/games/importedGame/upstream/src/components/MultiplayerControls.tsx"
+    },
+    {
+      "source": "src/components/PaintDock.tsx",
+      "target": "src/games/importedGame/upstream/src/components/PaintDock.tsx"
+    },
+    {
+      "source": "src/components/PaintWorkspaceHud.tsx",
+      "target": "src/games/importedGame/upstream/src/components/PaintWorkspaceHud.tsx"
+    },
+    {
+      "source": "src/components/PlayerInteractionCard.tsx",
+      "target": "src/games/importedGame/upstream/src/components/PlayerInteractionCard.tsx"
+    },
+    {
+      "source": "src/components/PosterStudio.tsx",
+      "target": "src/games/importedGame/upstream/src/components/PosterStudio.tsx"
+    },
+    {
+      "source": "src/components/ProjectFileViewer.tsx",
+      "target": "src/games/importedGame/upstream/src/components/ProjectFileViewer.tsx"
+    },
+    {
+      "source": "src/components/ProtectionControls.tsx",
+      "target": "src/games/importedGame/upstream/src/components/ProtectionControls.tsx"
+    },
+    {
+      "source": "src/components/SettingsModal.tsx",
+      "target": "src/games/importedGame/upstream/src/components/SettingsModal.tsx"
+    },
+    {
+      "source": "src/components/SkyMenu.tsx",
+      "target": "src/games/importedGame/upstream/src/components/SkyMenu.tsx"
+    },
+    {
+      "source": "src/components/WorldScene.tsx",
+      "target": "src/games/importedGame/upstream/src/components/WorldScene.tsx"
+    },
+    {
+      "source": "src/components/chatPresentation.ts",
+      "target": "src/games/importedGame/upstream/src/components/chatPresentation.ts"
+    },
+    {
+      "source": "src/components/sheetViewport.ts",
+      "target": "src/games/importedGame/upstream/src/components/sheetViewport.ts"
+    },
+    {
+      "source": "src/game/architectureWalls.ts",
+      "target": "src/games/importedGame/upstream/src/game/architectureWalls.ts"
+    },
+    {
+      "source": "src/game/paintSurfaceLayer.ts",
+      "target": "src/games/importedGame/upstream/src/game/paintSurfaceLayer.ts"
+    },
+    {
+      "source": "src/game/worldPainting.ts",
+      "target": "src/games/importedGame/upstream/src/game/worldPainting.ts"
+    },
+    {
+      "source": "src/index.css",
+      "target": "src/games/importedGame/upstream/src/index.css"
+    },
+    {
+      "source": "src/multiplayer/artworkSync.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/artworkSync.ts"
+    },
+    {
+      "source": "src/multiplayer/connection.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/connection.ts"
+    },
+    {
+      "source": "src/multiplayer/pieceFlatten.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/pieceFlatten.ts"
+    },
+    {
+      "source": "src/multiplayer/pieceSync.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/pieceSync.ts"
+    },
+    {
+      "source": "src/multiplayer/protocol.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/protocol.ts"
+    },
+    {
+      "source": "src/multiplayer/worldSession.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/worldSession.ts"
+    },
+    {
+      "source": "src/assets/graffciti-menu.webp",
+      "target": "src/games/importedGame/upstream/src/assets/graffciti-menu.webp"
+    },
+    {
+      "source": "updates/mobile-ui-host/GameHostScreen.tsx",
+      "target": "src/gameHost/GameHostScreen.tsx"
+    },
+    {
+      "source": "updates/mobile-ui-host/ImportedGame.tsx",
+      "target": "src/games/importedGame/ImportedGame.tsx"
+    },
+    {
+      "source": "updates/mobile-ui-host/host-index.css",
+      "target": "src/index.css"
+    }
+  ]
+}

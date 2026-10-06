@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
+import GameSheet from './GameSheet';
 import type { PieceMetadata } from '@/multiplayer/pieceSync';
 
 interface GraffitiPiecesProps {
+  open?: boolean; onOpenChange?: (open: boolean) => void;
   pieces: PieceMetadata[];
   connected: boolean;
   onLike: (pieceId: string) => boolean;
@@ -34,10 +36,12 @@ const protectionLabel = (piece: PieceMetadata, now: number) => {
   return `PROTECTED · ${Math.floor(minutes / 60)}h ${minutes % 60}m remaining`;
 };
 
-const GraffitiPieces = ({ pieces, connected, onLike, onResync, onView, role, canDeletePieces = false, onDelete, selectedPieceId, piecePickSequence, canPaintOver, paintColour = '#ffffff', onPaintOver }: GraffitiPiecesProps) => {
+const GraffitiPieces = ({ open: controlledOpen, onOpenChange, pieces, connected, onLike, onResync, onView, role, canDeletePieces = false, onDelete, selectedPieceId, piecePickSequence, canPaintOver, paintColour = '#ffffff', onPaintOver }: GraffitiPiecesProps) => {
   const [coverColour, setCoverColour] = useState(paintColour);
   const [protectionGain, setProtectionGain] = useState(false);
-  const [open, setOpen] = useState(true);
+  const [localOpen, setLocalOpen] = useState(false);
+  const open = controlledOpen ?? localOpen;
+  const setOpen = (value: boolean | ((current: boolean) => boolean)) => { const next = typeof value === 'function' ? value(open) : value; if (onOpenChange) onOpenChange(next); else setLocalOpen(next); };
   const [viewingPieceId, setViewingPieceId] = useState<string | null>(selectedPieceId ?? null);
   const [now, setNow] = useState(() => Date.now());
   const [pendingLikes, setPendingLikes] = useState<PendingLikes>({});
@@ -55,20 +59,11 @@ const GraffitiPieces = ({ pieces, connected, onLike, onResync, onView, role, can
   useEffect(() => {
     if (selectedPieceId === undefined) return;
     setViewingPieceId(selectedPieceId);
-    if (selectedPieceId) setOpen(true);
+    if (selectedPieceId && controlledOpen === undefined) setLocalOpen(true);
   }, [selectedPieceId, piecePickSequence]);
   useEffect(() => {
     if (viewingPieceId && !pieces.some(piece => piece.pieceId === viewingPieceId)) setViewingPieceId(null);
   }, [pieces, viewingPieceId]);
-
-  useEffect(() => {
-    if (!open) return undefined;
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setOpen(false);
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [open]);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 60_000);
@@ -112,19 +107,9 @@ const GraffitiPieces = ({ pieces, connected, onLike, onResync, onView, role, can
         style={{ minHeight: 40, padding: '0 12px', border: '1px solid rgba(244,242,230,.28)', borderRadius: 4, background: 'rgba(23,24,22,.78)', color: '#f3f1e9', fontFamily: 'inherit', fontSize: 9, fontWeight: 900, letterSpacing: '.1em', cursor: 'pointer' }}
       >ART <span aria-hidden="true">{pieces.length ? ` ${pieces.length}` : ''}</span></button>
       {open && (
-        <section
-          id="graffiti-pieces-panel" aria-label={viewingPiece ? 'Selected graffiti piece' : 'Nearby graffiti pieces'}
-          style={{ position: 'absolute', top: '100%', left: 0, width: 'min(360px, 100%)', maxHeight: 'min(70dvh, 520px)', overflowY: 'auto', padding: 12, border: '1px solid rgba(245,241,229,.2)', borderRadius: 5, background: 'rgba(23,24,22,.96)', color: '#f3f1e9', boxShadow: '0 18px 50px rgba(0,0,0,.48)', backdropFilter: 'blur(18px)' }}
-        >
-          <header style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-            <div style={{ display: 'grid', flex: 1, gap: 3 }}>
-              <small style={{ color: '#a5a8a2', fontSize: 8, fontWeight: 900, letterSpacing: '.16em' }}>COMMUNITY WALLS</small>
-              <b style={{ fontSize: 12, letterSpacing: '.08em' }}>{viewingPiece ? 'ARTWORK' : 'NEARBY ART'}</b>
-              {role && <small style={{ color: '#c4c7bd', fontSize: 8, letterSpacing: '.1em' }}>SERVER ROLE: {role.toUpperCase()}</small>}
-            </div>
-            <button type="button" onClick={onResync} disabled={!connected} style={smallButtonStyle}>RESYNC</button>
-            <button type="button" aria-label="Close nearby art" onClick={() => setOpen(false)} style={closeButtonStyle}>×</button>
-          </header>
+        <GameSheet title={viewingPiece ? 'ARTWORK' : 'NEARBY ART'} onClose={() => setOpen(false)} closeLabel="Close nearby art" className="art-sheet">
+          <div id="graffiti-pieces-panel">
+          <details className="piece-connection"><summary>Connection options</summary><button type="button" onClick={onResync} disabled={!connected}>REFRESH ART</button>{role && <small>Role: {role}</small>}</details>
           {!connected && <p style={noteStyle} role="status">Connect to see shared pieces and send likes.</p>}
           {sendError && <p style={{ ...noteStyle, color: '#ffc0b2' }} role="alert">{sendError}</p>}
           {deleteNotice && <p style={{ ...noteStyle, color: deleteNotice.startsWith('Delete request could not') ? '#ffc0b2' : '#c4c7bd' }} role="status">{deleteNotice}</p>}
@@ -142,7 +127,7 @@ const GraffitiPieces = ({ pieces, connected, onLike, onResync, onView, role, can
                   {pendingLikes[viewingPiece.pieceId] === pendingKey(viewingPiece) ? 'REQUESTED' : 'LIKE'}
                 </button>
                 {canDeletePieces && onDelete && <button type="button" onClick={() => requestDelete(viewingPiece)} disabled={!connected} style={{ ...smallButtonStyle, color: '#ffc0b2' }}>DELETE</button>}
-                {canPaintOver && onPaintOver && <fieldset className="admin-paint-over">
+                {canPaintOver && onPaintOver && <details className="piece-admin"><summary>Admin · Paint over</summary><fieldset className="admin-paint-over">
                   <legend>PAINT OVER</legend>
                   <div>
                     <button type="button" onClick={() => setCoverColour('#ffffff')}>WHITE</button>
@@ -154,7 +139,7 @@ const GraffitiPieces = ({ pieces, connected, onLike, onResync, onView, role, can
                     if (onPaintOver(viewingPiece.pieceId, coverColour)) setDeleteNotice('Paint-over requested in the selected colour.');
                     else setSendError('Paint-over is unavailable.');
                   }}>PAINT OVER</button>
-                </fieldset>}
+                </fieldset></details>}
               </div>
             </article>
           ) : visiblePieces.length === 0 ? (
@@ -194,15 +179,16 @@ const GraffitiPieces = ({ pieces, connected, onLike, onResync, onView, role, can
               })}
             </ul>
           )}
-        </section>
+          </div>
+        </GameSheet>
       )}
     </div>
   );
 };
 
 const smallButtonStyle: React.CSSProperties = {
-  minHeight: 38, padding: '0 9px', border: '1px solid rgba(255,255,255,.22)', borderRadius: 3,
-  background: 'rgba(255,255,255,.07)', color: '#f3f1e9', fontFamily: 'inherit', fontSize: 8, fontWeight: 900, letterSpacing: '.08em', cursor: 'pointer',
+  minHeight: 44, padding: '0 9px', border: '1px solid rgba(255,255,255,.22)', borderRadius: 3,
+  background: 'rgba(255,255,255,.07)', color: '#f3f1e9', fontFamily: 'inherit', fontSize: 11, fontWeight: 700, letterSpacing: '.08em', cursor: 'pointer',
 };
 const closeButtonStyle: React.CSSProperties = { ...smallButtonStyle, width: 40, padding: 0, fontSize: 22 };
 const noteStyle: React.CSSProperties = { margin: '4px 0 8px', color: '#b8bcb4', fontSize: 10, lineHeight: 1.4 };

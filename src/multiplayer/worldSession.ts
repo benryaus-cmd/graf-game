@@ -24,6 +24,12 @@ import { pointToHit } from './surfaces';
 import { paintRadius, stampPaintHit, type PaintPoint } from '../game/worldPainting';
 import { buildAdminAction, type AdminAction, type AdminActionOptions } from './adminActions';
 import { ProtectionSync } from './protectionSync';
+import { ArtworkUpload } from './artworkUpload';
+import {
+  captureFlattenedPiece,
+  flattenedPieceArtworkMessage,
+  type FlattenedPieceCapture,
+} from './pieceFlatten';
 import { setWorkspaceInvalid, workspaceWorldBounds } from '../game/paintWorkspaceFeedback';
 import { pulsePieceBounds } from './piecePulse';
 
@@ -51,6 +57,14 @@ export class WorldMultiplayerSession {
   private nextNearbyPieceRefreshAt = 0;
   private piecePulseStop: (() => void) | null = null;
   private order: WorldOrder;
+  private readonly pieceFlattenUpload = new ArtworkUpload();
+  private flattenPrepareGeneration = 0;
+  private pendingFlatten: {
+    pieceId: string;
+    generation: number;
+    prepared: boolean;
+    commitRequested: boolean;
+  } | null = null;
   readonly accounts: AccountFeatures;
   private multiplayer = false;
   private walls = new Map<string, PaintWall>();
@@ -59,6 +73,7 @@ export class WorldMultiplayerSession {
   private status: MultiplayerStatus = { phase: 'solo', playerCount: 0 };
   private serverPermissions: ServerPermissions | null = null;
   private selectedPlayer: MultiplayerView['selectedPlayer'] = null;
+  private playerPickSequence = 0;
   private roleChange: MultiplayerView['roleChange'];
   private adminResult: MultiplayerView['adminResult'];
   private lastView = '';
@@ -138,7 +153,7 @@ export class WorldMultiplayerSession {
       if (!this.multiplayer) return false;
       const picked = this.players.pick(event, this.world.renderer.domElement, this.world.cameraMode === 'map' ? this.world.mapCamera : this.world.camera, this.world.walls.map(wall => wall.mesh), this.world.playerPosition);
       if (!picked) { this.selectedPlayer = null; this.emitView(); return false; }
-      this.selectedPlayer = picked; this.emitView(); return true;
+      this.selectedPlayer = picked; this.playerPickSequence++; this.emitView(); return true;
     };
     world.onPiecePick = event => {
       if (!this.multiplayer) return false;
@@ -165,6 +180,125 @@ export class WorldMultiplayerSession {
     if (this.selectedPieceId) this.pieces.complete(this.selectedPieceId, title);
     this.selectedPieceId = null; this.selectedPiece = null;
     this.protection?.setCurrentBounds(null, null);
+  }
+  preparePieceFlatten(): void {
+    const pieceId = this.selectedPieceId;
+    const selection = this.selectedPiece;
+
+    if (
+      !pieceId ||
+      !selection?.hasPaint ||
+      !this.connection.connected ||
+      this.connection.protocol !== 2 ||
+      !this.connection.capabilities.includes('piece_flatten_deferred')
+    ) return;
+
+    const capture = captureFlattenedPiece(selection, this.visibility);
+    if (!capture) return;
+
+    const generation = ++this.flattenPrepareGeneration;
+
+    this.pendingFlatten = {
+      pieceId,
+      generation,
+      prepared: false,
+      commitRequested: false,
+    };
+
+    void this.uploadPreparedFlatten(pieceId, capture, generation);
+  }
+
+  cancelPreparedPieceFlatten(): void {
+    const pieceId = this.pendingFlatten?.pieceId ?? this.selectedPieceId;
+
+    this.flattenPrepareGeneration++;
+    this.pendingFlatten = null;
+
+    if (
+      !pieceId ||
+      !this.connection.connected ||
+      this.connection.protocol !== 2 ||
+      !this.connection.capabilities.includes('piece_flatten_deferred')
+    ) return;
+
+    this.connection.send({
+      type: 'piece_flatten_cancel',
+      pieceId,
+    });
+  }
+
+  finalizePiece(title?: string): void {
+    const pieceId = this.selectedPieceId;
+    const selection = this.selectedPiece;
+
+    const canFlatten =
+      !!pieceId &&
+      !!selection?.hasPaint &&
+      this.connection.connected &&
+      this.connection.protocol === 2 &&
+      this.connection.capabilities.includes('piece_flatten');
+
+    const deferred =
+      canFlatten &&
+      this.connection.capabilities.includes('piece_flatten_deferred');
+
+    let immediateCapture: FlattenedPieceCapture | null = null;
+
+    if (canFlatten && !deferred && selection) {
+      immediateCapture = captureFlattenedPiece(selection, this.visibility);
+    }
+
+    if (deferred && pieceId && selection) {
+      let pending =
+        this.pendingFlatten?.pieceId === pieceId
+          ? this.pendingFlatten
+          : null;
+
+      if (!pending) {
+        const capture = captureFlattenedPiece(selection, this.visibility);
+
+        if (capture) {
+          const generation = ++this.flattenPrepareGeneration;
+
+          pending = {
+            pieceId,
+            generation,
+            prepared: false,
+            commitRequested: true,
+          };
+
+          this.pendingFlatten = pending;
+
+          void this.uploadPreparedFlatten(pieceId, capture, generation);
+        }
+      } else {
+        pending.commitRequested = true;
+      }
+    }
+
+    this.completePiece(title);
+
+    if (!canFlatten || !pieceId) return;
+
+    if (deferred) {
+      const pending = this.pendingFlatten;
+
+      if (
+        pending?.pieceId === pieceId &&
+        pending.prepared
+      ) {
+        this.connection.send({
+          type: 'piece_flatten_commit',
+          pieceId,
+        });
+      }
+
+      return;
+    }
+
+    if (immediateCapture) {
+      void this.uploadFlattenedPiece(pieceId, immediateCapture);
+    }
   }
   setSelectedPieceTitle(title: string): boolean {
     if (!this.selectedPieceId) return false;
@@ -254,6 +388,7 @@ export class WorldMultiplayerSession {
     this.selectedPieceForView = null;
     this.completePiece(); this.pieces.clear(); clearPaintWorkspace(this.world);
     this.paint.interrupted(); this.artworks.interrupted(); this.players.clear(); this.playerSync.reset(); this.serverPlayerCount = null;
+    this.flattenPrepareGeneration++; this.pendingFlatten = null;
     this.connection.connect(displayName, roomId, identity);
   }
   leave(): void {
@@ -263,7 +398,9 @@ export class WorldMultiplayerSession {
     this.world.adminFreePaint = false;
     this.selectedPlayer = null; this.roleChange = undefined; this.adminResult = undefined;
     this.selectedPieceForView = null;
-    this.completePiece(); clearPaintWorkspace(this.world); this.connection.disconnect(); this.players.clear(); this.replay.cancel(); this.artworks.clear(); this.pieces.clear();
+    this.completePiece(); clearPaintWorkspace(this.world); this.players.clear(); this.replay.cancel(); this.artworks.clear(); this.pieces.clear();
+    this.flattenPrepareGeneration++; this.pendingFlatten = null;
+    this.connection.disconnect();
     this.multiplayer = false; this.world.multiplayerActive = false; this.walls.clear(); this.recompose.clear();
     this.chat.clear(); this.accounts.snapshotWorldItems([]); this.order.snapshot({}); this.emitView();
     this.snapshotPlayerId = null; this.sharedRevision = this.requestedRevision = 0;
@@ -276,7 +413,9 @@ export class WorldMultiplayerSession {
     this.world.adminFreePaint = false;
     this.selectedPlayer = null; this.roleChange = undefined; this.adminResult = undefined;
     this.selectedPieceForView = null;
-    this.completePiece(); clearPaintWorkspace(this.world); this.connection.disconnect(); this.players.clear(); this.replay.cancel(); this.artworks.clear(); this.pieces.clear();
+    this.completePiece(); clearPaintWorkspace(this.world); this.players.clear(); this.replay.cancel(); this.artworks.clear(); this.pieces.clear();
+    this.flattenPrepareGeneration++; this.pendingFlatten = null;
+    this.connection.disconnect();
     this.world.multiplayerActive = false;
     this.world.onPaintSample = this.world.onPaintEnd = this.world.onMultiplayerFrame = this.world.onArtworkPlaced = this.world.onPlayerPick = this.world.onPiecePick = undefined;
   }
@@ -319,6 +458,101 @@ export class WorldMultiplayerSession {
   emote(emote: AvatarEmote): void {
     this.connection.send({ type: 'player_action', actionId: crypto.randomUUID(), action: 'emote', data: { emote } });
   }
+  private async uploadFlattenedPiece(
+    pieceId: string,
+    capture: FlattenedPieceCapture,
+  ): Promise<void> {
+    let assetRef: string;
+
+    try {
+      assetRef = await this.pieceFlattenUpload.assetRef(capture.dataUrl);
+    } catch {
+      this.emit({
+        ...this.status,
+        notice: 'Finished graffiti optimization failed. Original strokes were kept.',
+      });
+      return;
+    }
+
+    if (
+      !this.connection.connected ||
+      this.connection.protocol !== 2 ||
+      !this.connection.capabilities.includes('piece_flatten')
+    ) return;
+
+    this.connection.send({
+      type: 'piece_flatten',
+      pieceId,
+      assetRef,
+      surfaceId: capture.surfaceId,
+      face: String(capture.face),
+      position: capture.position,
+      quaternion: capture.quaternion,
+      width: capture.width,
+      height: capture.height,
+    });
+  }
+
+  private async uploadPreparedFlatten(
+    pieceId: string,
+    capture: FlattenedPieceCapture,
+    generation: number,
+  ): Promise<void> {
+    let assetRef: string;
+
+    try {
+      assetRef = await this.pieceFlattenUpload.assetRef(capture.dataUrl);
+    } catch {
+      if (
+        this.pendingFlatten?.pieceId === pieceId &&
+        this.pendingFlatten.generation === generation
+      ) {
+        this.emit({
+          ...this.status,
+          notice: 'Finished graffiti optimization failed. Original strokes were kept.',
+        });
+      }
+      return;
+    }
+
+    const pending = this.pendingFlatten;
+
+    if (
+      !pending ||
+      pending.pieceId !== pieceId ||
+      pending.generation !== generation
+    ) return;
+
+    if (
+      !this.connection.connected ||
+      this.connection.protocol !== 2 ||
+      !this.connection.capabilities.includes('piece_flatten_deferred')
+    ) return;
+
+    const sent = this.connection.send({
+      type: 'piece_flatten_prepare',
+      pieceId,
+      assetRef,
+      surfaceId: capture.surfaceId,
+      face: String(capture.face),
+      position: capture.position,
+      quaternion: capture.quaternion,
+      width: capture.width,
+      height: capture.height,
+    });
+
+    if (!sent) return;
+
+    pending.prepared = true;
+
+    if (pending.commitRequested) {
+      this.connection.send({
+        type: 'piece_flatten_commit',
+        pieceId,
+      });
+    }
+  }
+
   private message(message: Message): void {
     if (['admin_give_credits_complete', 'admin_ban_complete', 'admin_unban_complete'].includes(message.type) && typeof message.targetUsername === 'string') {
       this.adminResult = { type: message.type, targetUsername: message.targetUsername,
@@ -366,17 +600,26 @@ export class WorldMultiplayerSession {
       this.order.snapshot(message);
       this.world.setPaintSession('multiplayer'); this.refreshWalls();
       this.players.clear();
-      for (const player of message.players as unknown[]) this.players.joined(player, this.connection.playerId);
+      for (const player of Array.isArray(message.players) ? message.players : []) {
+        this.players.joined(player, this.connection.playerId);
+      }
       this.serverPlayerCount = Number.isInteger(message.playerCount) ? message.playerCount as number : null;
       this.paint.snapshot(message.strokes as unknown[], sameConnection);
       this.chat.snapshot(Array.isArray(message.chatHistory) ? message.chatHistory : []);
       this.pieces.snapshot(Array.isArray(message.graffitiPieces) ? message.graffitiPieces : []);
+
+      const flattenedPieceArtworks = [...this.pieces.pieces.values()]
+        .map(flattenedPieceArtworkMessage)
+        .filter((value): value is Message => !!value);
       this.protection.protections.clear();
       for (const piece of this.pieces.pieces.values()) {
         if (piece.protectedUntil !== undefined) this.protection.protections.set(piece.pieceId, { pieceId: piece.pieceId, protectedUntil: piece.protectedUntil });
       }
       if (this.selectedPieceForView && !this.pieces.pieces.has(this.selectedPieceForView)) this.selectedPieceForView = null;
-      this.artworks.snapshot(Array.isArray(message.artworks) ? message.artworks : []);
+      this.artworks.snapshot([
+        ...(Array.isArray(message.artworks) ? message.artworks : []),
+        ...flattenedPieceArtworks,
+      ]);
       this.accounts.snapshotWorldItems(Array.isArray(message.worldItems) ? message.worldItems : []);
       this.artworks.refresh(this.walls); this.playerSync.reset(); this.emitView();
       return;
@@ -400,6 +643,7 @@ export class WorldMultiplayerSession {
     else if (message.type.startsWith('piece_')) {
       if (message.type === 'piece_removed' && typeof message.pieceId === 'string') {
         for (const surfaceId of this.paint.rejectPiece(message.pieceId)) { const surface = decodeSurface(surfaceId); if (surface) this.removalWalls.add(surface.wallId); }
+        this.artworks.removeArtwork(`piece:${message.pieceId}`);
       }
       if (message.type === 'piece_removed' && message.pieceId === this.selectedPieceId) {
         this.selectedPieceId = null; this.selectedPiece = null; this.world.paintRevision++;
@@ -407,6 +651,19 @@ export class WorldMultiplayerSession {
       if (message.type === 'piece_removed' && message.pieceId === this.selectedPieceForView) this.selectedPieceForView = null;
       if (message.type === 'piece_removed' && typeof message.pieceId === 'string') this.protection.protections.delete(message.pieceId);
       this.pieces.accept(message);
+      if (message.type === 'piece_flattened' && typeof message.pieceId === 'string') {
+        if (this.pendingFlatten?.pieceId === message.pieceId) {
+          this.pendingFlatten = null;
+          this.flattenPrepareGeneration++;
+        }
+        const piece = this.pieces.pieces.get(message.pieceId);
+        const artwork = piece ? flattenedPieceArtworkMessage(piece) : null;
+
+        if (artwork) {
+          this.artworks.accept(artwork);
+          this.artworks.refresh(this.walls);
+        }
+      }
       const current = this.selectedPieceId ? this.pieces.pieces.get(this.selectedPieceId) : undefined;
       if (current?.protectedUntil !== undefined) this.protection.protections.set(current.pieceId, { pieceId: current.pieceId, protectedUntil: current.protectedUntil });
     }
@@ -500,7 +757,7 @@ export class WorldMultiplayerSession {
     if (selectedPiece && !pieces.some(piece => piece.pieceId === selectedPiece.pieceId)) pieces.push(selectedPiece);
     const protection = this.protection;
     const protectedUntil = this.selectedPieceId ? protection?.protections.get(this.selectedPieceId)?.protectedUntil ?? null : null;
-    const view: MultiplayerView = { adminResult: this.adminResult, protection: protection ? { creditBalance: protection.creditBalance, quote: protection.quote, quotes: protection.quotes, protectionEnabled: this.canvasProtectionEnabled, purchased: !!this.world.paintWorkspace?.selection?.purchaseApproved, pendingQuote: !!protection.pendingQuotePieceId, pendingPurchase: !!protection.pendingPurchasePieceId, protectedUntil, notice: protection.notice } : undefined, chat: this.chat.messages, revision: this.order.revision, selectedPlayer: this.selectedPlayer, selectedPieceId: this.selectedPieceForView, piecePickSequence: this.piecePickSequence, roleChange: this.roleChange,
+    const view: MultiplayerView = { adminResult: this.adminResult, protection: protection ? { creditBalance: protection.creditBalance, quote: protection.quote, quotes: protection.quotes, protectionEnabled: this.canvasProtectionEnabled, purchased: !!this.world.paintWorkspace?.selection?.purchaseApproved, pendingQuote: !!protection.pendingQuotePieceId, pendingPurchase: !!protection.pendingPurchasePieceId, protectedUntil, notice: protection.notice } : undefined, chat: this.chat.messages, revision: this.order.revision, selectedPlayer: this.selectedPlayer, playerPickSequence: this.playerPickSequence, selectedPieceId: this.selectedPieceForView, piecePickSequence: this.piecePickSequence, roleChange: this.roleChange,
       accountFeaturesAvailable: this.accounts.available, worldItemCount: this.accounts.worldItems.size,
       pieces };
     const serial = JSON.stringify(view);

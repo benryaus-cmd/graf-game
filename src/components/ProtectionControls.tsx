@@ -25,18 +25,18 @@ export default function ProtectionControls({ balance, quote, quotes, protectionE
   const minutes = protectedUntil === null ? 0 : Math.max(0, Math.ceil((protectedUntil - now) / 60_000));
   const tooExpensive = quote !== null && balance !== null && quote.cost > balance;
   return <div className={`protection-controls${tooExpensive || quote && !quote.canPurchase ? ' is-invalid' : ''}`}>
-    {protectedUntil !== null ? <small>PROTECTED · {Math.floor(minutes / 60)}h {minutes % 60}m remaining</small> : purchased ? <small>SERVER PURCHASE CONFIRMED</small> : <>
+    {protectedUntil !== null ? <small>PROTECTED · {Math.floor(minutes / 60)}h {minutes % 60}m remaining</small> : purchased ? <small>CANVAS READY</small> : <>
       <label className="protection-mode-toggle">
         <input type="checkbox" disabled={pendingPurchase || purchased} checked={protectionEnabled} onChange={event => onProtectionEnabledChange(event.currentTarget.checked)} />
         <span>PROTECT THIS PIECE</span>
       </label>
       <div className="protection-quote-options" aria-label="Server protection quotes">
-        <span>UNPROTECTED · {quotes.unprotected ? `${quotes.unprotected.cost} credits · ${quoteDuration(quotes.unprotected.durationSeconds)}` : 'QUOTE PENDING'}</span>
-        <span>PROTECTED · {quotes.protected ? `${quotes.protected.cost} credits · ${quoteDuration(quotes.protected.durationSeconds)}` : 'QUOTE PENDING'}</span>
+        <span>UNPROTECTED · {quotes.unprotected ? `${quotes.unprotected.cost} credits · ${quoteDuration(quotes.unprotected.durationSeconds)}` : 'GETTING PRICE'}</span>
+        <span>PROTECTED · {quotes.protected ? `${quotes.protected.cost} credits · ${quoteDuration(quotes.protected.durationSeconds)}` : 'GETTING PRICE'}</span>
       </div>
-      {quote ? <span>{protectionEnabled ? 'Protected' : 'Unprotected'} quote · {quote.cost} credits · {(quote.durationSeconds / 3600).toFixed(1)} hours</span> : pending ? <span>Requesting server quote…</span> : <button type="button" onClick={onQuote}>GET QUOTES</button>}
-      {pendingPurchase && <small role="status">WAITING FOR SERVER PURCHASE CONFIRMATION</small>}
-      {quote && !quote.canPurchase && <small>SERVER QUOTE IS NOT PURCHASEABLE</small>}
+      {quote ? <span>{protectionEnabled ? 'Protected' : 'Unprotected'} · {quote.cost} credits · {(quote.durationSeconds / 3600).toFixed(1)} hours</span> : pending ? <span>Getting canvas price…</span> : <button type="button" onClick={onQuote}>REFRESH PRICES</button>}
+      {pendingPurchase && <small role="status">CONFIRMING CANVAS PURCHASE…</small>}
+      {quote && !quote.canPurchase && <small>THIS AREA IS UNAVAILABLE</small>}
       {tooExpensive && <small>NOT ENOUGH CREDITS</small>}
     </>}
     {notice && <small role="status">{notice}</small>}

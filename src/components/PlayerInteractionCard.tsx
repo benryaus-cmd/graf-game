@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import GameSheet from './GameSheet';
 import type { ServerRole } from '@/multiplayer/permissions';
 import type { MultiplayerView } from '@/multiplayer/protocol';
 import { buildAdminAction, canUseAdminActions, type AdminAction, type AdminActionOptions } from '@/multiplayer/adminActions';
@@ -7,6 +8,7 @@ const ROLES: ServerRole[] = ['player', 'moderator', 'admin', 'owner'];
 type SelectedPlayer = NonNullable<MultiplayerView['selectedPlayer']> & { online?: boolean };
 
 interface Props {
+  open?: boolean; onClose?: () => void;
   selected?: SelectedPlayer | null;
   ownRole?: ServerRole;
   connected: boolean;
@@ -25,7 +27,7 @@ const DURATIONS: Array<{ label: string; value: number | null }> = [
   { label: '7 DAYS', value: 604800 }, { label: 'PERMANENT', value: null },
 ];
 
-export default function PlayerInteractionCard({ selected, ownRole, connected, notice, roleChange, onSetRole, onAdminAction, adminResult }: Props) {
+export default function PlayerInteractionCard({ open = true, onClose = () => {}, selected, ownRole, connected, notice, roleChange, onSetRole, onAdminAction, adminResult }: Props) {
   const [expanded, setExpanded] = useState(false);
   const [pending, setPending] = useState<{ username: string; role: ServerRole } | null>(null);
   const [success, setSuccess] = useState('');
@@ -75,7 +77,7 @@ export default function PlayerInteractionCard({ selected, ownRole, connected, no
     const timer = window.setTimeout(() => { setActionPending(null); setActionMessage('No server confirmation received. Check the connection and try again.'); }, 10_000);
     return () => window.clearTimeout(timer);
   }, [actionPending]);
-  if (!selected) return null;
+  if (!selected || !open) return null;
   const role = selected.role;
   const canManage = connected && selected.online !== false && (ownRole === 'owner' || (ownRole === 'admin' && !!role && role !== 'owner'));
   const canAdmin = connected && canUseAdminActions(ownRole, role);
@@ -97,9 +99,9 @@ export default function PlayerInteractionCard({ selected, ownRole, connected, no
       }
     } else setActionMessage('Request could not be sent. Check the connection and your role.');
   };
-  return <section className="player-interaction-card" aria-label="Nearby player">
+  return <GameSheet title="PLAYER" onClose={onClose} closeLabel="Close player details" className="player-sheet"><div className="player-interaction-card">
     <div><strong>{selected.nickName || 'PLAYER'}</strong><div className="player-interaction-handle">@{username || 'unknown'}</div>
-      <div className="player-interaction-role">Current role: {role ?? 'Unknown'}</div>
+      {canAdmin && <div className="player-interaction-role">Current role: {role ?? 'Unknown'}</div>}
       {selected.online === false && <div className="player-interaction-role">OFFLINE · UNBAN ONLY</div>}</div>
     {canAdmin && <div className="player-role-admin">
       <button type="button" className="player-role-admin-toggle" aria-expanded={expanded} onClick={() => setExpanded(value => !value)}>ADMIN</button>
@@ -139,5 +141,5 @@ export default function PlayerInteractionCard({ selected, ownRole, connected, no
     {actionPending && <p role="status">{actionMessage}</p>}
     {!actionPending && actionMessage && <p role={actionMessage.startsWith('Request could not') || actionMessage.startsWith('No server') ? 'alert' : 'status'}>{actionMessage}</p>}
     {notice && <p role="alert">{notice}</p>}
-  </section>;
+  </div></GameSheet>;
 }

@@ -24,7 +24,7 @@ export function readArtwork(value: unknown): SharedArtwork | null {
 }
 
 export class ArtworkSync {
-  private static readonly MAX_CONCURRENT_IMAGE_LOADS = 3;
+  private static readonly MAX_CONCURRENT_IMAGE_LOADS = 10;
   private static readonly IMAGE_LOAD_TIMEOUT_MS = 20_000;
   private records = new Map<string, SharedArtwork>();
   private recordsByWall = new Map<string, SharedArtwork[]>();
@@ -35,10 +35,11 @@ export class ArtworkSync {
   private activeLoads = new Map<string, object>();
   private generation = 0;
   private session = 0;
+  private loadingIndicatorVisible = false;
   constructor(private send: (message: Message) => boolean, private notice: (text: string) => void,
     private image: () => HTMLImageElement = () => new Image(), private upload = new ArtworkUpload(),
-    private scheduleTimeout: (callback: () => void, ms: number) => ReturnType<typeof setTimeout> = setTimeout,
-    private cancelTimeout: (timer: ReturnType<typeof setTimeout>) => void = clearTimeout) {}
+    private scheduleTimeout: (callback: () => void, ms: number) => ReturnType<typeof setTimeout> = (callback, ms) => setTimeout(callback, ms),
+    private cancelTimeout: (timer: ReturnType<typeof setTimeout>) => void = timer => clearTimeout(timer)) {}
   async placed(wall: PaintWall, face: number, artwork: PosterArtwork, share = true): Promise<void> {
     if (!wall.surfaceId) return;
     const id = crypto.randomUUID(), session = this.session;
@@ -64,6 +65,18 @@ export class ArtworkSync {
       surfaceId: record.surfaceId, face: record.face, position: record.position,
       rotation: record.quaternion, width: record.width, height: record.height })) this.notice('Poster placed locally; it could not be shared while disconnected.');
   }
+  removeArtwork(id: string): void {
+    const existing = this.records.get(id);
+    if (existing) this.unindex(existing);
+
+    this.cancelLoad(id);
+    this.failed.delete(id);
+    this.records.delete(id);
+    this.local.delete(id);
+    this.remove(id);
+    this.updateLoadingIndicator();
+  }
+
   snapshot(values: unknown[]): void {
     this.generation++; this.cancelAllLoads(); this.failed.clear(); this.records.clear(); this.recordsByWall.clear();
     for (const value of values) { const record = readArtwork(value); if (record) this.records.set(record.id, record); }
@@ -95,17 +108,21 @@ export class ArtworkSync {
         if (this.activeLoads.size >= ArtworkSync.MAX_CONCURRENT_IMAGE_LOADS) return;
         if (this.mounted.has(record.id) || this.loading.has(record.id) || this.failed.has(record.id)) continue;
         const generation = this.generation; const image = this.image(); const loadToken = {};
+        image.decoding = 'async';
         const load = { wall, image, assetRef: record.assetRef, token: loadToken, timer: undefined as unknown as ReturnType<typeof setTimeout> };
         this.loading.set(record.id, load); this.activeLoads.set(record.id, loadToken);
+        this.updateLoadingIndicator();
         const finish = () => {
           if (this.activeLoads.get(record.id) === loadToken) this.activeLoads.delete(record.id);
           this.cancelTimeout(load.timer);
+          this.updateLoadingIndicator();
         };
         image.crossOrigin = 'anonymous';
         image.onload = () => {
           finish();
           if (generation !== this.generation || this.loading.get(record.id) !== load) return;
           this.loading.delete(record.id);
+          this.updateLoadingIndicator();
           const current = this.records.get(record.id);
           if (!current || current.assetRef !== load.assetRef) return;
           addPosterOverlay(wall, current, image);
@@ -113,11 +130,13 @@ export class ArtworkSync {
           const mesh = parent.children[parent.children.length - 1];
           if (mesh) this.mounted.set(record.id, { wall, mesh });
           this.applyOrder();
+          this.updateLoadingIndicator();
         };
         image.onerror = () => {
           finish();
           if (generation !== this.generation || this.loading.get(record.id) !== load) return;
           this.loading.delete(record.id); this.failed.add(record.id);
+          this.updateLoadingIndicator();
           // Retain failure state until resync so refresh does not repeat a broken request.
           this.notice('A shared poster image could not be loaded. Use Resync to retry.');
         };
@@ -125,6 +144,7 @@ export class ArtworkSync {
           finish();
           if (generation !== this.generation || this.loading.get(record.id) !== load) return;
           this.loading.delete(record.id); this.failed.add(record.id);
+          this.updateLoadingIndicator();
           image.onload = () => {}; image.onerror = () => {}; image.src = '';
           this.notice('A shared poster image timed out. Use Resync to retry.');
         }, ArtworkSync.IMAGE_LOAD_TIMEOUT_MS);
@@ -136,6 +156,8 @@ export class ArtworkSync {
     this.generation++; this.session++; this.cancelAllLoads(); this.failed.clear(); this.recordsByWall.clear();
     for (const id of [...this.mounted.keys()]) this.remove(id);
     this.records.clear(); this.local.clear();
+    this.loadingIndicatorVisible = false;
+    document.getElementById('graffiti-loading-indicator')?.remove();
   }
   interrupted(): void { this.session++; }
   private remove(id: string): void {
@@ -171,10 +193,57 @@ export class ArtworkSync {
     this.cancelTimeout(load.timer);
     if (this.loading.get(id) === load) this.loading.delete(id);
     if (this.activeLoads.get(id) === load.token) this.activeLoads.delete(id);
-    load.image.onload = () => {}; load.image.onerror = () => {}; load.image.src = '';
+    load.image.onload = () => {};
+    load.image.onerror = () => {};
+    load.image.src = '';
+    this.updateLoadingIndicator();
+  }
+  private updateLoadingIndicator(): void {
+    const loading = this.loading.size > 0 || this.activeLoads.size > 0;
+
+    if (loading === this.loadingIndicatorVisible) return;
+
+    this.loadingIndicatorVisible = loading;
+
+    const id = 'graffiti-loading-indicator';
+    let element = document.getElementById(id);
+
+    if (!loading) {
+      element?.remove();
+      return;
+    }
+
+    if (element) return;
+
+    element = document.createElement('div');
+    element.id = id;
+    element.textContent = 'GRAFFITI LOADING…';
+
+    Object.assign(element.style, {
+      position: 'fixed',
+      left: '50%',
+      bottom: '90px',
+      transform: 'translateX(-50%)',
+      zIndex: '2147483646',
+      background: 'rgba(5, 18, 35, 0.78)',
+      color: '#d9ecff',
+      border: '1px solid rgba(65, 160, 255, 0.85)',
+      borderRadius: '5px',
+      padding: '3px 5px',
+      fontFamily: 'monospace',
+      fontSize: '7px',
+      lineHeight: '1.15',
+      letterSpacing: '0.7px',
+      pointerEvents: 'none',
+      whiteSpace: 'nowrap',
+    });
+
+    document.body.appendChild(element);
   }
   private cancelAllLoads(): void {
-    for (const [id, load] of this.loading) this.cancelLoad(id, load);
-    this.loading.clear(); this.activeLoads.clear();
+    for (const [id, load] of [...this.loading]) this.cancelLoad(id, load);
+    this.loading.clear();
+    this.activeLoads.clear();
+    this.updateLoadingIndicator();
   }
 }
