@@ -25,6 +25,8 @@ import type { AvatarEmote, CameraMode, MovementInput, SkyMode } from '@/game/wor
 import type { BrushHead } from '@/game/sprayHeads';
 import { LiveRadioController } from '@/game/liveRadio';
 import { RADIO_STREAM_URL } from '@/config/radio';
+import TutorialOverlay from '@/components/TutorialOverlay';
+import { TUTORIAL_ORDER, nextTutorialStep, readTutorialCompleted, writeTutorialCompleted, type TutorialStep } from '@/game/tutorial';
 
 const ProjectFileViewer = lazy(() => import('@/components/ProjectFileViewer'));
 
@@ -114,6 +116,7 @@ const App = () => {
     if (action === 'enter' || action === 'start') { setPaintMode(true); closeMenu(); }
     if (action === 'finish' || action === 'clear') setPaintMode(false);
     setWorkspaceRequest(previous => ({ action, size, height, title, protectionEnabled: action === 'start' ? requestedProtectionEnabled ?? protectionEnabled : undefined, sequence: (previous?.sequence ?? 0) + 1 }));
+    if (action === 'finish' && tutorialStep === 'finish') { setTutorialStep('radio'); setActiveMenu('settings'); }
   };
   const sizingKey = workspaceView.selected && workspaceView.bounds ? JSON.stringify(workspaceView.bounds) : '';
   useEffect(() => {
@@ -142,6 +145,11 @@ const App = () => {
   const [progress, setProgress] = useState<GameProgress>(loadGameProgress);
   const [emoteSignal, setEmoteSignal] = useState<EmoteSignal | null>(null);
   const [devViewerOpen, setDevViewerOpen] = useState(false);
+  const [tutorialStep, setTutorialStep] = useState<TutorialStep | null>(null);
+  const [tutorialCompleted, setTutorialCompleted] = useState(readTutorialCompleted);
+  const tutorialSizeStartRef = useRef<{ width: number; height: number } | null>(null);
+  const tutorialMoveBoundsRef = useRef('');
+  const tutorialMoveArmedRef = useRef(false);
   const audioStartedRef = useRef(false);
   const lastCoinAtRef = useRef(0);
   const shellRef = useRef<HTMLElement>(null);
@@ -175,6 +183,54 @@ const App = () => {
     if (multiplayerView.selectedPlayer) setActiveMenu('player');
     else setActiveMenu(current => current === 'player' ? null : current);
   }, [multiplayerView.selectedPlayer?.playerId, multiplayerView.playerPickSequence]);
+  useEffect(() => {
+    if (!tutorialStep) return;
+    if (['move', 'look', 'select-canvas', 'size-canvas', 'move-canvas', 'start-painting', 'paint', 'finish'].includes(tutorialStep)) setActiveMenu(null);
+    if (tutorialStep === 'select-canvas') {
+      setPaintMode(true);
+      setEraseMode(false);
+    }
+    if (tutorialStep === 'size-canvas') {
+      tutorialSizeStartRef.current = { width: workspaceView.width, height: workspaceView.height };
+      setActiveMenu(null);
+    }
+    if (tutorialStep === 'move-canvas') {
+      tutorialMoveBoundsRef.current = workspaceView.bounds ? JSON.stringify(workspaceView.bounds) : '';
+      tutorialMoveArmedRef.current = false;
+      setActiveMenu(null);
+    }
+    if (tutorialStep === 'radio' || tutorialStep === 'multiplayer') setActiveMenu('settings');
+  }, [tutorialStep]);
+
+  useEffect(() => {
+    if (tutorialStep === 'move' && Math.hypot(movement.x, movement.y) > .15) advanceTutorial('move');
+  }, [tutorialStep, movement.x, movement.y]);
+  useEffect(() => {
+    if (tutorialStep === 'look' && Math.hypot(lookInput.x, lookInput.y) > .15) advanceTutorial('look');
+  }, [tutorialStep, lookInput.x, lookInput.y]);
+  useEffect(() => {
+    if (tutorialStep === 'select-canvas' && workspaceView.selected) setTutorialStep('size-canvas');
+  }, [tutorialStep, workspaceView.selected]);
+  useEffect(() => {
+    if (tutorialStep !== 'size-canvas' || !tutorialSizeStartRef.current) return;
+    const start = tutorialSizeStartRef.current;
+    if (Math.abs(workspaceView.width - start.width) > .01 || Math.abs(workspaceView.height - start.height) > .01) setTutorialStep('move-canvas');
+  }, [tutorialStep, workspaceView.width, workspaceView.height]);
+  useEffect(() => {
+    if (tutorialStep !== 'move-canvas') return;
+    if (workspaceView.moving) tutorialMoveArmedRef.current = true;
+    const bounds = workspaceView.bounds ? JSON.stringify(workspaceView.bounds) : '';
+    if (tutorialMoveArmedRef.current && bounds && bounds !== tutorialMoveBoundsRef.current) setTutorialStep('start-painting');
+  }, [tutorialStep, workspaceView.moving, workspaceView.bounds]);
+  useEffect(() => {
+    if (tutorialStep === 'start-painting' && workspaceView.started) setTutorialStep('paint');
+  }, [tutorialStep, workspaceView.started]);
+  useEffect(() => {
+    if (tutorialStep === 'paint' && workspaceView.hasPaint) setTutorialStep('finish');
+  }, [tutorialStep, workspaceView.hasPaint]);
+  useEffect(() => {
+    if (tutorialStep === 'multiplayer' && multiplayerStatus.phase === 'connected') setTutorialStep('multiplayer-info');
+  }, [tutorialStep, multiplayerStatus.phase]);
 
   const startAudioOnFirstClick = () => {
     const radioState = radioController?.getState();
@@ -185,6 +241,30 @@ const App = () => {
   };
   const toggleMenu = (menu: Exclude<HudMenu, null>) => setActiveMenu(current => current === menu ? null : menu);
   const closeMenu = () => setActiveMenu(null);
+  const advanceTutorial = (expected: TutorialStep) => setTutorialStep(current => current === expected ? nextTutorialStep(current) : current);
+  const beginTutorial = () => {
+    if (multiplayerStatus.phase !== 'solo') requestMultiplayer('leave');
+    setHasJoined(true);
+    setActiveMenu(null);
+    setTutorialStep('move');
+  };
+  const openTutorial = () => setTutorialStep('welcome');
+  const skipTutorial = () => setTutorialStep(null);
+  const backTutorial = () => setTutorialStep(current => {
+    if (!current) return current;
+    const index = TUTORIAL_ORDER.indexOf(current);
+    return index > 0 ? TUTORIAL_ORDER[index - 1] : current;
+  });
+  const restartTutorial = () => {
+    writeTutorialCompleted(false);
+    setTutorialCompleted(false);
+    setTutorialStep('welcome');
+  };
+  const finishTutorial = () => {
+    writeTutorialCompleted(true);
+    setTutorialCompleted(true);
+    setTutorialStep('complete');
+  };
   const updateBrushSize = (value: number) => setBrushSelection({ value: Math.max(.1, Math.min(10, value / 3)), source: initialBrushSize });
   const selectColor = (nextColor: string) => { setColor(nextColor); playChime(); };
   const selectPaintTool = (tool: PaintTool) => {
@@ -290,6 +370,7 @@ const App = () => {
             <button type="button" className="cover-enter" onClick={() => setHasJoined(true)}>
               ENTER THE WORLD <span aria-hidden="true">↗</span>
             </button>
+            <button type="button" className="cover-tutorial" onClick={openTutorial}>HOW TO PLAY</button>
             <small>EXPLORE · PAINT · EXPRESS</small>
           </div>
         </section>
@@ -371,16 +452,17 @@ const App = () => {
               <section className="tool-section"><h3>PLAY</h3><div className="menu-grid">
                 <button type="button" onClick={() => toggleMenu('avatar')}>PROFILE &amp; CLOSET</button>
                 <button type="button" onClick={() => toggleMenu('art')}>NEARBY ART</button>
+                <button type="button" onClick={() => { closeMenu(); openTutorial(); }}>{tutorialCompleted ? 'REPLAY TUTORIAL' : 'TUTORIAL'}</button>
                 <button type="button" onClick={changeView}>{CAMERA_LABELS[viewMode]}</button>
                 <button type="button" onClick={() => toggleMenu('sky')}>CHANGE SKY</button>
                 <button type="button" aria-pressed={portrait} onClick={() => { setMovement({ x: 0, y: 0 }); setLookInput({ x: 0, y: 0 }); setPortrait(value => !value); closeMenu(); }}>{rotatedPortrait ? 'ROTATE TO LANDSCAPE' : 'ROTATE TO PORTRAIT'}</button>
                 {multiplayerStatus.canAdminPaint && <button type="button" aria-pressed={adminFreePaint} onClick={() => selectPaintTool(adminFreePaint ? 'off' : 'admin')}>ADMIN PAINT</button>}
               </div></section>
               <section className="tool-section"><h3>MULTIPLAYER</h3><div className="button-row">
-                {multiplayerStatus.phase === 'solo' || multiplayerStatus.phase === 'disconnected' ? <button type="button" disabled={aippyUser.isLoading} onClick={() => requestMultiplayer('join')}>{multiplayerStatus.phase === 'solo' ? 'JOIN MULTIPLAYER' : 'RECONNECT'}</button> : <button type="button" onClick={() => requestMultiplayer('leave')}>{multiplayerStatus.phase === 'connecting' ? 'CANCEL JOINING' : 'PLAY SOLO'}</button>}
+                {multiplayerStatus.phase === 'solo' || multiplayerStatus.phase === 'disconnected' ? <button type="button" data-tutorial="multiplayer-join" disabled={aippyUser.isLoading} onClick={() => requestMultiplayer('join')}>{multiplayerStatus.phase === 'solo' ? 'JOIN MULTIPLAYER' : 'RECONNECT'}</button> : <button type="button" onClick={() => requestMultiplayer('leave')}>{multiplayerStatus.phase === 'connecting' ? 'CANCEL JOINING' : 'PLAY SOLO'}</button>}
                 <button type="button" onClick={() => toggleMenu('chat')}>ROOM CHAT</button>
               </div>{multiplayerStatus.notice && <p className="ui-notice" role="status">{multiplayerStatus.notice}</p>}</section>
-              <section className="tool-section"><h3>RADIO</h3>{radioController && <RadioControl controller={radioController} url={RADIO_STREAM_URL} initialVolume={musicVolume} />}</section>
+              <section className="tool-section"><h3>RADIO</h3>{radioController && <RadioControl controller={radioController} url={RADIO_STREAM_URL} initialVolume={musicVolume} onInteraction={() => { if (tutorialStep === 'radio') setTutorialStep('multiplayer'); }} />}</section>
             </SettingsModal>
           )}
           {devViewerOpen && (
@@ -395,6 +477,15 @@ const App = () => {
           )}
         </>
       )}
+      {tutorialStep && <TutorialOverlay
+        step={tutorialStep}
+        onStart={beginTutorial}
+        onBack={backTutorial}
+        onSkip={skipTutorial}
+        onContinue={finishTutorial}
+        onRestart={restartTutorial}
+        onClose={() => setTutorialStep(null)}
+      />}
     </main>
   );
 };

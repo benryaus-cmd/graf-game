@@ -69,6 +69,7 @@ const LookJoystick = ({ onLook, canvasMode = false }: LookJoystickProps) => {
   return (
     <div
       className={`joystick look-joystick ${canvasMode ? 'canvas-pan-joystick' : ''}`}
+      data-tutorial="look"
       ref={element}
       role="group"
       aria-label={canvasMode ? 'Pan canvas' : 'Look control'}

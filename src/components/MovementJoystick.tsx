@@ -67,6 +67,7 @@ const MovementJoystick = ({ onMove }: MovementJoystickProps) => {
   return (
     <div
       className="joystick"
+      data-tutorial="movement"
       ref={element}
       role="group"
       aria-label="Movement control"

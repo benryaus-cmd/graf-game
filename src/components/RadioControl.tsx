@@ -6,11 +6,12 @@ export interface RadioControlProps {
   url: string;
   initialVolume: number;
   controller?: LiveRadioController;
+  onInteraction?: () => void;
 }
 
 const stop = (event: { stopPropagation: () => void }) => event.stopPropagation();
 
-const RadioControl = ({ url, initialVolume, controller: externalController }: RadioControlProps) => {
+const RadioControl = ({ url, initialVolume, controller: externalController, onInteraction }: RadioControlProps) => {
   const [radio, setRadio] = useState<LiveRadioController | null>(null);
   const [radioState, setRadioState] = useState<LiveRadioState>({
     playing: false,
@@ -44,6 +45,7 @@ const RadioControl = ({ url, initialVolume, controller: externalController }: Ra
   return (
     <div
       className="radio-control"
+      data-tutorial="radio"
       aria-label="Live radio"
       onPointerDown={stop}
       onPointerUp={stop}
@@ -55,7 +57,7 @@ const RadioControl = ({ url, initialVolume, controller: externalController }: Ra
         type="button"
         aria-label={`Change channel and play radio. Current channel: ${radioState.stationName}`}
         title={`${radioState.stationName} · ${status}. Press to change channel and play.`}
-        onClick={() => radio?.nextStation(true)}
+        onClick={() => { onInteraction?.(); radio?.nextStation(true); }}
         style={{ '--radio-station-color': RADIO_STATIONS.find((station) => station.id === radioState.stationId)?.color ?? '#7ee1aa' } as CSSProperties}
       >
         <i aria-hidden="true" />
@@ -66,7 +68,7 @@ const RadioControl = ({ url, initialVolume, controller: externalController }: Ra
         type="button"
         aria-label={volumeOpen ? 'Close radio volume control' : 'Open radio volume control'}
         aria-expanded={volumeOpen}
-        onClick={() => setVolumeOpen((open) => !open)}
+        onClick={() => { onInteraction?.(); setVolumeOpen((open) => !open); }}
       >
         VOL
       </button>
@@ -81,7 +83,7 @@ const RadioControl = ({ url, initialVolume, controller: externalController }: Ra
               step="1"
               value={Math.round(radioState.volume * 100)}
               aria-label="Radio volume"
-              onChange={(event) => radio?.setVolume(Number(event.currentTarget.value) / 100)}
+              onChange={(event) => { onInteraction?.(); radio?.setVolume(Number(event.currentTarget.value) / 100); }}
             />
           </label>
         </div>

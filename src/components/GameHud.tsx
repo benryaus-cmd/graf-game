@@ -62,7 +62,7 @@ const GameHud = (props: GameHudProps) => (
     </header>
     <div className="paint-quick-controls" aria-label="Paint mode and color">
       <button type="button" className="paint-mode-switch" aria-pressed={props.paintMode} aria-label={props.paintMode ? 'Switch to explore mode' : 'Switch to paint mode'} onClick={() => props.onToolChange(props.paintMode ? 'off' : 'paint')}>{props.paintMode ? 'EXPLORE' : 'PAINT'}</button>
-      <button type="button" className="paint-color-trigger" onClick={() => props.onMenuToggle('paint')} aria-label={`Open paint selector, current color ${props.color}`} aria-expanded={props.activeMenu === 'paint'}><i style={{ backgroundColor: props.color }} /><span>TOOLS</span><small>{props.eraseMode ? 'Erase' : props.brushHead ?? 'soft'} · L{props.selectedLayer + 1}</small></button>
+      <button type="button" className="paint-color-trigger" data-tutorial="paint-tools" onClick={() => props.onMenuToggle('paint')} aria-label={`Open paint selector, current color ${props.color}`} aria-expanded={props.activeMenu === 'paint'}><i style={{ backgroundColor: props.color }} /><span>TOOLS</span><small>{props.eraseMode ? 'Erase' : props.brushHead ?? 'soft'} · L{props.selectedLayer + 1}</small></button>
     </div>
     {props.viewMode === 'map' && (
       <label className="map-zoom-control">

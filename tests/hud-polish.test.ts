@@ -88,3 +88,19 @@ test('protection UI shows only server quote amounts and waits for confirmed bala
   assert.ok(insufficient.includes('NOT ENOUGH CREDITS'));
   assert.ok(insufficient.includes('is-invalid'));
 });
+
+
+test('selected spray head is explicitly marked and visually targetable', async () => {
+  const { default: PaintDock } = await import('../src/components/PaintDock');
+  const props = {
+    open: true, color: '#ff0000', brushSize: 3, opacity: 1, selectedLayer: 0,
+    layers: [{ name: 'Layer 1', visible: true }], brushHead: 'roller',
+    paintMode: true, eraseMode: false, posterSize: 1,
+    onToggle() {}, onColorChange() {}, onToolChange() {}, onBrushHeadChange() {},
+    onBrushSizeChange() {}, onOpacityChange() {}, onLayerSelect() {}, onLayerToggle() {},
+    onLayerAdd() {}, onPosterSizeChange() {}, onStartPosterPlacement() {},
+  } as unknown as Parameters<typeof PaintDock>[0];
+  const html = renderToStaticMarkup(createElement(PaintDock, props));
+  assert.match(html, /class="paint-head-selected" aria-pressed="true">ROLLER<\/button>/);
+  assert.ok(!html.includes('paint-head-selected" aria-pressed="true">SOFT'));
+});
