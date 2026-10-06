@@ -1,6 +1,6 @@
 {
   "version": "reference-url-7oct2026",
-  "baseUrl": "https://raw.githubusercontent.com/benryaus-cmd/graf-game/main/",
+  "baseUrl": "https://raw.githubusercontent.com/benryaus-cmd/graf-game/249bb8e622f763e30a8f6a57f291df5c63c9bd62/",
   "files": [
     {
       "source": "src/components/ReferenceSheet.tsx",
