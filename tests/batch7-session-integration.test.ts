@@ -226,3 +226,16 @@ test('poster picking and View use transformed wall coordinates for aiming and lo
     }
   } finally { globalThis.requestAnimationFrame = oldRequest; globalThis.cancelAnimationFrame = oldCancel; }
 });
+
+test('multiplayer history received while drawing becomes usable immediately when the brush is released',()=>{
+ const f=fixture(['stroke_undo_redo'],{graffitiPieces:[piece]});
+ try{
+  activateOwnPiece(f);
+  f.state.paint.sample({pieceId:'piece',surfaceId:stroke.surfaceId,colour:'#000000',tool:'marker',brushSize:1,point:{x:0,y:0,z:0,pressure:1}},false);
+  f.socket.receive({type:'stroke_history_state',pieceId:'piece',canUndo:true,canRedo:false,undoDepth:1,redoDepth:0,limit:2});
+  assert.equal(f.views.at(-1)?.strokeHistory?.canUndo,false);
+  f.world.onPaintEnd();
+  assert.equal(f.views.at(-1)?.strokeHistory?.canUndo,true);
+  assert.equal(f.session.undoStroke(),true);
+ }finally{f.dispose();}
+});

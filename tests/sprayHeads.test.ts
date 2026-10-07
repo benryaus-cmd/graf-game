@@ -121,3 +121,17 @@ test('tool decoding preserves legacy spray and eraser records', () => {
   assert.equal(headForTool('roller'), 'roller');
   assert.equal(headForTool('unknown-tool'), 'soft');
 });
+
+test('eraser is always a solid round size-matched stamp regardless of selected head or opacity',()=>{
+ const previousDocument=globalThis.document;
+ globalThis.document={createElement:recordingCanvas} as unknown as Document;
+ try{
+  for(const head of paintHeads){
+   const group=new THREE.Group();const wall=createPaintWall(group,0,0,2,2,.1,new THREE.MeshStandardMaterial(),0,256).wall;group.updateMatrixWorld(true);
+   const point={x:0,y:0,z:.05,pressure:1};const hit=pointToHit(wall,4,point)!;
+   stampPaintHit(wall,hit,'#ff0000',.07,.12,0,null,true,true,head);
+   const context=wall.layers[0].ensureFace(4)! as any;const draws=context.draws;
+   assert.equal(draws.length,1,head+' must not stamp a paint head');assert.equal(draws[0].alpha,1);assert.equal(draws[0].path[0][0],'arc');assert.equal(draws[0].path[0][3],.12);assert.equal(context.globalCompositeOperation,'destination-out');
+  }
+ }finally{globalThis.document=previousDocument;}
+});

@@ -25,10 +25,15 @@ import { ReferenceGuide, type ReferenceSettings } from '@/game/referenceGuide';
 import { PieceEditGrace } from '@/game/pieceEditGrace';
 import { AssetPreview } from '@/game/assetPreview';
 import { useAssetPreviewPreference } from '@/game/assetPreviewPreference';
+import { EraserGuide } from '@/game/eraserGuide';
+import { SoloPaintHistory } from '@/game/soloPaintHistory';
+import { paintRadius } from '@/game/worldPainting';
+import type { PaintWorkspaceHistory } from '@/components/PaintWorkspaceHud';
 
 export interface MultiplayerRequest { action: 'join' | 'leave' | 'chat' | 'resync' | 'like' | 'inspect' | 'delete-piece' | 'set-role' | 'paint-over' | 'quote-protection' | 'buy-protection' | 'admin-action' | 'select-player' | 'keep-reference' | 'delete-reference' | 'creator-select' | 'inspect-artwork' | 'delete-artwork'; creator?: { playerId?: string; username: string; nickName: string }; text?: string; role?: ServerRole; colour?: string; protectionEnabled?: boolean; adminAction?: AdminAction; options?: AdminActionOptions; sequence: number }
 
 interface WorldSceneProps {
+  onSoloHistoryChange?: (history: PaintWorkspaceHistory) => void;
   reference?: ReferenceSettings | null;
   onReferenceMove?: (x: number, y: number) => void;
   adminFreePaint?: boolean;
@@ -54,6 +59,10 @@ interface WorldSceneProps {
 const WorldScene = (props: WorldSceneProps) => {
   const previewPreference = useAssetPreviewPreference();
   const assetPreviewRef = useRef<AssetPreview | null>(null);
+  const eraserGuideRef = useRef<EraserGuide | null>(null);
+  const soloHistoryRef = useRef<SoloPaintHistory | null>(null);
+  const soloHistoryCallbackRef = useRef(props.onSoloHistoryChange);
+  soloHistoryCallbackRef.current = props.onSoloHistoryChange;
   const workspaceCallbackRef = useRef(props.onWorkspaceChange);
   workspaceCallbackRef.current = props.onWorkspaceChange;
   const colorPickCallbackRef = useRef(props.onColorPick);
@@ -78,7 +87,7 @@ const WorldScene = (props: WorldSceneProps) => {
     brushHead: props.brushHead,
     eyedropperActive: props.eyedropperActive,
     paintMode: props.paintMode, eraseMode: props.eraseMode, color: props.color,
-    opacity: props.opacity, movement: props.movement, lookInput: props.lookInput, brushSize: props.brushSize,
+    opacity: props.eraseMode ? 1 : props.opacity, movement: props.movement, lookInput: props.lookInput, brushSize: props.brushSize,
     moveSpeed: props.moveSpeed, jumpPower: props.jumpPower,
     lookSensitivity: props.lookSensitivity, fogDensity: props.fogDensity,
     layerIndex: props.layerIndex, layerVisibility: props.layerVisibility,
@@ -92,7 +101,7 @@ const WorldScene = (props: WorldSceneProps) => {
       brushHead: props.brushHead,
       eyedropperActive: props.eyedropperActive,
       paintMode: props.paintMode, eraseMode: props.eraseMode, color: props.color,
-      opacity: props.opacity, movement: props.movement, lookInput: props.lookInput, brushSize: props.brushSize,
+      opacity: props.eraseMode ? 1 : props.opacity, movement: props.movement, lookInput: props.lookInput, brushSize: props.brushSize,
       moveSpeed: props.moveSpeed, jumpPower: props.jumpPower,
       lookSensitivity: props.lookSensitivity, fogDensity: props.fogDensity,
       layerIndex: props.layerIndex, layerVisibility: props.layerVisibility,
@@ -117,9 +126,14 @@ const WorldScene = (props: WorldSceneProps) => {
     worldRef.current = world;
     const assetPreview = new AssetPreview(world.scene, world.playerAvatar);
     assetPreviewRef.current = assetPreview;
+    const eraserGuide = new EraserGuide(world.scene, world.renderer.domElement);
+    eraserGuideRef.current = eraserGuide;
+    const soloHistory = new SoloPaintHistory(world, view => soloHistoryCallbackRef.current?.(view));
+    soloHistoryRef.current = soloHistory;
     const guide = new ReferenceGuide(world);
     referenceRef.current = guide;
     world.onPaintWorkspaceChange = workspace => {
+      soloHistory.syncSelection();
       multiplayerRef.current?.workspaceChanged();
       guide.refresh();
       const selection = workspace?.selection;
@@ -128,8 +142,15 @@ const WorldScene = (props: WorldSceneProps) => {
       workspaceCallbackRef.current({ selected: !!selection, active: !!workspace?.active, width: selection?.width ?? 0, height: selection?.height ?? 0, zoom: workspace?.camera.zoom ?? 1, sizeLinked: selection?.sizeLinked ?? true, started: !!selection?.started, moving: !!selection?.moving, hasPaint: !!selection?.hasPaint, editableUntil: workspace?.editableUntil, bounds });
     };
     world.onColorPick = colour => colorPickCallbackRef.current(colour);
-    const multiplayer = new WorldMultiplayerSession(world, status => multiplayerStatusRef.current(status), view => multiplayerViewRef.current(view));
+    const multiplayer = new WorldMultiplayerSession(world, status => { soloHistory.setAllowed(status.phase === 'solo'); multiplayerStatusRef.current(status); }, view => multiplayerViewRef.current(view));
     multiplayerRef.current = multiplayer;
+    const paintSample = world.onPaintSample, paintEnd = world.onPaintEnd;
+    world.onBeforePaintSample = (wall, hit, settings) => soloHistory.begin(wall, hit, settings);
+    world.onPaintSample = (wall, hit, settings, continues) => {
+      if (settings.eraseMode) eraserGuide.show(hit, paintRadius(settings.brushSize));
+      soloHistory.changed(); paintSample?.(wall, hit, settings, continues);
+    };
+    world.onPaintEnd = () => { soloHistory.end(); paintEnd?.(); };
     world.setPaintVisibility(liveRef.current.layerVisibility);
     const stopControls = attachWorldControls(
       world, liveRef, () => sprayRef.current(), () => paintRef.current(), posterRef,
@@ -170,6 +191,8 @@ const WorldScene = (props: WorldSceneProps) => {
       if (posterRef.current) disposePosterPlacementSession(world, posterRef.current);
       posterRef.current = null;
       guide.dispose(); referenceRef.current = null;
+      eraserGuide.dispose(); eraserGuideRef.current = null;
+      soloHistory.reset(); soloHistoryRef.current = null; world.onBeforePaintSample = undefined;
       assetPreview.dispose(); assetPreviewRef.current = null;
       disposeWorld(world);
       if (worldRef.current === world) worldRef.current = null;
@@ -177,6 +200,7 @@ const WorldScene = (props: WorldSceneProps) => {
   }, []);
 
   useEffect(() => { void assetPreviewRef.current?.configure(previewPreference); }, [previewPreference]);
+  useEffect(() => { eraserGuideRef.current?.setEnabled(props.paintMode && props.eraseMode && !props.eyedropperActive); }, [props.paintMode, props.eraseMode, props.eyedropperActive]);
 
   const editGrace = useRef(new PieceEditGrace());
 
@@ -209,8 +233,8 @@ const WorldScene = (props: WorldSceneProps) => {
   useEffect(() => {
     const world = worldRef.current, request = props.workspaceRequest;
     if (!world || !request) return;
-    if (request.action === 'undo') { multiplayerRef.current?.undoStroke(); return; }
-    if (request.action === 'redo') { multiplayerRef.current?.redoStroke(); return; }
+    if (request.action === 'undo') { if (!world.multiplayerActive) soloHistoryRef.current?.undo(); else multiplayerRef.current?.undoStroke(); return; }
+    if (request.action === 'redo') { if (!world.multiplayerActive) soloHistoryRef.current?.redo(); else multiplayerRef.current?.redoStroke(); return; }
     editGrace.current.resume();
     world.onPaintEnd?.();
     if (request.action === 'start') {

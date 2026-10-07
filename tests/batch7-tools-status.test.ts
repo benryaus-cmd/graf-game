@@ -132,3 +132,12 @@ test('credit status displays compact authoritative balance and preserves its acc
   assert.ok(!html.includes('>CREDITS'));
   assert.match(renderToStaticMarkup(createElement(CanvasCredits, { balance: null })), />C —/);
 });
+
+test('each paint head immediately exits eraser without requiring the obsolete SPRAY button',()=>{
+ for(const label of ['FINE','SOFT','FAT','MARKER','ROLLER']){
+  let erasing=true;let selected='';
+  const {nodes,html}=capture(PaintDock,{...dockProps,eraseMode:true,onToolChange:tool=>{erasing=tool==='eraser';},onBrushHeadChange:head=>{selected=head;}});
+  nodes.find(node=>node.type==='button'&&node.props.children===label)!.props.onClick?.();
+  assert.equal(erasing,false,label+' must restore paint');assert.equal(selected,label.toLowerCase());assert.ok(!html.includes('>SPRAY</button>'));
+ }
+});

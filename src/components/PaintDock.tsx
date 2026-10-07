@@ -1,6 +1,5 @@
 import { useState, useEffect, type ReactNode } from 'react';
 import type { BrushHead } from '@/game/sprayHeads';
-import assetsData from '@/config/assets';
 import BrushTuning from '@/components/BrushTuning';
 import ColorPicker from '@/components/ColorPicker';
 import GameSheet from '@/components/GameSheet';
@@ -67,7 +66,6 @@ const PaintDock = (props: PaintDockProps) => {
   const updateHue = (value: number) => { setHue(value); props.onColorChange(paintColor(baseColor, value, darkness, paleness)); };
   const updateDarkness = (value: number) => { setDarkness(value); props.onColorChange(paintColor(baseColor, hue, value, paleness)); };
   const updatePaleness = (value: number) => { setPaleness(value); props.onColorChange(paintColor(baseColor, hue, darkness, value)); };
-  const selectedTool = props.paintMode ? (props.eraseMode ? 'eraser' : 'paint') : 'off';
   const activePalette = paletteSettings.palettes.find(palette => palette.id === paletteSettings.activePaletteId);
   const paletteColors = activePalette?.colors ?? paletteSettings.defaultColors;
   const refreshPalettes = () => {
@@ -126,7 +124,7 @@ const PaintDock = (props: PaintDockProps) => {
       {posterMode ? <PosterStudio size={props.posterSize} onSizeChange={props.onPosterSizeChange} onStartPlacement={props.onStartPosterPlacement} /> : <>
         <section className="tool-section"><h3>BRUSH</h3>
           <div className="paint-heads" aria-label="Brush heads" data-tutorial="brush-heads">
-            {HEADS.map(head => { const selected = !props.eraseMode && (props.brushHead ?? 'soft') === head.id; return <button key={head.id} type="button" className={selected ? 'paint-head-selected' : undefined} aria-pressed={selected} onClick={() => props.onBrushHeadChange?.(head.id)}>{head.label}</button>; })}
+            {HEADS.map(head => { const selected = !props.eraseMode && (props.brushHead ?? 'soft') === head.id; return <button key={head.id} type="button" className={selected ? 'paint-head-selected' : undefined} aria-pressed={selected} onClick={() => { props.onBrushHeadChange?.(head.id); props.onToolChange('paint'); }}>{head.label}</button>; })}
             <button type="button" className={props.eraseMode ? 'paint-head-selected' : undefined} aria-pressed={props.eraseMode} style={{ background: '#ffffff', color: '#000000' }} onClick={() => { props.onToolChange('eraser'); (props.onClose ?? props.onToggle)(); }}>ERAZE</button>
           </div>
         </section>
@@ -147,9 +145,6 @@ const PaintDock = (props: PaintDockProps) => {
           {pickerOpen && <ColorPicker color={props.color} onChange={previewBaseColor} onCommit={commitColor} />}
           {recentColors.length > 0 && <div className="recent-colours" aria-label="Recent colours">{recentColors.map(recent => <button type="button" key={recent} aria-label={`Reuse ${recent}`} style={{ backgroundColor: recent }} onClick={() => selectBaseColor(recent)} />)}</div>}
         </section>
-        <div className="tool-mode" aria-label="Paint operation">
-          <button type="button" aria-pressed={selectedTool === 'paint'} onClick={() => { props.onToolChange('paint'); (props.onClose ?? props.onToggle)(); }}><img src={assetsData.IMAGE_ERCF} alt="" />SPRAY</button>
-        </div>
         <section className="tool-section"><h3>LAYERS <small>LAYER {props.selectedLayer + 1}</small></h3>
           <div className="layer-list" aria-label="Drawing layers">{props.layers.slice(0, 5).map((layer, index) => <div className={`layer-chip ${props.selectedLayer === index ? 'layer-chip-selected' : ''}`} key={layer.name}>
             <button className="layer-select" type="button" aria-label={`Select ${layer.name}`} aria-pressed={props.selectedLayer === index} onClick={() => props.onLayerSelect(index)}>{index + 1}</button>

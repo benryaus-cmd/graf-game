@@ -79,7 +79,8 @@ export function stampPaintHit(
   const radius = Math.max(0.002, worldRadius);
   context.save();
   context.setTransform(pixelsPerWorldX, 0, 0, pixelsPerWorldY, 0, 0);
-  context.globalAlpha = THREE.MathUtils.clamp(opacity, 0.05, 1);
+  context.globalAlpha = erase ? 1 : THREE.MathUtils.clamp(opacity, 0.05, 1);
+  if (erase) head = undefined;
   context.globalCompositeOperation = erase ? 'destination-out' : 'source-over';
   context.strokeStyle = color;
   context.fillStyle = color;
@@ -178,6 +179,7 @@ export function sprayOnWall(
   if (selection && !isPaintWorkspaceHitAllowed(selection, wall, face, hit.uv, Math.min(.08, paintRadius(settings.brushSize)))) { stroke.current = null; return; }
   const previous = stroke.current?.object === hit.object && stroke.current.face === face && stroke.current.layer === layerIndex
     ? stroke.current : null;
+  world.onBeforePaintSample?.(wall, hit, settings);
   const point = stampPaintHit(
     wall,
     hit,

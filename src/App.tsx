@@ -9,7 +9,8 @@ import LookJoystick from '@/components/LookJoystick';
 import CanvasCredits from '@/components/CanvasCredits';
 import ProtectionControls from '@/components/ProtectionControls';
 import GraffitiPieces from '@/components/GraffitiPieces';
-import PaintWorkspaceHud, { type PaintWorkspaceView, type PaintWorkspaceAction } from '@/components/PaintWorkspaceHud';
+import PaintWorkspaceHud, { type PaintWorkspaceView, type PaintWorkspaceAction, type PaintWorkspaceHistory } from '@/components/PaintWorkspaceHud';
+import { EmoteViewReturn } from '@/game/emoteViewReturn';
 import MultiplayerControls from '@/components/MultiplayerControls';
 import PlayerInteractionCard from '@/components/PlayerInteractionCard';
 import { useUserInfo } from '@aippy/runtime/user';
@@ -161,6 +162,10 @@ const App = () => {
   const [selectedLayer, setSelectedLayer] = useState(2);
   const [progress, setProgress] = useState<GameProgress>(loadGameProgress);
   const [emoteSignal, setEmoteSignal] = useState<EmoteSignal | null>(null);
+  const [soloHistory, setSoloHistory] = useState<PaintWorkspaceHistory>({ canUndo: false, canRedo: false, undoDepth: 0, redoDepth: 0, limit: 2 });
+  const emoteViewReturn = useRef(new EmoteViewReturn());
+  useEffect(() => () => emoteViewReturn.current.cancel(), []);
+  useEffect(() => { if (viewMode !== 'third') emoteViewReturn.current.cancel(); }, [viewMode]);
   const [devViewerOpen, setDevViewerOpen] = useState(false);
   const [tutorialStep, setTutorialStep] = useState<TutorialStep | null>(null);
   const [tutorialReview, setTutorialReview] = useState(false);
@@ -369,12 +374,13 @@ const App = () => {
     itemIndex === index ? { ...layer, visible: !layer.visible } : layer
   )));
   const changeView = () => {
+    emoteViewReturn.current.cancel();
     const modes: CameraMode[] = ['first', 'third', 'map'];
     setViewMode(current => modes[(modes.indexOf(current) + 1) % modes.length]);
   };
   const playEmote = (emote: AvatarEmote) => {
     closeMenu();
-    setViewMode('third');
+    emoteViewReturn.current.choose(viewMode, setViewMode);
     setEmoteSignal(current => ({ emote, sequence: (current?.sequence ?? 0) + 1 }));
   };
   const appearance = useMemo(() => getAvatarAppearance(progress), [progress]);
@@ -387,7 +393,7 @@ const App = () => {
   const jumpLabel = progress.outfit === 'jax' ? 'FLY' : progress.outfit === 'ringmaster' ? 'LEVITATE'
     : progress.outfit === 'pomni' ? 'HIGH JUMP' : 'JUMP';
 
-  const workspaceHud = <PaintWorkspaceHud history={multiplayerView.strokeHistory ?? undefined} collapsed={canvasCollapsed} onCollapsedChange={setCanvasCollapsed} onReference={() => { setCanvasCollapsed(true); toggleMenu('reference'); }} view={workspaceView} painting={paintMode && !adminFreePaint} onAction={requestWorkspace}
+  const workspaceHud = <PaintWorkspaceHud history={multiplayerStatus.phase === 'solo' ? soloHistory : multiplayerView.strokeHistory ?? undefined} collapsed={canvasCollapsed} onCollapsedChange={setCanvasCollapsed} onReference={() => { setCanvasCollapsed(true); toggleMenu('reference'); }} view={workspaceView} painting={paintMode && !adminFreePaint} onAction={requestWorkspace}
             protectionEnabled={protectionEnabled} startDisabled={protectionStartDisabled} startLabel={protectionStartLabel}
             pieceTitle={pieceTitleDraft} onPieceTitleChange={setPieceTitleDraft}
             protectedUntil={multiplayerView.protection?.protectedUntil} geometryLocked={!!multiplayerView.protection?.pendingPurchase || !!multiplayerView.protection?.purchased}
@@ -424,6 +430,7 @@ const App = () => {
       ) : (
         <>
           <WorldScene
+            onSoloHistoryChange={setSoloHistory}
             reference={reference} onReferenceMove={(x, y) => setReference(current => current ? { ...current, x, y } : null)}
             eyedropperActive={eyedropperActive} onColorPick={pickColour}
             brushHead={brushHead}

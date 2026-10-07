@@ -171,6 +171,7 @@ export class WorldMultiplayerSession {
         this.selectedPieceId = this.pieces.create(selection.center.toArray(), workspaceWorldBounds(selection));
         this.selectedPiece = selection;
       }
+      const wasDrawing = this.paint.drawing;
       const value = this.paint.sample({
         pieceId: this.selectedPieceId ?? undefined,
         surfaceId: encodeSurface(wall.surfaceId, face, Math.max(0, settings.layerIndex)),
@@ -179,6 +180,7 @@ export class WorldMultiplayerSession {
         layerIndex: Math.max(0, settings.layerIndex), face: String(face),
         point: { x: hit.point.x, y: hit.point.y, z: hit.point.z, pressure: this.connection.protocol === 1 ? Math.max(0.05, Math.min(1, settings.opacity)) : 1 },
       }, continues);
+      if (!wasDrawing) this.emitView();
       if (this.replay.isRebuilding(wall)) this.replay.enqueue(wall, value.stroke, [value.stroke.points[value.stroke.points.length - 1]], value.previous);
     };
     world.onArtworkPlaced = (wall, face, artwork) => { if (this.multiplayer) void this.artworks.placed(wall, face, artwork, this.connection.connected); };
@@ -218,7 +220,11 @@ export class WorldMultiplayerSession {
       this.emitView();
       return !!piece || !!this.selectedArtworkId;
     };
-    world.onPaintEnd = () => this.paint.end();
+    world.onPaintEnd = () => {
+      const wasDrawing = this.paint.drawing;
+      this.paint.end();
+      if (wasDrawing) this.emitView();
+    };
     world.onMultiplayerFrame = (delta, settings) => this.update(delta, settings);
   }
   completePiece(title?: string): void {
