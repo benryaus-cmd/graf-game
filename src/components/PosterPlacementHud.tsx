@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { PosterPlacementRequest } from '@/game/usePosterPlacement';
 
 interface PosterPlacementHudProps {
@@ -11,13 +12,17 @@ interface PosterPlacementHudProps {
 
 const PosterPlacementHud = ({
   placement, size, valid, onSizeChange, onPlace, onCancel,
-}: PosterPlacementHudProps) => (
-  <section className="poster-placement-panel" aria-label="Poster placement controls">
+}: PosterPlacementHudProps) => {
+  const [collapsed, setCollapsed] = useState(false);
+  return (
+  <section className={`poster-placement-panel${collapsed ? ' is-collapsed' : ''}`} aria-label="Poster placement controls">
     <div className="poster-placement-title">
       <img src={placement.dataUrl} alt="" />
       <div><small>POSTER IN HAND</small><b>{valid ? 'WALL FOUND' : 'FIND A WALL'}</b></div>
+      <button type="button" aria-label={collapsed ? 'Expand poster controls' : 'Collapse poster controls'} aria-expanded={!collapsed} onClick={() => setCollapsed(value => !value)}>{collapsed ? '▾' : '−'}</button>
       <button type="button" aria-label="Cancel poster placement" onClick={onCancel}>×</button>
     </div>
+    <div hidden={collapsed}>
     <label className="poster-size-control poster-placement-size">
       <span>SIZE <b>{size.toFixed(1)} m</b></span>
       <input
@@ -32,7 +37,9 @@ const PosterPlacementHud = ({
     <button type="button" className="poster-place-button" disabled={!valid} onClick={onPlace}>
       PLACE POSTER <span aria-hidden="true">↓</span>
     </button>
+    </div>
   </section>
 );
+};
 
 export default PosterPlacementHud;

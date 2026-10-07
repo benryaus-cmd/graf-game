@@ -1,7 +1,9 @@
-import { useEffect, useId, useRef, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useRotatedSheetScroll } from '@/components/useRotatedSheetScroll';
 import { sheetViewport } from '@/components/sheetViewport';
+
+export const SheetCollapseContext = createContext<(collapsed: boolean) => void>(() => {});
 
 interface GameSheetProps {
   title: string;
@@ -15,6 +17,9 @@ interface GameSheetProps {
 
 /** Presentation only: dismissing a sheet never invokes a game action. */
 export default function GameSheet({ title, subtitle, onClose, children, footer, className = '', closeLabel = 'Close panel' }: GameSheetProps) {
+  const [collapsed, setCollapsed] = useState(false);
+  const reportCollapse = useContext(SheetCollapseContext);
+  useEffect(() => { reportCollapse(collapsed); return () => reportCollapse(false); }, [collapsed, reportCollapse]);
   const scroll = useRotatedSheetScroll();
   const titleId = useId();
   const panel = useRef<HTMLElement>(null);
@@ -25,9 +30,10 @@ export default function GameSheet({ title, subtitle, onClose, children, footer, 
     const shell = element?.closest<HTMLElement>('.game-shell');
     if (!element || !shell) return;
     const previous = document.activeElement as HTMLElement | null;
-    element.querySelector<HTMLButtonElement>('.sheet-close')?.focus({ preventScroll: true });
+    element.querySelector<HTMLButtonElement>('.sheet-collapse')?.focus({ preventScroll: true });
     const keydown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); close.current(); }
+      if (event.key === 'Escape' && (!collapsed || element.contains(event.target as Node))) { event.preventDefault(); event.stopPropagation(); close.current(); }
+      if (collapsed) return;
       if (event.key !== 'Tab') return;
       const selector = 'button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), summary, [tabindex="0"]';
       const coach = shell.querySelector<HTMLElement>('.tutorial-card');
@@ -66,15 +72,15 @@ export default function GameSheet({ title, subtitle, onClose, children, footer, 
       document.removeEventListener('keydown', keydown, true);
       if (previous?.isConnected) previous.focus({ preventScroll: true });
     };
-  }, []);
-  const content = <div className={`game-sheet-backdrop ${className}`} onPointerDown={event => event.stopPropagation()} onClick={event => { if (event.target === event.currentTarget) onClose(); }}>
-    <section ref={panel} className="game-sheet" role="dialog" aria-modal="true" aria-labelledby={titleId}>
+  }, [collapsed]);
+  const content = <div className={`game-sheet-backdrop ${className}${collapsed ? ' sheet-is-collapsed' : ''}`} onPointerDown={event => event.stopPropagation()} onClick={event => { if (!collapsed && event.target === event.currentTarget) onClose(); }}>
+    <section ref={panel} className="game-sheet" role={collapsed ? 'region' : 'dialog'} aria-modal={collapsed ? undefined : true} aria-labelledby={titleId}>
       <header className="game-sheet-header">
         <div><h2 id={titleId}>{title}</h2>{subtitle && <p>{subtitle}</p>}</div>
-        <button className="sheet-close" type="button" aria-label={closeLabel} onClick={onClose}>×</button>
+        <div className="sheet-header-actions"><button className="sheet-collapse" type="button" aria-label={`${collapsed ? 'Expand' : 'Collapse'} ${title.toLowerCase()}`} aria-expanded={!collapsed} onClick={() => setCollapsed(value => !value)}>{collapsed ? '▾' : '−'}</button><button className="sheet-close" type="button" aria-label={closeLabel} onClick={onClose}>×</button></div>
       </header>
-      <div className="game-sheet-body" {...scroll}>{children}</div>
-      {footer && <footer className="game-sheet-footer">{footer}</footer>}
+      <div className="game-sheet-body" hidden={collapsed} {...scroll}>{children}</div>
+      {footer && <footer className="game-sheet-footer" hidden={collapsed}>{footer}</footer>}
     </section>
   </div>;
   const host = typeof document !== 'undefined' && typeof document.querySelector === 'function' ? document.querySelector('.game-shell') : null;

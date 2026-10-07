@@ -33,7 +33,7 @@ interface WorldSceneProps {
   onWorkspaceChange: (view: PaintWorkspaceView) => void;
   eyedropperActive: boolean;
   onColorPick: (colour: string | null) => void;
-  multiplayerRequest: { action: 'join' | 'leave' | 'chat' | 'resync' | 'like' | 'inspect' | 'delete-piece' | 'set-role' | 'paint-over' | 'quote-protection' | 'buy-protection' | 'admin-action'; text?: string; role?: ServerRole; colour?: string; protectionEnabled?: boolean; adminAction?: AdminAction; options?: AdminActionOptions; sequence: number } | null;
+  multiplayerRequest: { action: 'join' | 'leave' | 'chat' | 'resync' | 'like' | 'inspect' | 'delete-piece' | 'set-role' | 'paint-over' | 'quote-protection' | 'buy-protection' | 'admin-action' | 'select-player'; text?: string; role?: ServerRole; colour?: string; protectionEnabled?: boolean; adminAction?: AdminAction; options?: AdminActionOptions; sequence: number } | null;
   displayName: string; username: string; nickName: string; onMultiplayerStatus: (status: MultiplayerStatus) => void;
   cosmetics: PlayerCosmetics; onMultiplayerView: (view: MultiplayerView) => void;
   sky: SkyMode; paintMode: boolean; eraseMode: boolean; color: string;
@@ -176,6 +176,7 @@ const WorldScene = (props: WorldSceneProps) => {
     else if (request.action === 'leave') multiplayerRef.current?.leave();
     else if (request.action === 'chat') multiplayerRef.current?.sendChat(request.text ?? '');
     else if (request.action === 'inspect') multiplayerRef.current?.inspectPiece(request.text ?? '');
+    else if (request.action === 'select-player') multiplayerRef.current?.selectPlayer(request.text ?? '');
     else if (request.action === 'like') multiplayerRef.current?.likePiece(request.text ?? '');
     else if (request.action === 'delete-piece') multiplayerRef.current?.deletePiece(request.text ?? '');
     else if (request.action === 'set-role' && request.role) multiplayerRef.current?.setRole(request.text ?? '', request.role);
@@ -299,7 +300,7 @@ const WorldScene = (props: WorldSceneProps) => {
       onPointerDown={event => {
         if (dragRef.current || (event.pointerType === 'mouse' && event.button !== 0)) return;
         const start = referenceRef.current?.point(event, event.currentTarget);
-        if (!start) return;
+        if (!start || !referenceRef.current?.contains(start)) return;
         event.preventDefault(); event.stopPropagation(); event.currentTarget.setPointerCapture(event.pointerId);
         dragRef.current = { id: event.pointerId, start, x: props.reference!.x, y: props.reference!.y };
       }}

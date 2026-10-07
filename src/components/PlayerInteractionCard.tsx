@@ -8,6 +8,7 @@ const ROLES: ServerRole[] = ['player', 'moderator', 'admin', 'owner'];
 type SelectedPlayer = NonNullable<MultiplayerView['selectedPlayer']> & { online?: boolean };
 
 interface Props {
+  isSelf?: boolean; onPlayers?: () => void; onChat?: () => void;
   open?: boolean; onClose?: () => void;
   selected?: SelectedPlayer | null;
   ownRole?: ServerRole;
@@ -27,7 +28,7 @@ const DURATIONS: Array<{ label: string; value: number | null }> = [
   { label: '7 DAYS', value: 604800 }, { label: 'PERMANENT', value: null },
 ];
 
-export default function PlayerInteractionCard({ open = true, onClose = () => {}, selected, ownRole, connected, notice, roleChange, onSetRole, onAdminAction, adminResult }: Props) {
+export default function PlayerInteractionCard({ isSelf, onPlayers, onChat, open = true, onClose = () => {}, selected, ownRole, connected, notice, roleChange, onSetRole, onAdminAction, adminResult }: Props) {
   const [expanded, setExpanded] = useState(false);
   const [pending, setPending] = useState<{ username: string; role: ServerRole } | null>(null);
   const [success, setSuccess] = useState('');
@@ -80,7 +81,7 @@ export default function PlayerInteractionCard({ open = true, onClose = () => {},
   if (!selected || !open) return null;
   const role = selected.role;
   const canManage = connected && selected.online !== false && (ownRole === 'owner' || (ownRole === 'admin' && !!role && role !== 'owner'));
-  const canAdmin = connected && canUseAdminActions(ownRole, role);
+  const canAdmin = !isSelf && connected && canUseAdminActions(ownRole, role);
   const roles = ownRole === 'owner' ? ROLES : ownRole === 'admin' ? ROLES.filter(role => role !== 'owner') : [];
   const username = selected.username.replace(/^@/, '');
   const selectedAmount = creditChoice === 'custom' ? Number(customAmount) : Number(creditChoice);
@@ -100,10 +101,13 @@ export default function PlayerInteractionCard({ open = true, onClose = () => {},
     } else setActionMessage('Request could not be sent. Check the connection and your role.');
   };
   return <GameSheet title="PLAYER" onClose={onClose} closeLabel="Close player details" className="player-sheet"><div className="player-interaction-card">
-    <div><strong>{selected.nickName || 'PLAYER'}</strong><div className="player-interaction-handle">@{username || 'unknown'}</div>
+    <div><strong>{selected.nickName || 'PLAYER'}</strong><div className="player-interaction-handle">{username ? `@${username}` : 'Aippy tag unavailable'}</div><small className="player-session-id">Session: {selected.playerId}</small>
       {canAdmin && <div className="player-interaction-role">Current role: {role ?? 'Unknown'}</div>}
-      {selected.online === false && <div className="player-interaction-role">OFFLINE · UNBAN ONLY</div>}</div>
-    {canAdmin && <div className="player-role-admin">
+      {selected.online === false && <div className="player-interaction-role">OFFLINE</div>}</div>
+    {onPlayers && <button type="button" onClick={onPlayers}>BACK TO PLAYERS</button>}
+    {onChat && <button type="button" onClick={onChat}>BACK TO CHAT</button>}
+    {canAdmin && username && selected.online !== false && <button type="button" className="player-kick" disabled={!!actionPending} onClick={() => requestAction('kick', { reason })}>KICK PLAYER</button>}
+    {canAdmin && username && <div className="player-role-admin">
       <button type="button" className="player-role-admin-toggle" aria-expanded={expanded} onClick={() => setExpanded(value => !value)}>ADMIN</button>
       {expanded && <div className="player-role-options" aria-label="Assign role">
         {roles.map(option => <button type="button" key={option} disabled={!canManage || !username || option === role || !!pending}
@@ -128,7 +132,6 @@ export default function PlayerInteractionCard({ open = true, onClose = () => {},
           <label>Optional reason <input type="text" maxLength={500} value={reason} onChange={event => setReason(event.target.value)} /></label>
           <div className="player-admin-action-row">
             {selected.online !== false && <>
-              <button type="button" disabled={!!actionPending} onClick={() => requestAction('kick', { reason })}>KICK</button>
               <button type="button" disabled={!!actionPending} onClick={() => requestAction('ban', { durationSeconds: duration, reason })}>BAN</button>
             </>}
             <button type="button" disabled={!!actionPending} onClick={() => requestAction('unban', { reason })}>UNBAN</button>

@@ -23,28 +23,29 @@ export default function ReferenceSheet({ selected, guide, onClose, onChange }: P
       if (generation.current !== token) return;
       const url = await loadReferenceImage(file);
       if (generation.current !== token) { URL.revokeObjectURL(url); return; }
-      onChange({ url, name: file.name, visible: true, moving: false, opacity: .35, scale: 1, x: 0, y: 0, rotation: 0 });
+      onChange({ url, name: file.name, visible: true, moving: true, opacity: .35, scale: 1, x: 0, y: 0, rotation: 0, aboveArt: true });
       setImageUrl('');
+      onClose();
     } catch (e) { if (generation.current === token) setError(e instanceof Error ? e.message : 'Could not open that image.'); }
     finally { if (generation.current === token) setLoading(false); }
   };
   return <GameSheet title="REFERENCE" subtitle="A ghost guide for your painting" className="reference-sheet" onClose={onClose}>
     <p className="empty-state">Only you see this guide. It is never saved into your piece or sent to the server.</p>
     {!selected && <p className="ui-notice">Select a canvas first to place a reference on its wall.</p>}
+    <details className="reference-source" open={guide ? undefined : true}><summary>{guide ? 'Replace reference image' : 'Choose reference image'}</summary>
     <form className="reference-link" onSubmit={event => { event.preventDefault(); void load(imageUrl); }}>
       <label><span>IMAGE URL</span><input type="url" aria-label="Reference image URL" placeholder="https://…/image.jpg" value={imageUrl} disabled={loading} onChange={event => setImageUrl(event.target.value)} autoCapitalize="none" autoCorrect="off" spellCheck={false} /></label>
       <button type="submit" className="ui-primary" disabled={!selected || loading || !imageUrl.trim()}>{loading ? 'LOADING IMAGE…' : 'USE IMAGE URL'}</button>
     </form>
     <p className="empty-state">Paste the image address itself. It stays in this session and works in Solo.</p>
     <label className="reference-file ui-button">{loading ? 'OPENING IMAGE…' : guide ? 'REPLACE FROM PHONE' : 'CHOOSE FROM PHONE'}<input aria-label="Choose reference image" type="file" accept="image/*" disabled={!selected || loading} onChange={event => { void load(event.target.files?.[0]); event.target.value = ''; }} /></label>
+    </details>
     {error && <p className="ui-notice" role="alert">{error}</p>}
     {guide && <>
-      <img className="reference-thumbnail" src={guide.url} alt={`Reference: ${guide.name}`} />
-      <div className="button-row"><button type="button" aria-pressed={guide.visible} onClick={() => onChange({ ...guide, visible: !guide.visible })}>{guide.visible ? 'HIDE GUIDE' : 'SHOW GUIDE'}</button><button type="button" disabled={!selected} onClick={() => { onChange({ ...guide, visible: true, moving: true }); onClose(); }}>MOVE GUIDE</button></div>
-      <p className="empty-state">Move it inside the canvas or beside it. Drag in Move Guide, then tap Done.</p>
-      <label className="paint-range"><span><b>GHOST OPACITY</b><i>{Math.round(guide.opacity * 100)}%</i></span><input type="range" aria-label="Reference opacity" min={.1} max={.85} step={.05} value={guide.opacity} onChange={event => onChange({ ...guide, opacity: Number(event.target.value) })} /></label>
-      <label className="paint-range"><span><b>SIZE</b><i>{Math.round(guide.scale * 100)}%</i></span><input type="range" aria-label="Reference size" min={.1} max={3} step={.05} value={guide.scale} onChange={event => onChange({ ...guide, scale: Number(event.target.value) })} /></label>
-      <label className="paint-range"><span><b>ROTATION</b><i>{guide.rotation}°</i></span><input type="range" aria-label="Reference rotation" min={-180} max={180} value={guide.rotation} onChange={event => onChange({ ...guide, rotation: Number(event.target.value) })} /></label>
+      <details className="reference-preview"><summary>Preview · {guide.name}</summary><img className="reference-thumbnail" src={guide.url} alt={`Reference: ${guide.name}`} /></details>
+      <button type="button" className="reference-adjust-start ui-primary" disabled={!selected} onClick={() => { onChange({ ...guide, visible: true, moving: true }); onClose(); }}>ADJUST GUIDE</button>
+      <p className="empty-state">Adjust on the wall with the screen clear: hold the image to move it, and use the sliders at the bottom.</p>
+      <div className="button-row"><button type="button" aria-pressed={guide.visible} onClick={() => onChange({ ...guide, visible: !guide.visible })}>{guide.visible ? 'HIDE GUIDE' : 'SHOW GUIDE'}</button><button type="button" aria-label="Reference above artwork" aria-pressed={guide.aboveArt !== false} onClick={() => onChange({ ...guide, aboveArt: guide.aboveArt === false })}>{guide.aboveArt !== false ? 'ABOVE ART' : 'BELOW PAINT'}</button></div>
       <div className="button-row"><button type="button" onClick={() => onChange({ ...guide, x: 0, y: 0, scale: 1, rotation: 0 })}>FIT CANVAS</button><button type="button" onClick={() => onChange(null)}>REMOVE GUIDE</button></div>
     </>}
   </GameSheet>;

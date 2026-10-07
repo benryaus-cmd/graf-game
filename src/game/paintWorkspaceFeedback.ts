@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { PaintWorkspaceSelection } from './worldTypes';
 import type { PieceBounds } from '../multiplayer/pieceSync';
+import { WORKSPACE_FILL_ORDER } from './worldOverlayOrder';
 
 const cachedBounds = new WeakMap<PaintWorkspaceSelection, PieceBounds>();
 export function workspaceWorldBounds(selection: PaintWorkspaceSelection): PieceBounds {
@@ -28,7 +29,7 @@ export function setWorkspaceInvalid(selection: PaintWorkspaceSelection | null | 
     const material = new THREE.MeshBasicMaterial({ color: '#ff2222', transparent: true, opacity: .65, side: THREE.DoubleSide, depthWrite: false, depthTest: false });
     fill = new THREE.Mesh(geometry, material);
     fill.layers.mask = preview.layers.mask;
-    fill.renderOrder = 9_999;
+    fill.renderOrder = WORKSPACE_FILL_ORDER;
     preview.add(fill);
     preview.userData.invalidFill = fill;
     preview.geometry.addEventListener('dispose', () => { geometry.dispose(); material.dispose(); preview.userData.invalidFill = undefined; });

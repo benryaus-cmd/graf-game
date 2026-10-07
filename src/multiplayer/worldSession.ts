@@ -8,6 +8,7 @@ import { headForTool } from '../game/sprayHeads';
 import { PlayerSync } from './playerSync';
 import { SpeechBubble } from '../game/speechBubble';
 import { RemotePlayers } from './remotePlayers';
+import { PlayerDirectory } from './playerDirectory';
 import { decodeSurface, encodeSurface } from './surfaces';
 import { ChatSync } from './chat';
 import { ArtworkSync } from './artworkSync';
@@ -39,6 +40,8 @@ export class WorldMultiplayerSession {
   private paint: PaintSync;
   private replay: PaintReplay;
   private players: RemotePlayers;
+  private profiles = new PlayerDirectory();
+  private ownIdentity = { username: '', nickName: 'PLAYER' };
   private playerSync: PlayerSync;
   private chat: ChatSync;
   private ownSpeech: SpeechBubble;
@@ -381,12 +384,20 @@ export class WorldMultiplayerSession {
     const message = buildAdminAction(this.serverPermissions?.role, this.players.roleForUsername(targetUsername) ?? (this.selectedPlayer?.username.toLowerCase() === targetUsername.toLowerCase() ? this.selectedPlayer.role : undefined), action, targetUsername, options);
     return !!message && this.connection.send(message);
   }
+  selectPlayer(playerId: string): void {
+    const online = this.players.get(playerId) ?? (playerId === this.connection.playerId ? { playerId, ...this.ownIdentity, role: this.serverPermissions?.role } : null);
+    const profile = online ?? this.profiles.get(playerId);
+    this.selectedPlayer = profile ? { ...profile, online: !!online && this.connection.connected } : null;
+    this.playerPickSequence++; this.emitView();
+  }
   setRole(targetUsername: string, role: ServerRole): boolean {
     const ownRole = this.serverPermissions?.role;
     if (!this.connection.connected || this.connection.protocol !== 2 || !targetUsername || !canManageRole(ownRole, this.players.roleForUsername(targetUsername), role)) return false;
     return this.sendWorld({ type: 'admin_set_role', targetUsername, role });
   }
   join(displayName: string, roomId = DEFAULT_ROOM_ID, identity?: PlayerIdentity): void {
+    this.profiles = new PlayerDirectory();
+    this.ownIdentity = { username: identity?.username?.replace(/^@/, '') ?? '', nickName: identity?.nickName || displayName };
     this.protection.reset();
     this.serverPermissions = null;
     this.world.adminFreePaint = false;
@@ -633,10 +644,11 @@ export class WorldMultiplayerSession {
     const ordered = message.type.startsWith('piece_') || message.type.startsWith('stroke_') || message.type.startsWith('artwork_') || message.type.startsWith('item_') || message.type === 'chat_message';
     if (ordered && !this.order.accept(message)) return;
     if (message.type === 'player_joined') {
-      this.players.joined(message.player, this.connection.playerId); this.serverPlayerCount = null; this.emit(this.status);
+      this.players.joined(message.player, this.connection.playerId); this.serverPlayerCount = null; this.emit(this.status); this.emitView();
     } else if (message.type === 'player_left' && typeof message.playerId === 'string') {
       this.players.left(message.playerId); this.serverPlayerCount = null; this.emit(this.status);
-      if (this.selectedPlayer?.playerId === message.playerId) { this.selectedPlayer = ['admin', 'owner'].includes(this.serverPermissions?.role ?? '') ? { ...this.selectedPlayer, online: false } : null; this.emitView(); }
+      if (this.selectedPlayer?.playerId === message.playerId) { this.selectedPlayer = ['admin', 'owner'].includes(this.serverPermissions?.role ?? '') ? { ...this.selectedPlayer, online: false } : null; }
+      this.emitView();
     } else if (message.type === 'player_count') {
       const count = message.playerCount ?? message.count;
       if (Number.isInteger(count) && (count as number) >= 0) this.serverPlayerCount = count as number;
@@ -763,7 +775,10 @@ export class WorldMultiplayerSession {
     if (selectedPiece && !pieces.some(piece => piece.pieceId === selectedPiece.pieceId)) pieces.push(selectedPiece);
     const protection = this.protection;
     const protectedUntil = this.selectedPieceId ? protection?.protections.get(this.selectedPieceId)?.protectedUntil ?? null : null;
-    const view: MultiplayerView = { adminResult: this.adminResult, protection: protection ? { creditBalance: protection.creditBalance, quote: protection.quote, quotes: protection.quotes, protectionEnabled: this.canvasProtectionEnabled, purchased: !!this.world.paintWorkspace?.selection?.purchaseApproved, pendingQuote: !!protection.pendingQuotePieceId, pendingPurchase: !!protection.pendingPurchasePieceId, protectedUntil, notice: protection.notice } : undefined, chat: this.chat.messages, revision: this.order.revision, selectedPlayer: this.selectedPlayer, playerPickSequence: this.playerPickSequence, selectedPieceId: this.selectedPieceForView, piecePickSequence: this.piecePickSequence, roleChange: this.roleChange,
+    const onlinePlayers = this.players.roster();
+    if (this.connection.connected && this.connection.playerId) onlinePlayers.unshift({ playerId: this.connection.playerId, ...this.ownIdentity, role: this.serverPermissions?.role });
+    this.profiles.sync(onlinePlayers, this.chat.messages);
+    const view: MultiplayerView = { onlinePlayers, ownPlayerId: this.connection.connected ? this.connection.playerId : null, adminResult: this.adminResult, protection: protection ? { creditBalance: protection.creditBalance, quote: protection.quote, quotes: protection.quotes, protectionEnabled: this.canvasProtectionEnabled, purchased: !!this.world.paintWorkspace?.selection?.purchaseApproved, pendingQuote: !!protection.pendingQuotePieceId, pendingPurchase: !!protection.pendingPurchasePieceId, protectedUntil, notice: protection.notice } : undefined, chat: this.chat.messages, revision: this.order.revision, selectedPlayer: this.selectedPlayer, playerPickSequence: this.playerPickSequence, selectedPieceId: this.selectedPieceForView, piecePickSequence: this.piecePickSequence, roleChange: this.roleChange,
       accountFeaturesAvailable: this.accounts.available, worldItemCount: this.accounts.worldItems.size,
       pieces };
     const serial = JSON.stringify(view);

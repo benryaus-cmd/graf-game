@@ -2,8 +2,9 @@ import * as THREE from 'three';
 import type { PaintWorkspaceSelection, WorldEngine } from './worldTypes';
 import { PAINT_WORKSPACE_LAYER } from './paintWorkspace';
 import { elementPointerPoint } from './pointerCoordinates';
+import { REFERENCE_ABOVE_ORDER } from './worldOverlayOrder';
 
-export interface ReferenceSettings { url: string; name: string; visible: boolean; moving: boolean; opacity: number; scale: number; x: number; y: number; rotation: number }
+export interface ReferenceSettings { url: string; name: string; visible: boolean; moving: boolean; opacity: number; scale: number; x: number; y: number; rotation: number; aboveArt?: boolean }
 export function referenceFit(imageWidth: number, imageHeight: number, width: number, height: number) {
   const scale = Math.min(width / Math.max(1, imageWidth), height / Math.max(1, imageHeight));
   return { width: imageWidth * scale, height: imageHeight * scale };
@@ -46,6 +47,10 @@ export class ReferenceGuide {
   }
   refresh(): void {
     const s = this.settings, selection = this.world.paintWorkspace?.selection;
+    this.mesh.renderOrder = s?.aboveArt !== false ? REFERENCE_ABOVE_ORDER : 2;
+    // Paint/poster materials do not write depth. Draw order controls their stacking;
+    // opaque city geometry must still occlude a guide attached to another wall.
+    this.mesh.material.depthTest = true;
     this.mesh.visible = !!(s?.visible && selection && this.mesh.material.map);
     if (!s || !selection) return;
     const right = new THREE.Vector3().crossVectors(selection.up, selection.normal).normalize();
@@ -56,6 +61,16 @@ export class ReferenceGuide {
     this.mesh.scale.set(fit.width * s.scale, fit.height * s.scale, 1);
     this.mesh.material.opacity = s.opacity;
     this.mesh.updateMatrixWorld();
+  }
+  contains(point: THREE.Vector2): boolean {
+    const s = this.settings, selection = this.world.paintWorkspace?.selection;
+    if (!s?.visible || !selection || !this.mesh.material.map) return false;
+    const fit = referenceFit(this.aspect.width, this.aspect.height, selection.width, selection.height);
+    const angle = s.rotation * Math.PI / 180;
+    const x = (point.x - s.x) * selection.width, y = (point.y - s.y) * selection.height;
+    const localX = x * Math.cos(angle) + y * Math.sin(angle);
+    const localY = -x * Math.sin(angle) + y * Math.cos(angle);
+    return Math.abs(localX) <= fit.width * s.scale / 2 && Math.abs(localY) <= fit.height * s.scale / 2;
   }
   point(event: { clientX: number; clientY: number }, element: HTMLElement): THREE.Vector2 | null {
     const selection: PaintWorkspaceSelection | null | undefined = this.world.paintWorkspace?.selection;

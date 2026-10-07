@@ -29,6 +29,7 @@ interface PaintDockProps {
   posterSize: number; onPosterSizeChange: (size: number) => void;
   onStartPosterPlacement: (dataUrl: string, size: number) => void;
   onColorChange: (color: string) => void; onToolChange: (tool: PaintTool) => void;
+  onColorPreview?: (color: string) => void;
   onBrushSizeChange: (size: number) => void; onOpacityChange: (opacity: number) => void;
   onLayerSelect: (index: number) => void; onLayerToggle: (index: number) => void;
   onLayerAdd: () => void;
@@ -56,10 +57,13 @@ const PaintDock = (props: PaintDockProps) => {
   const [paletteName, setPaletteName] = useState('');
   const [paletteMessage, setPaletteMessage] = useState('');
   useEffect(() => setColorDraft(props.color), [props.color]);
-  const selectBaseColor = (next: string) => {
-    setBaseColor(next); setHue(hexToHsl(next).h); setDarkness(0); setPaleness(0); props.onColorChange(next);
+  const commitColor = (next: string) => {
+    props.onColorChange(next);
     setRecentColors(previous => [next, ...previous.filter(color => color !== next)].slice(0, 6));
   };
+  const setBase = (next: string) => { setBaseColor(next); setHue(hexToHsl(next).h); setDarkness(0); setPaleness(0); };
+  const selectBaseColor = (next: string) => { setBase(next); commitColor(next); };
+  const previewBaseColor = (next: string) => { setBase(next); (props.onColorPreview ?? props.onColorChange)(next); };
   const updateHue = (value: number) => { setHue(value); props.onColorChange(paintColor(baseColor, value, darkness, paleness)); };
   const updateDarkness = (value: number) => { setDarkness(value); props.onColorChange(paintColor(baseColor, hue, value, paleness)); };
   const updatePaleness = (value: number) => { setPaleness(value); props.onColorChange(paintColor(baseColor, hue, darkness, value)); };
@@ -135,7 +139,7 @@ const PaintDock = (props: PaintDockProps) => {
             {props.onEyedropper && <button type="button" className="ui-button" aria-pressed={!!props.eyedropperActive} onClick={() => { props.onEyedropper?.(); props.onToggle(); }}>EYEDROPPER</button>}
             <label className="hex-control"><span>HEX</span><input aria-label="Hex paint colour" value={colorDraft} maxLength={7} spellCheck={false} onBlur={() => setColorDraft(props.color)} onChange={event => { const next = event.target.value.toLowerCase(); setColorDraft(next); if (/^#[0-9a-f]{6}$/.test(next)) selectBaseColor(next); }} /></label>
           </div>
-          {pickerOpen && <ColorPicker color={props.color} onChange={selectBaseColor} />}
+          {pickerOpen && <ColorPicker color={props.color} onChange={previewBaseColor} onCommit={commitColor} />}
           {recentColors.length > 0 && <div className="recent-colours" aria-label="Recent colours">{recentColors.map(recent => <button type="button" key={recent} aria-label={`Reuse ${recent}`} style={{ backgroundColor: recent }} onClick={() => selectBaseColor(recent)} />)}</div>}
         </section>
         <div className="tool-mode" aria-label="Paint operation">

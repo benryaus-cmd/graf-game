@@ -1,3 +1,5 @@
+import { SheetCollapseContext } from '@/components/GameSheet';
+import PlayersSheet from '@/components/PlayersSheet';
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import menuBackground from '@/assets/graffciti-menu.webp';
 import { aippyTweaks } from '@aippy/runtime/tweaks';
@@ -26,6 +28,7 @@ import type { BrushHead } from '@/game/sprayHeads';
 import { LiveRadioController } from '@/game/liveRadio';
 import { RADIO_STREAM_URL } from '@/config/radio';
 import ReferenceSheet from '@/components/ReferenceSheet';
+import ReferenceControls from '@/components/ReferenceControls';
 import type { ReferenceSettings } from '@/game/referenceGuide';
 import TutorialOverlay from '@/components/TutorialOverlay';
 import { TUTORIAL_ORDER, nextTutorialStep, tutorialStartStep, tutorialObservedStep, readTutorialCompleted, writeTutorialCompleted, type TutorialStep } from '@/game/tutorial';
@@ -56,8 +59,8 @@ const App = () => {
   const displayName = aippyDisplayName(aippyUser);
   const [multiplayerStatus, setMultiplayerStatus] = useState<MultiplayerStatus>({ phase: 'solo', playerCount: 0 });
   const [multiplayerView, setMultiplayerView] = useState<MultiplayerView>({ chat: [], revision: 0, accountFeaturesAvailable: false, worldItemCount: 0 });
-  const [multiplayerRequest, setMultiplayerRequest] = useState<{ action: 'join' | 'leave' | 'chat' | 'resync' | 'like' | 'inspect' | 'delete-piece' | 'set-role' | 'paint-over' | 'quote-protection' | 'buy-protection' | 'admin-action'; text?: string; role?: ServerRole; colour?: string; protectionEnabled?: boolean; adminAction?: AdminAction; options?: AdminActionOptions; sequence: number } | null>(null);
-  const requestMultiplayer = (action: 'join' | 'leave' | 'chat' | 'resync' | 'like' | 'inspect' | 'delete-piece' | 'set-role' | 'paint-over' | 'quote-protection' | 'buy-protection' | 'admin-action', text?: string, role?: ServerRole, colour?: string, protectionEnabled?: boolean) => {
+  const [multiplayerRequest, setMultiplayerRequest] = useState<{ action: 'join' | 'leave' | 'chat' | 'resync' | 'like' | 'inspect' | 'delete-piece' | 'set-role' | 'paint-over' | 'quote-protection' | 'buy-protection' | 'admin-action' | 'select-player'; text?: string; role?: ServerRole; colour?: string; protectionEnabled?: boolean; adminAction?: AdminAction; options?: AdminActionOptions; sequence: number } | null>(null);
+  const requestMultiplayer = (action: 'join' | 'leave' | 'chat' | 'resync' | 'like' | 'inspect' | 'delete-piece' | 'set-role' | 'paint-over' | 'quote-protection' | 'buy-protection' | 'admin-action' | 'select-player', text?: string, role?: ServerRole, colour?: string, protectionEnabled?: boolean) => {
     if (action === 'inspect') { setPaintMode(false); requestWorkspace('exit'); setViewMode('first'); }
     if (action === 'join' || action === 'leave') { poster.cancel(); requestWorkspace('clear'); }
     setMultiplayerRequest(previous => ({ action, text, role, colour, protectionEnabled, sequence: (previous?.sequence ?? 0) + 1 }));
@@ -139,6 +142,8 @@ const App = () => {
   const [eyedropperActive, setEyedropperActive] = useState(false);
   const [eyedropperNotice, setEyedropperNotice] = useState('');
   const [activeMenu, setActiveMenu] = useState<HudMenu>(null);
+  const [sheetCollapsed, setSheetCollapsed] = useState(false);
+  const menuBlocking = !!activeMenu && !sheetCollapsed;
   const [movement, setMovement] = useState<MovementInput>({ x: 0, y: 0 });
   const [lookInput, setLookInput] = useState<MovementInput>({ x: 0, y: 0 });
   const [jumpSignal, setJumpSignal] = useState(0);
@@ -390,9 +395,9 @@ const App = () => {
               onProtectionEnabledChange={setProtectionEnabled} /> : undefined} />;
 
   return (
-    <main
+    <SheetCollapseContext.Provider value={setSheetCollapsed}><main
       ref={shellRef}
-      className={`game-shell ${portrait ? 'game-portrait' : ''} ${workspaceView.active ? 'canvas-mode' : ''} ${tutorialStep ? 'has-tutorial' : ''}`}
+      className={`game-shell ${portrait ? 'game-portrait' : ''} ${workspaceView.active ? 'canvas-mode' : ''} ${tutorialStep ? 'has-tutorial' : ''} ${reference?.moving ? 'has-reference-adjust' : ''} ${sheetCollapsed && activeMenu ? 'has-collapsed-sheet' : ''}`}
       style={{ '--accent': accentColor, '--panel': panelColor } as CSSProperties}
       onClickCapture={startAudioOnFirstClick}
     >
@@ -435,7 +440,7 @@ const App = () => {
           <GameHud
             eyedropperActive={eyedropperActive} onEyedropper={() => { setMovement({ x: 0, y: 0 }); setLookInput({ x: 0, y: 0 }); setEyedropperNotice('Tap existing paint to pick its colour.'); setEyedropperActive(true); }}
             brushHead={brushHead} onBrushHeadChange={setBrushHead}
-            hideTouchControls={workspaceView.active || !!activeMenu || eyedropperActive || !!reference?.moving}
+            menuCollapsed={sheetCollapsed} hideTouchControls={workspaceView.active || menuBlocking || eyedropperActive || !!reference?.moving}
             panelColor={panelColor} accentColor={accentColor} sky={sky} activeMenu={activeMenu}
             canAdminPaint={!!multiplayerStatus.canAdminPaint} adminFreePaint={adminFreePaint} musicReady={false} radioController={radioController} radioUrl={radioController ? RADIO_STREAM_URL : undefined} radioVolume={musicVolume} paintMode={paintMode} eraseMode={eraseMode}
             showCrosshair={showCrosshair} color={color} brushSize={brushSize * 3} opacity={opacity}
@@ -447,7 +452,7 @@ const App = () => {
             onPosterSizeChange={poster.changeSize} onPosterCommit={poster.requestCommit}
             onPosterCancel={poster.cancel} onPosterStart={startPosterPlacement}
             onMenuToggle={toggleMenu} onMenuClose={closeMenu} onSkySelect={selectSky}
-            onToolChange={selectPaintTool} onColorChange={selectColor}
+            onToolChange={selectPaintTool} onColorChange={selectColor} onColorPreview={setColor}
             onBrushSizeChange={updateBrushSize} onOpacityChange={setOpacity}
             onLayerSelect={setSelectedLayer} onLayerToggle={toggleLayer} onLayerAdd={addLayer}
             onViewChange={changeView} onMapZoomChange={setMapZoom}
@@ -459,21 +464,20 @@ const App = () => {
               <div className="top-network-controls">
                 {multiplayerStatus.phase !== 'solo' ? <CanvasCredits balance={multiplayerView.protection?.creditBalance ?? null} /> : <span className="canvas-credit-status" aria-label="Solo coins">🪙 {progress.coins}</span>}
                 {<GraffitiPieces open={activeMenu === 'art'} onOpenChange={open => setActiveMenu(open ? 'art' : null)} canPaintOver={!!multiplayerStatus.canAdminPaint} paintColour={color} onPaintOver={(pieceId, colour) => { if (!multiplayerStatus.canAdminPaint) return false; requestMultiplayer('paint-over', pieceId, undefined, colour); return true; }} selectedPieceId={multiplayerView.selectedPieceId} piecePickSequence={multiplayerView.piecePickSequence} pieces={multiplayerView.pieces ?? []} connected={multiplayerStatus.phase === 'connected'} role={multiplayerStatus.role} canDeletePieces={multiplayerStatus.canDeletePieces} onDelete={pieceId => { if (multiplayerStatus.phase !== 'connected' || !multiplayerStatus.canDeletePieces) return false; requestMultiplayer('delete-piece', pieceId); return true; }} onLike={pieceId => { if (multiplayerStatus.phase !== 'connected') return false; requestMultiplayer('like', pieceId); return true; }} onResync={() => requestMultiplayer('resync')} onView={pieceId => requestMultiplayer('inspect', pieceId)} />}
-                <MultiplayerControls chatOpen={activeMenu === 'chat'} onChatToggle={() => toggleMenu('chat')} onChatClose={closeMenu} onOpenMenu={() => toggleMenu('settings')} status={multiplayerStatus} displayName={displayName} avatar={aippyUser.avatar} profileLoading={aippyUser.isLoading}
+                <MultiplayerControls chatOpen={activeMenu === 'chat'} onChatToggle={() => toggleMenu('chat')} onChatClose={closeMenu} onOpenMenu={() => toggleMenu('settings')} onPlayers={() => toggleMenu('players')} onPlayerSelect={id => requestMultiplayer('select-player', id)} status={multiplayerStatus} displayName={displayName} avatar={aippyUser.avatar} profileLoading={aippyUser.isLoading}
                   onJoin={() => requestMultiplayer('join')} onLeave={() => requestMultiplayer('leave')}
                   messages={multiplayerView.chat} onChat={text => requestMultiplayer('chat', text)} onResync={() => requestMultiplayer('resync')} />
               </div>
             </>}
           />
-          {!activeMenu && !reference?.moving && <LookJoystick onLook={setLookInput} canvasMode={workspaceView.active} />}
-          <div hidden={!!activeMenu || !!reference?.moving}>{workspaceHud}</div>
-          {workspaceView.selected && !activeMenu && reference && (reference.moving || canvasCollapsed) && <aside className="reference-quick-controls" aria-label="Reference guide actions">
-            {reference.moving ? <><span>Drag to position guide</span><button type="button" className="ui-primary" onClick={() => setReference({ ...reference, moving: false })}>DONE MOVING</button></> : <><button type="button" onClick={() => toggleMenu('reference')}>REFERENCE</button><button type="button" onClick={() => setReference({ ...reference, visible: !reference.visible })}>{reference.visible ? 'HIDE' : 'SHOW'}</button><button type="button" onClick={() => setReference({ ...reference, visible: true, moving: true })}>MOVE</button></>}
-          </aside>}
+          {!menuBlocking && !reference?.moving && <LookJoystick onLook={setLookInput} canvasMode={workspaceView.active} />}
+          <div hidden={menuBlocking || !!reference?.moving}>{workspaceHud}</div>
+          {workspaceView.selected && !menuBlocking && reference && (reference.moving || canvasCollapsed) && <ReferenceControls guide={reference} onChange={setReference} onOpen={() => toggleMenu('reference')} />}
+          {activeMenu === 'players' && <PlayersSheet players={multiplayerView.onlinePlayers ?? []} ownPlayerId={multiplayerView.ownPlayerId} onSelect={id => requestMultiplayer('select-player', id)} onChat={() => toggleMenu('chat')} onClose={closeMenu} />}
           {activeMenu === 'reference' && <ReferenceSheet selected={workspaceView.selected} guide={reference} onChange={setReference} onClose={closeMenu} />}
           {eyedropperActive && <aside className="eyedropper-hint" role="status"><span>{eyedropperNotice}</span><button type="button" onClick={() => setEyedropperActive(false)}>CANCEL</button></aside>}
           <div hidden={activeMenu === 'paint'}>
-          <PlayerInteractionCard open={activeMenu === 'player'} onClose={closeMenu} adminResult={multiplayerView.adminResult} onAdminAction={(action, targetUsername, options) => {
+          <PlayerInteractionCard isSelf={multiplayerView.selectedPlayer?.playerId === multiplayerView.ownPlayerId} onPlayers={() => toggleMenu('players')} onChat={() => toggleMenu('chat')} open={activeMenu === 'player'} onClose={closeMenu} adminResult={multiplayerView.adminResult} onAdminAction={(action, targetUsername, options) => {
             if (multiplayerStatus.phase !== 'connected' || !['admin', 'owner'].includes(multiplayerStatus.role ?? '')) return false;
             setMultiplayerRequest(previous => ({ action: 'admin-action', text: targetUsername, adminAction: action, options, sequence: (previous?.sequence ?? 0) + 1 }));
             return true;
@@ -503,6 +507,7 @@ const App = () => {
               <section className="tool-section"><h3>MULTIPLAYER</h3><div className="button-row">
                 {multiplayerStatus.phase === 'solo' || multiplayerStatus.phase === 'disconnected' ? <button type="button" data-tutorial="multiplayer-join" disabled={aippyUser.isLoading} onClick={() => requestMultiplayer('join')}>{multiplayerStatus.phase === 'solo' ? 'JOIN MULTIPLAYER' : 'RECONNECT'}</button> : <button type="button" onClick={() => requestMultiplayer('leave')}>{multiplayerStatus.phase === 'connecting' ? 'CANCEL JOINING' : 'PLAY SOLO'}</button>}
                 <button type="button" onClick={() => toggleMenu('chat')}>ROOM CHAT</button>
+                {multiplayerStatus.phase === 'connected' && <button type="button" onClick={() => toggleMenu('players')}>ONLINE PLAYERS</button>}
               </div>{multiplayerStatus.notice && <p className="ui-notice" role="status">{multiplayerStatus.notice}</p>}</section>
               <section className="tool-section"><h3>RADIO</h3>{radioController && <RadioControl controller={radioController} url={RADIO_STREAM_URL} initialVolume={musicVolume} onInteraction={() => { if (!tutorialReview && tutorialStep === 'radio') setTutorialStep('multiplayer'); }} />}</section>
             </SettingsModal>
@@ -533,7 +538,7 @@ const App = () => {
         onClose={() => setTutorialStep(null)}
         onExit={() => setTutorialStep(null)}
       />}
-    </main>
+    </main></SheetCollapseContext.Provider>
   );
 };
 

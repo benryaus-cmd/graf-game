@@ -1,10 +1,11 @@
-import type { ChatMessage, Message } from './protocol';
+import { readPlayer, type ChatMessage, type Message } from './protocol';
 
 export function readChatMessage(value: unknown): ChatMessage | null {
   if (!value || typeof value !== 'object') return null;
   const v = value as ChatMessage;
   if (typeof v.id !== 'string' || !v.id || typeof v.playerId !== 'string' || typeof v.text !== 'string' || !Number.isFinite(v.timestamp) || Math.abs(v.timestamp) > 8.64e15) return null;
-  return { id: v.id, playerId: v.playerId, displayName: typeof v.displayName === 'string' ? v.displayName.slice(0, 40) : 'PLAYER', text: v.text.slice(0, 500), timestamp: v.timestamp };
+  const identity = readPlayer(v);
+  return { ...(identity?.username ? { username: identity.username.replace(/^@/, '') } : {}), ...(identity?.nickName ? { nickName: identity.nickName } : {}), id: v.id, playerId: v.playerId, displayName: typeof v.displayName === 'string' ? v.displayName.slice(0, 40) : 'PLAYER', text: v.text.slice(0, 500), timestamp: v.timestamp };
 }
 
 export class ChatSync {

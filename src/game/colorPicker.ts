@@ -1,4 +1,9 @@
 export interface HsvColor { h: number; s: number; v: number }
+/** Selecting a hue from black/grey/white should produce a visible colour. */
+export function colorAtHue(color: string, hue: number): string {
+  const hsv = hexToHsv(color);
+  return hsvToHex({ h: hue, s: hsv.s || 75, v: hsv.v || 85 });
+}
 const clamp = (n: number) => Math.max(0, Math.min(100, n));
 export function hexToHsv(hex: string): HsvColor {
   const [r, g, b] = [1, 3, 5].map(start => parseInt(hex.slice(start, start + 2), 16) / 255);

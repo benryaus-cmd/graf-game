@@ -3,8 +3,8 @@ import type { ChatMessage } from '@/multiplayer/protocol';
 import GameSheet from './GameSheet';
 import { isChatNearBottom } from './chatPresentation';
 
-interface Props { messages: ChatMessage[]; connected: boolean; onSend: (text: string) => void; onClose: () => void; onResync: () => void; onJoin?: () => void; joinDisabled?: boolean; displayName?: string }
-export default function MultiplayerChat({ messages, connected, onSend, onClose, onResync, onJoin, joinDisabled, displayName }: Props) {
+interface Props { messages: ChatMessage[]; connected: boolean; onSend: (text: string) => void; onClose: () => void; onResync: () => void; onJoin?: () => void; joinDisabled?: boolean; displayName?: string; onPlayerSelect?: (playerId: string) => void }
+export default function MultiplayerChat({ messages, connected, onSend, onClose, onResync, onJoin, joinDisabled, displayName, onPlayerSelect }: Props) {
   const [text, setText] = useState('');
   const [notice, setNotice] = useState('');
   const [newBelow, setNewBelow] = useState(false);
@@ -34,7 +34,7 @@ export default function MultiplayerChat({ messages, connected, onSend, onClose, 
   return <GameSheet title="PUBLIC CHAT" subtitle={connected ? displayName : 'Offline'} onClose={onClose} closeLabel="Close chat" className="chat-sheet" footer={composer}>
     <div className="multiplayer-chat-messages" ref={list} role="log" aria-live="polite" aria-relevant="additions" onScroll={() => { if (list.current) { follow.current = isChatNearBottom(list.current.scrollTop, list.current.clientHeight, list.current.scrollHeight); if (follow.current) setNewBelow(false); } }}>
       {messages.length === 0 && <p className="empty-state">{connected ? 'Say hello to the room.' : 'Room messages appear when you connect.'}</p>}
-      {messages.map(message => <p key={message.id}><b>{message.displayName}</b><time dateTime={new Date(message.timestamp).toISOString()}>{new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</time><span>{message.text}</span></p>)}
+      {messages.map(message => <p key={message.id}><button type="button" className="chat-author" aria-label={`View profile of ${message.displayName}`} onClick={() => onPlayerSelect?.(message.playerId)}>{message.displayName}</button><time dateTime={new Date(message.timestamp).toISOString()}>{new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</time><span>{message.text}</span></p>)}
     </div>
     {newBelow && <button type="button" className="chat-new" onClick={toBottom}>NEW MESSAGES ↓</button>}
     <details className="chat-options"><summary>Connection options</summary><button type="button" onClick={onResync} disabled={!connected}>REFRESH ROOM</button></details>

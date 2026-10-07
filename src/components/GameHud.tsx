@@ -12,7 +12,7 @@ import type { ReactNode } from 'react';
 
 import type { LiveRadioController } from '@/game/liveRadio';
 
-export type HudMenu = 'paint' | 'bots' | 'avatar' | 'sky' | 'chat' | 'art' | 'player' | 'settings' | 'emotes' | 'reference' | null;
+export type HudMenu = 'paint' | 'bots' | 'avatar' | 'sky' | 'chat' | 'art' | 'player' | 'settings' | 'emotes' | 'reference' | 'players' | null;
 type PaintTool = 'paint' | 'eraser' | 'off' | 'admin';
 interface PaintLayerControl { name: string; visible: boolean }
 interface GameHudProps {
@@ -28,6 +28,7 @@ interface GameHudProps {
   brushHead?: BrushHead;
   onBrushHeadChange?: (head: BrushHead) => void;
   hideTouchControls?: boolean;
+  menuCollapsed?: boolean;
   panelColor: string; accentColor: string; sky: SkyMode; activeMenu: HudMenu;
   musicReady: boolean; paintMode: boolean; eraseMode: boolean; showCrosshair: boolean; color: string;
   brushSize: number; opacity: number; layers: PaintLayerControl[]; selectedLayer: number;
@@ -40,6 +41,7 @@ interface GameHudProps {
   onMenuToggle: (menu: Exclude<HudMenu, null>) => void; onMenuClose: () => void;
   onSkySelect: (mode: SkyMode) => void;
   onToolChange: (tool: PaintTool) => void; onColorChange: (color: string) => void;
+  onColorPreview?: (color: string) => void;
   onBrushSizeChange: (size: number) => void; onOpacityChange: (opacity: number) => void;
   onLayerSelect: (index: number) => void; onLayerToggle: (index: number) => void;
   onLayerAdd: () => void; onViewChange: () => void; onMapZoomChange: (zoom: number) => void;
@@ -49,7 +51,7 @@ interface GameHudProps {
 }
 
 const GameHud = (props: GameHudProps) => (
-  <div className={`game-hud ${props.activeMenu ? `game-hud-menu-open game-menu-${props.activeMenu}` : ''}`}>
+  <div className={`game-hud ${props.activeMenu && !props.menuCollapsed ? `game-hud-menu-open game-menu-${props.activeMenu}` : ''}`}>
     <div className="world-grain" aria-hidden="true" />
     {props.showCrosshair && (
       <div className={`reticle ${props.paintMode ? 'reticle-paint' : ''}`} aria-hidden="true">
@@ -106,7 +108,7 @@ const GameHud = (props: GameHudProps) => (
       accentColor={props.accentColor} layers={props.layers} selectedLayer={props.selectedLayer}
       posterSize={props.posterSize} onPosterSizeChange={props.onPosterSizeChange}
       onStartPosterPlacement={props.onPosterStart}
-      onColorChange={props.onColorChange} onToolChange={props.onToolChange}
+      onColorChange={props.onColorChange} onColorPreview={props.onColorPreview} onToolChange={props.onToolChange}
       onBrushSizeChange={props.onBrushSizeChange} onOpacityChange={props.onOpacityChange}
       onLayerSelect={props.onLayerSelect} onLayerToggle={props.onLayerToggle}
       onLayerAdd={props.onLayerAdd}

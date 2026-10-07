@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { WORKSPACE_OUTLINE_ORDER, WORKSPACE_EDGE_ORDER } from './worldOverlayOrder';
 import type {
   PaintWall,
   PaintWorkspaceBounds,
@@ -263,7 +264,7 @@ function createSelection(wall: PaintWall, face: number, bounds: PaintWorkspaceBo
   const localOutlinePoints = LOCAL_POINTS.map((point) => point.clone().addScaledVector(LOCAL_NORMAL, 0.018));
   const outline = new THREE.BufferGeometry().setFromPoints(localOutlinePoints);
   const preview = new THREE.LineLoop(outline, new THREE.LineBasicMaterial({ color: '#ffd166', transparent: true, depthTest: false, depthWrite: false }));
-  preview.renderOrder = 10_000;
+  preview.renderOrder = WORKSPACE_OUTLINE_ORDER;
   // Thin raised ribbons remain visible over transparent paint and poster layers.
   const edgeVertices: number[] = [];
   for (let i = 0; i < 4; i++) {
@@ -276,7 +277,7 @@ function createSelection(wall: PaintWall, face: number, bounds: PaintWorkspaceBo
   edgeGeometry.setAttribute('position', new THREE.Float32BufferAttribute(edgeVertices, 3));
   const edgeMaterial = new THREE.MeshBasicMaterial({ color: '#ffd166', transparent: true, opacity: .95, side: THREE.DoubleSide, depthTest: false, depthWrite: false });
   const raisedEdges = new THREE.Mesh(edgeGeometry, edgeMaterial);
-  raisedEdges.renderOrder = 10_001; raisedEdges.frustumCulled = false;
+  raisedEdges.renderOrder = WORKSPACE_EDGE_ORDER; raisedEdges.frustumCulled = false;
   preview.add(raisedEdges);
   outline.addEventListener('dispose', () => { edgeGeometry.dispose(); edgeMaterial.dispose(); });
   preview.frustumCulled = false;

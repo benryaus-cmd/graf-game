@@ -20,6 +20,7 @@ export class RemotePlayers {
   private actions = new Set<string>();
   constructor(private scene: THREE.Scene) {}
   get count(): number { return this.players.size; }
+  roster(): PickedPlayer[] { return [...this.players.keys()].map(id => this.get(id)!); }
   joined(value: unknown, ownId: string | null): void {
     const player = readPlayer(value);
     if (!player || player.playerId === ownId) return;
