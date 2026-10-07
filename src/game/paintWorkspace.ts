@@ -345,5 +345,8 @@ function enableWorkspaceLayer(state: PaintWorkspaceState, object: THREE.Object3D
 }
 
 function enableSelectedWallLayers(state: PaintWorkspaceState): void {
-  state.selection?.wall.mesh.traverse((object) => enableWorkspaceLayer(state, object));
+  const mesh = state.selection?.wall.mesh;
+  const context = mesh?.userData.paintWorkspaceContext;
+  if (context instanceof THREE.Object3D) context.userData.paintWorkspaceState = state;
+  (context instanceof THREE.Object3D ? context : mesh)?.traverse(object => enableWorkspaceLayer(state, object));
 }

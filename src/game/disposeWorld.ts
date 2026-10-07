@@ -8,6 +8,7 @@ export function disposeWorld(world: WorldEngine): void {
   const materials = new Set<THREE.Material>();
   const textures = new Set<THREE.Texture>();
   world.scene.traverse((object) => {
+    object.userData.disposeFixture?.();
     if (!(object instanceof THREE.Mesh) && !(object instanceof THREE.LineSegments)) return;
     geometries.add(object.geometry);
     const list = Array.isArray(object.material) ? object.material : [object.material];

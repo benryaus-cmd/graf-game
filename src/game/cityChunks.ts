@@ -49,6 +49,7 @@ export function createCityChunkStream(scene: THREE.Scene, cityMaterials: CityMat
   };
 
   const updateAt = (x: number, z: number): void => {
+    active.forEach(chunk => chunk.group.userData.updateFixture?.(x, z));
     const nextX = Math.floor(x / CITY_CHUNK_SIZE + 0.5);
     const nextZ = Math.floor(z / CITY_CHUNK_SIZE + 0.5);
     if (nextX === centerX && nextZ === centerZ) return;
@@ -76,6 +77,7 @@ export function createCityChunkStream(scene: THREE.Scene, cityMaterials: CityMat
       const [chunkX, chunkZ] = key.split(':').map(Number);
       const chunk = createCityChunk(chunkX, chunkZ, cityMaterials);
       if (paintSession === 'solo') restoreOneChunk(key, chunk);
+      chunk.group.userData.updateFixture?.(x, z);
       scene.add(chunk.group);
       active.set(key, chunk);
       walls.push(...chunk.walls);

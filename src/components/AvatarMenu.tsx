@@ -46,9 +46,7 @@ const AvatarMenu = ({ progress, panelColor, purchasesDisabled, onClose, onPurcha
         <button type="button" className={`closet-item ${preview.model === 'hoodie' ? 'closet-item-selected' : ''}`} aria-pressed={preview.model === 'hoodie'} onClick={() => setAssetPreviewPreference({ ...preview, model: 'hoodie' })}>
           <span className="closet-copy"><b>HOODIE CHARACTER</b><small>Free Quaternius model · preview on this device</small></span><span className="closet-action">{preview.model === 'hoodie' ? 'ON' : 'TRY'}</span>
         </button>
-        <button type="button" className="closet-item" aria-pressed={preview.building} onClick={() => setAssetPreviewPreference({ ...preview, building: !preview.building })}>
-          <span className="closet-copy"><b>BUILDING PREVIEW</b><small>Near spawn · toggle off to compare performance</small></span><span className="closet-action">{preview.building ? 'ON' : 'OFF'}</span>
-        </button>
+
       </div>
       {preview.model === 'hoodie' && <p className="closet-footnote">See your character in third person. This device preview uses its own clothes; your existing outfit, abilities and multiplayer appearance are preserved. The original character stays visible until the model loads.</p>}
       <nav className="closet-tabs" aria-label="Closet categories">

@@ -6,6 +6,7 @@ export function disposeChunk(chunk: CityChunk, sharedMaterials: Set<THREE.Materi
   const textures = new Set<THREE.Texture>();
   const materials = new Set<THREE.Material>();
   chunk.group.traverse((object) => {
+    object.userData.disposeFixture?.();
     if (!(object instanceof THREE.Mesh)) return;
     geometries.add(object.geometry);
     const list = Array.isArray(object.material) ? object.material : [object.material];

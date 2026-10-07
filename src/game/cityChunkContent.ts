@@ -5,6 +5,7 @@ import { createChunkGround, addHouse, addConcreteBillboard } from '@/game/citySt
 import type { CityMaterials, StructureLists } from '@/game/cityStructures';
 import { addConcreteStreetLamp } from '@/game/cityStreetLamps';
 import type { Collider, PaintWall, Staircase, WalkSurface } from '@/game/worldTypes';
+import { addFixtureBuilding } from '@/game/fixtureBuilding';
 import { assignSurfaceIds } from '@/multiplayer/surfaces';
 
 export const CITY_CHUNK_SIZE = 48;
@@ -115,6 +116,12 @@ export function createCityChunk(
     centerZ + (random() - 0.5) * 14,
     colliders,
   );
+
+  if (chunkX === 0 && chunkZ === -1) {
+    const fixture = addFixtureBuilding(group);
+    walls.push(...fixture.walls); colliders.push(fixture.collider);
+    group.userData.updateFixture = fixture.updateDistance;
+  }
 
   assignSurfaceIds(chunkX, chunkZ, walls);
   return { group, walls, colliders, walkSurfaces, staircases };
