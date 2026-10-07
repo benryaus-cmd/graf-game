@@ -462,9 +462,9 @@ const App = () => {
 
             topControls={<>
               <div className="top-network-controls">
-                {multiplayerStatus.phase !== 'solo' ? <CanvasCredits balance={multiplayerView.protection?.creditBalance ?? null} /> : <span className="canvas-credit-status" aria-label="Solo coins">🪙 {progress.coins}</span>}
+                {multiplayerStatus.phase !== 'solo' ? <CanvasCredits online={multiplayerStatus.phase === 'connected'} balance={multiplayerView.protection?.creditBalance ?? null} /> : <span className="canvas-credit-status" aria-label="Solo coins">🪙 {progress.coins}</span>}
                 {<GraffitiPieces open={activeMenu === 'art'} onOpenChange={open => setActiveMenu(open ? 'art' : null)} canPaintOver={!!multiplayerStatus.canAdminPaint} paintColour={color} onPaintOver={(pieceId, colour) => { if (!multiplayerStatus.canAdminPaint) return false; requestMultiplayer('paint-over', pieceId, undefined, colour); return true; }} selectedPieceId={multiplayerView.selectedPieceId} piecePickSequence={multiplayerView.piecePickSequence} pieces={multiplayerView.pieces ?? []} connected={multiplayerStatus.phase === 'connected'} role={multiplayerStatus.role} canDeletePieces={multiplayerStatus.canDeletePieces} onDelete={pieceId => { if (multiplayerStatus.phase !== 'connected' || !multiplayerStatus.canDeletePieces) return false; requestMultiplayer('delete-piece', pieceId); return true; }} onLike={pieceId => { if (multiplayerStatus.phase !== 'connected') return false; requestMultiplayer('like', pieceId); return true; }} onResync={() => requestMultiplayer('resync')} onView={pieceId => requestMultiplayer('inspect', pieceId)} />}
-                <MultiplayerControls chatOpen={activeMenu === 'chat'} onChatToggle={() => toggleMenu('chat')} onChatClose={closeMenu} onOpenMenu={() => toggleMenu('settings')} onPlayers={() => toggleMenu('players')} onPlayerSelect={id => requestMultiplayer('select-player', id)} status={multiplayerStatus} displayName={displayName} avatar={aippyUser.avatar} profileLoading={aippyUser.isLoading}
+                <MultiplayerControls chatMute={multiplayerView.chatMute} chatOpen={activeMenu === 'chat'} onChatToggle={() => toggleMenu('chat')} onChatClose={closeMenu} onOpenMenu={() => toggleMenu('settings')} onPlayers={() => toggleMenu('players')} onPlayerSelect={id => requestMultiplayer('select-player', id)} status={multiplayerStatus} displayName={displayName} avatar={aippyUser.avatar} profileLoading={aippyUser.isLoading}
                   onJoin={() => requestMultiplayer('join')} onLeave={() => requestMultiplayer('leave')}
                   messages={multiplayerView.chat} onChat={text => requestMultiplayer('chat', text)} onResync={() => requestMultiplayer('resync')} />
               </div>
@@ -478,7 +478,7 @@ const App = () => {
           {eyedropperActive && <aside className="eyedropper-hint" role="status"><span>{eyedropperNotice}</span><button type="button" onClick={() => setEyedropperActive(false)}>CANCEL</button></aside>}
           <div hidden={activeMenu === 'paint'}>
           <PlayerInteractionCard isSelf={multiplayerView.selectedPlayer?.playerId === multiplayerView.ownPlayerId} onPlayers={() => toggleMenu('players')} onChat={() => toggleMenu('chat')} open={activeMenu === 'player'} onClose={closeMenu} adminResult={multiplayerView.adminResult} onAdminAction={(action, targetUsername, options) => {
-            if (multiplayerStatus.phase !== 'connected' || !['admin', 'owner'].includes(multiplayerStatus.role ?? '')) return false;
+            if (multiplayerStatus.phase !== 'connected' || !['admin', 'owner'].includes(multiplayerStatus.role ?? '') || (action === 'give-credits' && multiplayerStatus.role !== 'owner')) return false;
             setMultiplayerRequest(previous => ({ action: 'admin-action', text: targetUsername, adminAction: action, options, sequence: (previous?.sequence ?? 0) + 1 }));
             return true;
           }} selected={multiplayerView.selectedPlayer} ownRole={multiplayerStatus.role} connected={multiplayerStatus.phase === 'connected'} notice={multiplayerStatus.notice} roleChange={multiplayerView.roleChange}

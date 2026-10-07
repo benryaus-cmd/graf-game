@@ -9,6 +9,7 @@ import { PlayerSync } from './playerSync';
 import { SpeechBubble } from '../game/speechBubble';
 import { RemotePlayers } from './remotePlayers';
 import { PlayerDirectory } from './playerDirectory';
+import { readChatMute } from './chatMute';
 import { decodeSurface, encodeSurface } from './surfaces';
 import { ChatSync } from './chat';
 import { ArtworkSync } from './artworkSync';
@@ -77,6 +78,7 @@ export class WorldMultiplayerSession {
   private recompose = new Set<string>();
   private status: MultiplayerStatus = { phase: 'solo', playerCount: 0 };
   private serverPermissions: ServerPermissions | null = null;
+  private chatMute: MultiplayerView['chatMute'] = null;
   private selectedPlayer: MultiplayerView['selectedPlayer'] = null;
   private playerPickSequence = 0;
   private roleChange: MultiplayerView['roleChange'];
@@ -100,7 +102,7 @@ export class WorldMultiplayerSession {
         this.protection?.reset();
         this.serverPermissions = null;
         this.world.adminFreePaint = false;
-        this.selectedPlayer = null; this.roleChange = undefined; this.adminResult = undefined;
+        this.selectedPlayer = null; this.roleChange = undefined; this.adminResult = undefined; this.chatMute = null;
         this.selectedPieceForView = null;
         this.paint.interrupted(); this.artworks.interrupted(); this.players.clear(); this.ownSpeech.dispose(); this.serverPlayerCount = null;
         this.emitView();
@@ -108,7 +110,11 @@ export class WorldMultiplayerSession {
       this.emit(status);
     }, message => this.message(message));
     this.chat = new ChatSync(message => this.connection.send(message), () => this.emitView(), message => {
-      if (message.playerId === this.connection.playerId) this.ownSpeech.show(message.text);
+      if (message.playerId === this.connection.playerId) {
+        this.ownSpeech.show(message.text);
+        // An accepted live self-message is also authoritative evidence chat is allowed.
+        if (this.chatMute?.muted) { this.chatMute = null; this.emitView(); }
+      }
       else this.players.say(message.playerId, message.text);
     });
     this.order = new WorldOrder();
@@ -401,7 +407,7 @@ export class WorldMultiplayerSession {
     this.protection.reset();
     this.serverPermissions = null;
     this.world.adminFreePaint = false;
-    this.selectedPlayer = null; this.roleChange = undefined; this.adminResult = undefined;
+    this.selectedPlayer = null; this.roleChange = undefined; this.adminResult = undefined; this.chatMute = null;
     this.selectedPieceForView = null;
     this.completePiece(); this.pieces.clear(); clearPaintWorkspace(this.world);
     this.paint.interrupted(); this.artworks.interrupted(); this.players.clear(); this.ownSpeech.dispose(); this.playerSync.reset(); this.serverPlayerCount = null;
@@ -413,7 +419,7 @@ export class WorldMultiplayerSession {
     this.protection.reset();
     this.serverPermissions = null;
     this.world.adminFreePaint = false;
-    this.selectedPlayer = null; this.roleChange = undefined; this.adminResult = undefined;
+    this.selectedPlayer = null; this.roleChange = undefined; this.adminResult = undefined; this.chatMute = null;
     this.selectedPieceForView = null;
     this.completePiece(); clearPaintWorkspace(this.world); this.players.clear(); this.ownSpeech.dispose(); this.replay.cancel(); this.artworks.clear(); this.pieces.clear();
     this.flattenPrepareGeneration++; this.pendingFlatten = null;
@@ -428,7 +434,7 @@ export class WorldMultiplayerSession {
     this.protection.reset();
     this.serverPermissions = null;
     this.world.adminFreePaint = false;
-    this.selectedPlayer = null; this.roleChange = undefined; this.adminResult = undefined;
+    this.selectedPlayer = null; this.roleChange = undefined; this.adminResult = undefined; this.chatMute = null;
     this.selectedPieceForView = null;
     this.completePiece(); clearPaintWorkspace(this.world); this.players.clear(); this.ownSpeech.dispose(); this.replay.cancel(); this.artworks.clear(); this.pieces.clear();
     this.flattenPrepareGeneration++; this.pendingFlatten = null;
@@ -571,6 +577,8 @@ export class WorldMultiplayerSession {
   }
 
   private message(message: Message): void {
+    const chatMute = readChatMute(message);
+    if (chatMute) { this.chatMute = chatMute; this.emitView(); return; }
     if (['admin_give_credits_complete', 'admin_ban_complete', 'admin_unban_complete'].includes(message.type) && typeof message.targetUsername === 'string') {
       this.adminResult = { type: message.type, targetUsername: message.targetUsername,
         amount: Number.isSafeInteger(message.amount) ? message.amount as number : undefined,
@@ -778,7 +786,7 @@ export class WorldMultiplayerSession {
     const onlinePlayers = this.players.roster();
     if (this.connection.connected && this.connection.playerId) onlinePlayers.unshift({ playerId: this.connection.playerId, ...this.ownIdentity, role: this.serverPermissions?.role });
     this.profiles.sync(onlinePlayers, this.chat.messages);
-    const view: MultiplayerView = { onlinePlayers, ownPlayerId: this.connection.connected ? this.connection.playerId : null, adminResult: this.adminResult, protection: protection ? { creditBalance: protection.creditBalance, quote: protection.quote, quotes: protection.quotes, protectionEnabled: this.canvasProtectionEnabled, purchased: !!this.world.paintWorkspace?.selection?.purchaseApproved, pendingQuote: !!protection.pendingQuotePieceId, pendingPurchase: !!protection.pendingPurchasePieceId, protectedUntil, notice: protection.notice } : undefined, chat: this.chat.messages, revision: this.order.revision, selectedPlayer: this.selectedPlayer, playerPickSequence: this.playerPickSequence, selectedPieceId: this.selectedPieceForView, piecePickSequence: this.piecePickSequence, roleChange: this.roleChange,
+    const view: MultiplayerView = { chatMute: this.chatMute, onlinePlayers, ownPlayerId: this.connection.connected ? this.connection.playerId : null, adminResult: this.adminResult, protection: protection ? { creditBalance: protection.creditBalance, quote: protection.quote, quotes: protection.quotes, protectionEnabled: this.canvasProtectionEnabled, purchased: !!this.world.paintWorkspace?.selection?.purchaseApproved, pendingQuote: !!protection.pendingQuotePieceId, pendingPurchase: !!protection.pendingPurchasePieceId, protectedUntil, notice: protection.notice } : undefined, chat: this.chat.messages, revision: this.order.revision, selectedPlayer: this.selectedPlayer, playerPickSequence: this.playerPickSequence, selectedPieceId: this.selectedPieceForView, piecePickSequence: this.piecePickSequence, roleChange: this.roleChange,
       accountFeaturesAvailable: this.accounts.available, worldItemCount: this.accounts.worldItems.size,
       pieces };
     const serial = JSON.stringify(view);

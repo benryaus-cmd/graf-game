@@ -394,3 +394,8 @@ button { color: inherit; -webkit-tap-highlight-color: transparent; }
 .poster-placement-panel [hidden] { display: none; }
 .poster-placement-panel.is-collapsed { width: auto; max-width: calc(100% - 16px); }
 .poster-placement-panel.is-collapsed .poster-placement-title img { display: none; }
+.player-admin-info, .player-credit-actions { width: 100%; }
+.player-admin-info small { display: block; margin: 5px 0; }
+.player-credit-actions .player-admin-actions { display: grid; gap: 7px; padding-top: 6px; }
+.chat-mute-notice { display: grid; gap: 3px; margin: 0 0 7px; overflow-wrap: anywhere; }
+.chat-mute-notice span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }

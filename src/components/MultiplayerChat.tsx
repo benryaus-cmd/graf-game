@@ -1,10 +1,19 @@
 import { useEffect, useRef, useState } from 'react';
-import type { ChatMessage } from '@/multiplayer/protocol';
+import type { ChatMessage, ChatMuteState } from '@/multiplayer/protocol';
 import GameSheet from './GameSheet';
 import { isChatNearBottom } from './chatPresentation';
+import { chatMuteLabel, isChatMuteActive } from '@/multiplayer/chatMute';
 
-interface Props { messages: ChatMessage[]; connected: boolean; onSend: (text: string) => void; onClose: () => void; onResync: () => void; onJoin?: () => void; joinDisabled?: boolean; displayName?: string; onPlayerSelect?: (playerId: string) => void }
-export default function MultiplayerChat({ messages, connected, onSend, onClose, onResync, onJoin, joinDisabled, displayName, onPlayerSelect }: Props) {
+interface Props { chatMute?: ChatMuteState | null; messages: ChatMessage[]; connected: boolean; onSend: (text: string) => void; onClose: () => void; onResync: () => void; onJoin?: () => void; joinDisabled?: boolean; displayName?: string; onPlayerSelect?: (playerId: string) => void }
+export default function MultiplayerChat({ chatMute, messages, connected, onSend, onClose, onResync, onJoin, joinDisabled, displayName, onPlayerSelect }: Props) {
+  const [now, setNow] = useState(Date.now);
+  useEffect(() => {
+    if (!chatMute?.muted) return;
+    setNow(Date.now());
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [chatMute]);
+  const muteActive = isChatMuteActive(chatMute, now);
   const [text, setText] = useState('');
   const [notice, setNotice] = useState('');
   const [newBelow, setNewBelow] = useState(false);
@@ -20,15 +29,16 @@ export default function MultiplayerChat({ messages, connected, onSend, onClose, 
     else setNewBelow(true);
   }, [messages]);
   const composer = <>
+    {connected && chatMute?.muted && <p className="chat-mute-notice ui-notice" role="status"><b>{chatMuteLabel(chatMute, now)}</b>{chatMute.reason && <span title={chatMute.reason}>{chatMute.reason}</span>}</p>}
     {!connected && <div className="chat-connect"><span>Connect to join the conversation.</span>{onJoin && <button type="button" disabled={joinDisabled} onClick={onJoin}>JOIN MULTIPLAYER</button>}</div>}
     <form className="chat-composer" onSubmit={event => {
       event.preventDefault(); const value = text.trim();
-      if (!connected || !value) return;
+      if (!connected || muteActive || !value) return;
       if (performance.now() - lastSent.current < 1000) { setNotice('Wait a moment before sending again.'); return; }
       lastSent.current = performance.now(); onSend(value); setText(''); setNotice(''); toBottom();
     }}>
       <input aria-label="Message the public room" maxLength={500} value={text} onChange={event => setText(event.target.value)} placeholder={connected ? 'Message the room…' : 'Connect to chat'} disabled={!connected} />
-      <button type="submit" disabled={!connected || !text.trim()}>SEND</button>
+      <button type="submit" disabled={!connected || muteActive || !text.trim()}>SEND</button>
     </form>{notice && <p className="ui-notice" role="status">{notice}</p>}
   </>;
   return <GameSheet title="PUBLIC CHAT" subtitle={connected ? displayName : 'Offline'} onClose={onClose} closeLabel="Close chat" className="chat-sheet" footer={composer}>

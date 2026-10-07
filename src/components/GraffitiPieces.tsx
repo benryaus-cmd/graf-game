@@ -36,7 +36,7 @@ const protectionLabel = (piece: PieceMetadata, now: number) => {
   return `PROTECTED · ${Math.floor(minutes / 60)}h ${minutes % 60}m remaining`;
 };
 
-const GraffitiPieces = ({ open: controlledOpen, onOpenChange, pieces, connected, onLike, onResync, onView, role, canDeletePieces = false, onDelete, selectedPieceId, piecePickSequence, canPaintOver, paintColour = '#ffffff', onPaintOver }: GraffitiPiecesProps) => {
+const GraffitiPieces = ({ open: controlledOpen, onOpenChange, pieces, connected, onLike, onResync, onView, canDeletePieces = false, onDelete, selectedPieceId, piecePickSequence, canPaintOver, paintColour = '#ffffff', onPaintOver }: GraffitiPiecesProps) => {
   const [coverColour, setCoverColour] = useState(paintColour);
   const [protectionGain, setProtectionGain] = useState(false);
   const [localOpen, setLocalOpen] = useState(false);
@@ -109,7 +109,7 @@ const GraffitiPieces = ({ open: controlledOpen, onOpenChange, pieces, connected,
       {open && (
         <GameSheet title={viewingPiece ? 'ARTWORK' : 'NEARBY ART'} onClose={() => setOpen(false)} closeLabel="Close nearby art" className="art-sheet">
           <div id="graffiti-pieces-panel">
-          <details className="piece-connection"><summary>Connection options</summary><button type="button" onClick={onResync} disabled={!connected}>REFRESH ART</button>{role && <small>Role: {role}</small>}</details>
+          <details className="piece-connection"><summary>Connection options</summary><button type="button" onClick={onResync} disabled={!connected}>REFRESH ART</button></details>
           {!connected && <p style={noteStyle} role="status">Connect to see shared pieces and send likes.</p>}
           {sendError && <p style={{ ...noteStyle, color: '#ffc0b2' }} role="alert">{sendError}</p>}
           {deleteNotice && <p style={{ ...noteStyle, color: deleteNotice.startsWith('Delete request could not') ? '#ffc0b2' : '#c4c7bd' }} role="status">{deleteNotice}</p>}

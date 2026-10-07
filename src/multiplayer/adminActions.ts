@@ -1,10 +1,11 @@
 import type { Message } from './protocol';
 import type { ServerRole } from './permissions';
 
-export type AdminAction = 'give-credits' | 'kick' | 'ban' | 'unban';
+export type AdminAction = 'give-credits' | 'kick' | 'ban' | 'unban' | 'mute' | 'unmute';
 export interface AdminActionOptions {
   amount?: number;
   durationSeconds?: number | null;
+  durationMinutes?: number | null;
   reason?: string;
 }
 
@@ -24,7 +25,7 @@ export function buildAdminAction(
   targetUsername: string,
   options: AdminActionOptions = {},
 ): Message | null {
-  if (!canUseAdminActions(actorRole, targetRole)) return null;
+  if (action === 'give-credits' ? actorRole !== 'owner' : !canUseAdminActions(actorRole, targetRole)) return null;
   const username = normalizeUsername(targetUsername);
   if (!username) return null;
   const reason = normalizeReason(options.reason);
@@ -42,6 +43,11 @@ export function buildAdminAction(
     return { type: 'admin_ban', targetUsername: username, durationSeconds: options.durationSeconds!, ...optionalReason };
   }
   if (action === 'unban') return { type: 'admin_unban', targetUsername: username };
+  if (action === 'mute') {
+    if (!Number.isSafeInteger(options.durationMinutes) || options.durationMinutes! < 1 || options.durationMinutes! > 10080) return null;
+    return { type: 'admin_mute', targetUsername: username, durationMinutes: options.durationMinutes!, ...optionalReason };
+  }
+  if (action === 'unmute') return { type: 'admin_unmute', targetUsername: username };
   return null;
 }
 

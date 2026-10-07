@@ -21,7 +21,7 @@ interface Props {
 }
 
 const ACTION_ACKS: Record<AdminAction, string> = {
-  'give-credits': 'admin_give_credits_complete', kick: '', ban: 'admin_ban_complete', unban: 'admin_unban_complete',
+  'give-credits': 'admin_give_credits_complete', kick: '', mute: '', unmute: '', ban: 'admin_ban_complete', unban: 'admin_unban_complete',
 };
 const DURATIONS: Array<{ label: string; value: number | null }> = [
   { label: '10 MIN', value: 600 }, { label: '1 HOUR', value: 3600 }, { label: '1 DAY', value: 86400 },
@@ -37,6 +37,9 @@ export default function PlayerInteractionCard({ isSelf, onPlayers, onChat, open 
   const [creditChoice, setCreditChoice] = useState('10');
   const [customAmount, setCustomAmount] = useState('');
   const [duration, setDuration] = useState<number | null>(600);
+  const [customDuration, setCustomDuration] = useState(false);
+  const [durationMinutes, setDurationMinutes] = useState('10');
+  const [muteMinutes, setMuteMinutes] = useState('30');
   const [reason, setReason] = useState('');
   const handledAdminResult = useRef<Props['adminResult']>(undefined);
   useEffect(() => { setExpanded(false); setPending(null); setSuccess(''); setActionPending(null); setActionMessage(''); }, [selected?.playerId]);
@@ -81,19 +84,23 @@ export default function PlayerInteractionCard({ isSelf, onPlayers, onChat, open 
   if (!selected || !open) return null;
   const role = selected.role;
   const canManage = connected && selected.online !== false && (ownRole === 'owner' || (ownRole === 'admin' && !!role && role !== 'owner'));
+  const canSeeAdminInfo = ownRole === 'owner' || ownRole === 'admin';
+  const canGiveCredits = connected && ownRole === 'owner';
   const canAdmin = !isSelf && connected && canUseAdminActions(ownRole, role);
   const roles = ownRole === 'owner' ? ROLES : ownRole === 'admin' ? ROLES.filter(role => role !== 'owner') : [];
   const username = selected.username.replace(/^@/, '');
   const selectedAmount = creditChoice === 'custom' ? Number(customAmount) : Number(creditChoice);
+  const banDuration = customDuration ? Number(durationMinutes) * 60 : duration;
+  const validDuration = !customDuration || (Number.isSafeInteger(Number(durationMinutes)) && Number(durationMinutes) >= 1 && Number(durationMinutes) <= 525600);
   const requestAction = (action: AdminAction, options: AdminActionOptions = {}) => {
-    if (!canAdmin || !username || actionPending || (selected.online === false && action !== 'unban')) return;
+    if (!(action === 'give-credits' ? canGiveCredits : canAdmin) || !username || actionPending || (selected.online === false && action === 'kick')) return;
     const message = buildAdminAction(ownRole, role, action, username, options);
     if (!message) { setActionMessage('This action is unavailable for the selected player or its values are invalid.'); return; }
     if (onAdminAction(action, username, options)) {
       const amount = action === 'give-credits' ? options.amount : undefined;
-      if (action === 'kick') {
+      if (action === 'kick' || action === 'mute' || action === 'unmute') {
         setActionPending(null);
-        setActionMessage(`Kick requested for @${username}. Waiting for the player to leave.`);
+        setActionMessage(action === 'kick' ? `Kick requested for @${username}. Waiting for the player to leave.` : `${action === 'mute' ? 'Mute' : 'Unmute'} requested for @${username}. The server controls chat access.`);
       } else {
         setActionPending({ action, username, amount });
         setActionMessage(`Request sent. Waiting for the server to confirm ${action.replace('-', ' ')}.`);
@@ -101,11 +108,22 @@ export default function PlayerInteractionCard({ isSelf, onPlayers, onChat, open 
     } else setActionMessage('Request could not be sent. Check the connection and your role.');
   };
   return <GameSheet title="PLAYER" onClose={onClose} closeLabel="Close player details" className="player-sheet"><div className="player-interaction-card">
-    <div><strong>{selected.nickName || 'PLAYER'}</strong><div className="player-interaction-handle">{username ? `@${username}` : 'Aippy tag unavailable'}</div><small className="player-session-id">Session: {selected.playerId}</small>
-      {canAdmin && <div className="player-interaction-role">Current role: {role ?? 'Unknown'}</div>}
-      {selected.online === false && <div className="player-interaction-role">OFFLINE</div>}</div>
+    <div><strong>{selected.nickName || 'PLAYER'}</strong><div className="player-interaction-handle">{username ? `@${username}` : 'Aippy tag unavailable'}</div>
+      <div className="player-interaction-role">{connected && selected.online !== false ? 'ONLINE' : 'OFFLINE'}</div></div>
+    {canSeeAdminInfo && <details key={selected.playerId} className="player-admin-info"><summary>ADMIN INFO</summary><small className="player-session-id">Session: {selected.playerId}</small><small>Role: {role ?? 'Unknown'}</small></details>}
     {onPlayers && <button type="button" onClick={onPlayers}>BACK TO PLAYERS</button>}
     {onChat && <button type="button" onClick={onChat}>BACK TO CHAT</button>}
+    {canGiveCredits && username && <details className="player-credit-actions"><summary>SEND CREDITS</summary><div className="player-admin-actions">
+      <p>Give credits to @{username}</p>
+          <div className="player-admin-action-row" aria-label="Credit amount">
+            {[10, 50, 100, 500].map(amount => <button type="button" key={amount} aria-pressed={creditChoice === String(amount)} disabled={!!actionPending}
+              onClick={() => setCreditChoice(String(amount))}>{amount}</button>)}
+            <button type="button" aria-pressed={creditChoice === 'custom'} disabled={!!actionPending} onClick={() => setCreditChoice('custom')}>CUSTOM</button>
+          </div>
+          {creditChoice === 'custom' && <label>Custom credits <input type="number" min="1" max="1000000000" step="1" value={customAmount} onChange={event => setCustomAmount(event.target.value)} /></label>}
+          <button type="button" disabled={!Number.isSafeInteger(selectedAmount) || selectedAmount < 1 || selectedAmount > 1_000_000_000 || !!actionPending}
+            onClick={() => requestAction('give-credits', { amount: selectedAmount, reason })}>SEND CREDITS</button>
+    </div></details>}
     {canAdmin && username && selected.online !== false && <button type="button" className="player-kick" disabled={!!actionPending} onClick={() => requestAction('kick', { reason })}>KICK PLAYER</button>}
     {canAdmin && username && <div className="player-role-admin">
       <button type="button" className="player-role-admin-toggle" aria-expanded={expanded} onClick={() => setExpanded(value => !value)}>ADMIN</button>
@@ -116,25 +134,22 @@ export default function PlayerInteractionCard({ isSelf, onPlayers, onChat, open 
         </button>)}
         <div className="player-admin-actions" aria-label="Player actions" style={{ display: 'grid', gap: 7, width: '100%', paddingTop: 8 }}>
           <strong>PLAYER ACTIONS</strong>
-          <div className="player-admin-action-row" aria-label="Credit amount">
-            {[10, 50, 100, 500].map(amount => <button type="button" key={amount} aria-pressed={creditChoice === String(amount)} disabled={!!actionPending}
-              onClick={() => setCreditChoice(String(amount))}>{amount}</button>)}
-            <button type="button" aria-pressed={creditChoice === 'custom'} disabled={!!actionPending} onClick={() => setCreditChoice('custom')}>CUSTOM</button>
-          </div>
-          {creditChoice === 'custom' && <label>Custom credits <input type="number" min="1" max="1000000000" step="1" value={customAmount} onChange={event => setCustomAmount(event.target.value)} /></label>}
-          {selected.online !== false && <button type="button" disabled={!Number.isSafeInteger(selectedAmount) || selectedAmount < 1 || selectedAmount > 1_000_000_000 || !!actionPending}
-            onClick={() => requestAction('give-credits', { amount: selectedAmount, reason })}>GIVE CREDITS</button>
-          }
-          <label>Ban duration <select value={duration === null ? 'permanent' : String(duration)} disabled={!!actionPending}
-            onChange={event => setDuration(event.target.value === 'permanent' ? null : Number(event.target.value))}>
+          <label>Ban duration <select value={customDuration ? 'custom' : duration === null ? 'permanent' : String(duration)} disabled={!!actionPending}
+            onChange={event => { const value = event.target.value; setCustomDuration(value === 'custom'); if (value !== 'custom') setDuration(value === 'permanent' ? null : Number(value)); }}>
             {DURATIONS.map(option => <option key={option.label} value={option.value === null ? 'permanent' : String(option.value)}>{option.label}</option>)}
+            <option value="custom">CUSTOM MINUTES</option>
           </select></label>
+          {customDuration && <label>Ban minutes <input type="number" min="1" max="525600" step="1" value={durationMinutes} onChange={event => setDurationMinutes(event.target.value)} /></label>}
           <label>Optional reason <input type="text" maxLength={500} value={reason} onChange={event => setReason(event.target.value)} /></label>
           <div className="player-admin-action-row">
-            {selected.online !== false && <>
-              <button type="button" disabled={!!actionPending} onClick={() => requestAction('ban', { durationSeconds: duration, reason })}>BAN</button>
-            </>}
+            <button type="button" disabled={!!actionPending || !validDuration} onClick={() => requestAction('ban', { durationSeconds: banDuration, reason })}>BAN</button>
             <button type="button" disabled={!!actionPending} onClick={() => requestAction('unban', { reason })}>UNBAN</button>
+          </div>
+          <label>Mute minutes <input type="number" min="1" max="10080" step="1" value={muteMinutes} onChange={event => setMuteMinutes(event.target.value)} /></label>
+          <small>1 minute to 7 days</small>
+          <div className="player-admin-action-row">
+            <button type="button" disabled={!!actionPending || !Number.isSafeInteger(Number(muteMinutes)) || Number(muteMinutes) < 1 || Number(muteMinutes) > 10080} onClick={() => requestAction('mute', { durationMinutes: Number(muteMinutes), reason })}>MUTE CHAT</button>
+            <button type="button" disabled={!!actionPending} onClick={() => requestAction('unmute')}>UNMUTE CHAT</button>
           </div>
         </div>
       </div>}
