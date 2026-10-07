@@ -1,0 +1,6 @@
+Quaternius Cube World - August 2023: Tree_2
+Author: Quaternius (https://quaternius.com)
+License: CC0 1.0 Universal (Public Domain Dedication)
+Source: https://github.com/agentkaerf/FreeModels/tree/main/Cube%20World%20-%20Aug%202023/Environment/glTF
+Pack license confirmed by https://github.com/agentkaerf/FreeModels/blob/main/README.md
+Model is a self-contained glTF with embedded geometry and palette image.
