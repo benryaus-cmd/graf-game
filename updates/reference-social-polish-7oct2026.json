@@ -1,0 +1,126 @@
+{
+  "version": "reference-social-polish-7oct2026",
+  "baseUrl": "https://raw.githubusercontent.com/benryaus-cmd/graf-game/4401ce15837ffd8f9659843b9fda12702771908a/",
+  "files": [
+    {
+      "source": "src/App.tsx",
+      "target": "src/games/importedGame/upstream/src/App.tsx",
+      "sha256": "fddee170a44e2a3d3e908ea555dde7e3127dcece600cce08e7e0c348005e229f"
+    },
+    {
+      "source": "src/components/ColorPicker.tsx",
+      "target": "src/games/importedGame/upstream/src/components/ColorPicker.tsx",
+      "sha256": "529eb60eef18815b0f30a5d0b5a89b44eb8b9fce3f4162d729754164def9eeb8"
+    },
+    {
+      "source": "src/components/GameHud.tsx",
+      "target": "src/games/importedGame/upstream/src/components/GameHud.tsx",
+      "sha256": "f4488a2e4db20638344cc297603d5062da2c559d67807f8f5728e830762361c6"
+    },
+    {
+      "source": "src/components/GameSheet.tsx",
+      "target": "src/games/importedGame/upstream/src/components/GameSheet.tsx",
+      "sha256": "288cba9f8348b184fe9a6f2f68a4384c8b674bdec4477eebe8647e5d0147e2d7"
+    },
+    {
+      "source": "src/components/MultiplayerChat.tsx",
+      "target": "src/games/importedGame/upstream/src/components/MultiplayerChat.tsx",
+      "sha256": "877a1dee1750ee8931c82b1e7330e0332a86323e3eebd2958d6e18470cb5a17f"
+    },
+    {
+      "source": "src/components/MultiplayerControls.tsx",
+      "target": "src/games/importedGame/upstream/src/components/MultiplayerControls.tsx",
+      "sha256": "60873a55fc26bb8ba8da3e59f6d1f6246a3344b8f1076206d8291ae42849a0cf"
+    },
+    {
+      "source": "src/components/PaintDock.tsx",
+      "target": "src/games/importedGame/upstream/src/components/PaintDock.tsx",
+      "sha256": "051871d4bd3f8db015e46e63730638f85e0874dc24425f59d3839b30d15c0553"
+    },
+    {
+      "source": "src/components/PlayerInteractionCard.tsx",
+      "target": "src/games/importedGame/upstream/src/components/PlayerInteractionCard.tsx",
+      "sha256": "ff4d3108ec322adc3dc3569c731d7fda501bbd2f26b08adfb7b5f6d4644d92b1"
+    },
+    {
+      "source": "src/components/PlayersSheet.tsx",
+      "target": "src/games/importedGame/upstream/src/components/PlayersSheet.tsx",
+      "sha256": "c62aabcdecbadec61d8368f3af985bb138aecf0ef74fcc0b9a2417dd143164ce"
+    },
+    {
+      "source": "src/components/PosterPlacementHud.tsx",
+      "target": "src/games/importedGame/upstream/src/components/PosterPlacementHud.tsx",
+      "sha256": "71994416538b4db80230d097d49fa448828829f9304b73a13099f7a6c1761240"
+    },
+    {
+      "source": "src/components/ReferenceControls.tsx",
+      "target": "src/games/importedGame/upstream/src/components/ReferenceControls.tsx",
+      "sha256": "0ce33a24ca99567019295d5767a440571da9334cdcbd5de41937167c5dd634b0"
+    },
+    {
+      "source": "src/components/ReferenceSheet.tsx",
+      "target": "src/games/importedGame/upstream/src/components/ReferenceSheet.tsx",
+      "sha256": "2304367a07a1034bb383525d522eeaacf667c1a6c8d3c1ffd85e022a7880b2d7"
+    },
+    {
+      "source": "src/components/WorldScene.tsx",
+      "target": "src/games/importedGame/upstream/src/components/WorldScene.tsx",
+      "sha256": "010c862ce08ab765874878b49597eb19b2d0bd90bc3ccd4dbebd5060df321da7"
+    },
+    {
+      "source": "src/game/colorPicker.ts",
+      "target": "src/games/importedGame/upstream/src/game/colorPicker.ts",
+      "sha256": "3d36c3abaddd7da0e25087db8cf567533446b94b0c2912a4a977624cd9279c6e"
+    },
+    {
+      "source": "src/game/paintWorkspace.ts",
+      "target": "src/games/importedGame/upstream/src/game/paintWorkspace.ts",
+      "sha256": "991fa322235291c598e7b83060d726c834da01f5debb58eee1ae9e9a0c74807e"
+    },
+    {
+      "source": "src/game/paintWorkspaceFeedback.ts",
+      "target": "src/games/importedGame/upstream/src/game/paintWorkspaceFeedback.ts",
+      "sha256": "7e3f078f2b699eb4d648ed8a08cc3ae6e259f1876beb2a52b7beb1801d1f521a"
+    },
+    {
+      "source": "src/game/referenceGuide.ts",
+      "target": "src/games/importedGame/upstream/src/game/referenceGuide.ts",
+      "sha256": "1f2430661d9b1fbbad9d07cd0c74f11e1b4808caca86d4d0dc36f9f19cb0ea21"
+    },
+    {
+      "source": "src/game/worldOverlayOrder.ts",
+      "target": "src/games/importedGame/upstream/src/game/worldOverlayOrder.ts",
+      "sha256": "2d378df0ec453ff9d158a08c15019caa8fe02020c68729b6b3b5c7731f918d22"
+    },
+    {
+      "source": "src/index.css",
+      "target": "src/games/importedGame/upstream/src/index.css",
+      "sha256": "3e9f14fb86e955c9452f9f80bf98347ad92f66d567adf1d35ad8a8e2feaf7c23"
+    },
+    {
+      "source": "src/multiplayer/chat.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/chat.ts",
+      "sha256": "608e5452bf020e632f7daee5d58a25171250755273fc6c74f9ba02f2e12423a1"
+    },
+    {
+      "source": "src/multiplayer/playerDirectory.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/playerDirectory.ts",
+      "sha256": "ca213788250b1e63d89c0e47696f51c33e31815006edf5b6dd70800923eb1d4f"
+    },
+    {
+      "source": "src/multiplayer/protocol.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/protocol.ts",
+      "sha256": "f8a56a7f302d07055b595c72cdcf8df32fb727de4f6310c2359d627b9099afb6"
+    },
+    {
+      "source": "src/multiplayer/remotePlayers.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/remotePlayers.ts",
+      "sha256": "45bfa283411198b9cc488d88a52bdea18f09ef3dfec22d92d284d1f6612b57e0"
+    },
+    {
+      "source": "src/multiplayer/worldSession.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/worldSession.ts",
+      "sha256": "d5df5e9654de3ea7fc562475640f7976723b43c463fe071002aae9717ff14329"
+    }
+  ]
+}
