@@ -50,7 +50,7 @@
 - [x] Render real model, confirm grain compiles, paint on wall/base/raised faces, canvas/finish capture and texture reload, and collision/reach.
 - [x] Measure triangles/draw calls and texture bytes with old city alone vs new fixture near/far/painted, without claiming mobile FPS from software GPU.
 - [x] Fresh whole-branch code review, fix material defects and rerun checks.
-- [ ] Publish only changed files and pinned incremental/rollback manifests. Supply exact Aippy import prompt and server work, if any.
+- [x] Publish only changed files and pinned incremental/rollback manifests. Supply exact Aippy import prompt and server work, if any.
 
 ## Verification results
 

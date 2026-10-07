@@ -1,0 +1,38 @@
+{
+  "version": "fixture-building-rollback-7oct2026",
+  "baseUrl": "https://raw.githubusercontent.com/benryaus-cmd/graf-game/1c0b7a30ee29fa18fb71232301b77547a00ba6a9/",
+  "files": [
+    {
+      "source": "src/components/AvatarMenu.tsx",
+      "target": "src/games/importedGame/upstream/src/components/AvatarMenu.tsx"
+    },
+    {
+      "source": "src/game/assetPreview.ts",
+      "target": "src/games/importedGame/upstream/src/game/assetPreview.ts"
+    },
+    {
+      "source": "src/game/cityChunkContent.ts",
+      "target": "src/games/importedGame/upstream/src/game/cityChunkContent.ts"
+    },
+    {
+      "source": "src/game/cityChunkResources.ts",
+      "target": "src/games/importedGame/upstream/src/game/cityChunkResources.ts"
+    },
+    {
+      "source": "src/game/cityChunks.ts",
+      "target": "src/games/importedGame/upstream/src/game/cityChunks.ts"
+    },
+    {
+      "source": "src/game/disposeWorld.ts",
+      "target": "src/games/importedGame/upstream/src/game/disposeWorld.ts"
+    },
+    {
+      "source": "src/game/paintWorkspace.ts",
+      "target": "src/games/importedGame/upstream/src/game/paintWorkspace.ts"
+    }
+  ],
+  "notes": [
+    "Stage all seven files first, then restore exact targets. Preserve all unlisted files. New fixture helpers can remain unused.",
+    "Removes the permanent fixture and restores the previous optional building preview. Saved new-fixture paint remains stored but will be invisible until the fixture update is restored."
+  ]
+}

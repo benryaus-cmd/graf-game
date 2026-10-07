@@ -1,0 +1,53 @@
+{
+  "version": "fixture-building-7oct2026",
+  "baseUrl": "https://raw.githubusercontent.com/benryaus-cmd/graf-game/29b172079e048bc96f5cdf3586045c7224cebf54/",
+  "files": [
+    {
+      "source": "src/components/AvatarMenu.tsx",
+      "target": "src/games/importedGame/upstream/src/components/AvatarMenu.tsx"
+    },
+    {
+      "source": "src/game/assetPreview.ts",
+      "target": "src/games/importedGame/upstream/src/game/assetPreview.ts"
+    },
+    {
+      "source": "src/game/cityChunkContent.ts",
+      "target": "src/games/importedGame/upstream/src/game/cityChunkContent.ts"
+    },
+    {
+      "source": "src/game/cityChunkResources.ts",
+      "target": "src/games/importedGame/upstream/src/game/cityChunkResources.ts"
+    },
+    {
+      "source": "src/game/cityChunks.ts",
+      "target": "src/games/importedGame/upstream/src/game/cityChunks.ts"
+    },
+    {
+      "source": "src/game/disposeWorld.ts",
+      "target": "src/games/importedGame/upstream/src/game/disposeWorld.ts"
+    },
+    {
+      "source": "src/game/fixtureBuilding.ts",
+      "target": "src/games/importedGame/upstream/src/game/fixtureBuilding.ts"
+    },
+    {
+      "source": "src/game/fixtureBuildingFaces.ts",
+      "target": "src/games/importedGame/upstream/src/game/fixtureBuildingFaces.ts"
+    },
+    {
+      "source": "src/game/fixtureBuildingGrain.ts",
+      "target": "src/games/importedGame/upstream/src/game/fixtureBuildingGrain.ts"
+    },
+    {
+      "source": "src/game/paintWorkspace.ts",
+      "target": "src/games/importedGame/upstream/src/game/paintWorkspace.ts"
+    }
+  ],
+  "notes": [
+    "Incremental client update only. Stage all 10 runtime files with Node 22 before replacing exact persistent targets; preserve unlisted files and host/importer infrastructure.",
+    "Permanent building moved 15.451m backward away from its door. 766 vertical wall/brick/trim canvas faces reuse existing paint, pieces and session persistence.",
+    "128x128 repeating concrete grain within 26.667m, existing 80m visual cutoff; one visual mesh, 2884 triangles. Empty canvases allocate no large paint textures or draw calls.",
+    "No server/protocol/economy/flatten/brush-interpolation changes. All players need this client update to see these new building surfaces.",
+    "Pinned building GLB is reused from the prior asset patch. No additional binary asset or runtime dependency is needed."
+  ]
+}
