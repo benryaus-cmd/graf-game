@@ -24,6 +24,7 @@ export function createPaintSurfaceLayer(
   const textures: THREE.Texture[] = Array(faceCount).fill(blankTexture);
   const materials = textures.map((map) => new THREE.MeshBasicMaterial({
     map,
+    visible: false,
     transparent: true,
     depthWrite: false,
     side: doubleSided ? THREE.DoubleSide : THREE.FrontSide,
@@ -63,6 +64,7 @@ export function createPaintSurfaceLayer(
     contexts[validFace] = context;
     textures[validFace] = texture;
     const material = materials[validFace];
+    material.visible = true;
     material.map = texture;
     material.needsUpdate = true;
     return context;

@@ -849,6 +849,7 @@ test('frequent stroke endings do not restart a wall snapshot replay indefinitely
   try {
     session.join('Tester');const socket=sockets[0];socket.readyState=1;socket.receive({type:'hello',protocol:2,playerId:'assigned'});
     const wall=world.walls[0],position=wall.mesh.localToWorld(new THREE.Vector3(0.2,0.2,0));
+    world.playerPosition.copy(position); // This regression exercises nearby replay, independently of display distance.
     const point={x:position.x,y:position.y,z:position.z,pressure:1};
     const stroke={id:'history',surfaceId:encodeSurface(wall.surfaceId!,0,0),colour:'#ff0000',brushSize:5,opacity:1,points:Array.from({length:800},()=>({...point}))};
     const real:any=wall.layers[0].ensureFace(0);
@@ -928,4 +929,30 @@ test('live chat echoes attach bubbles to own and remote avatars and clean up on 
     assert.equal(remote.children.filter(child => child instanceof THREE.Sprite).length, remoteLabels + 1);
     session.leave(); assert.equal(playerAvatar.children.length, 0); assert.equal(scene.children.length, 0);
   } finally { session.dispose(); globalThis.WebSocket = oldSocket; }
+});
+
+test('distant live wall replay keeps canonical strokes and catches up when entering range', () => {
+ const sockets:Socket[]=[],old=globalThis.WebSocket;
+ (globalThis as any).WebSocket=class extends Socket {constructor(){super();sockets.push(this);}};
+ const scene=new THREE.Scene(),stream=createCityChunkStream(scene,materials());stream.updateAt(0,0);
+ const world:any={scene,walls:stream.walls,setPaintSession:stream.setPaintSession,playerPosition:new THREE.Vector3(),playerYaw:0,playerPitch:0,paintRevision:0,velocityY:0,abilityActive:false};
+ const session=new WorldMultiplayerSession(world,()=>{});
+ try {session.join('Tester');const socket=sockets[0];socket.readyState=1;socket.receive({type:'hello',protocol:2,playerId:'assigned'});
+  const wall=world.walls[0],point=wall.mesh.localToWorld(new THREE.Vector3(.2,.2,0)),real:any=wall.layers[0].ensureFace(0);
+  socket.receive({type:'world_snapshot',protocol:2,roomId:'public',playerId:'assigned',strokes:[{id:'far-stroke',playerId:'other',surfaceId:encodeSurface(wall.surfaceId!,0,0),colour:'#ff0000',brushSize:5,opacity:1,points:[{x:point.x,y:point.y,z:point.z,pressure:1}]}],players:[]});
+  const settings:any={layerVisibility:[true],paintMode:false,eraseMode:false};
+  world.onMultiplayerFrame(.016,settings);assert.equal(real.draws.length,0,'far wall defers drawing');
+  assert.ok((session as any).paint.strokes.has('far-stroke'),'canonical data is retained');
+  world.playerPosition.copy(point);for(let i=0;i<5;i++)world.onMultiplayerFrame(.016,settings);
+  assert.ok(real.draws.length>0,'approach replays retained canonical data');
+ } finally {session.dispose();scene.userData.disposeCity?.();globalThis.WebSocket=old;}
+});
+
+test('world-stream teardown invalidates delayed solo restoration callbacks',()=>{
+ const images:any[]=[],oldImage=globalThis.Image,oldWindow=globalThis.window;
+ (globalThis as any).Image=class{onload:()=>void;set src(_value:string){images.push(this);}};
+ (globalThis as any).window={localStorage:{getItem:()=>JSON.stringify({0:[['data:image/png;base64,old']]}),setItem(){},removeItem(){}}};
+ const scene=new THREE.Scene(),stream=createCityChunkStream(scene,materials());
+ try {stream.updateAt(0,0);const wall=stream.walls[0];assert.ok(images.length>0);scene.userData.disposeCity();images.forEach(image=>image.onload?.());assert.equal(wall.layers[0].contexts[0],null);}
+ finally{globalThis.Image=oldImage;globalThis.window=oldWindow;}
 });

@@ -67,7 +67,12 @@ export function createPaintWall(
   const paintGeometry = new THREE.BoxGeometry(width, height, depth);
   const geometry = paintGeometry.clone();
   tileBoxGeometry(geometry, width, height, depth);
-  const mesh = new THREE.Mesh(geometry, Array(6).fill(wallMaterial));
+  // Keep canonical grouped geometry for raycasts/face IDs. Draw the opaque background once.
+  const targetMaterial = new THREE.MeshBasicMaterial({ visible: false, colorWrite: false, depthWrite: false });
+  const mesh = new THREE.Mesh(geometry, Array(6).fill(targetMaterial));
+  const visualGeometry = geometry.clone(); visualGeometry.clearGroups();
+  const baseVisual = new THREE.Mesh(visualGeometry, wallMaterial);
+  mesh.add(baseVisual); mesh.userData.baseVisual = baseVisual;
   mesh.position.set(x, baseY + height / 2, z);
   mesh.castShadow = false;
   mesh.receiveShadow = false;

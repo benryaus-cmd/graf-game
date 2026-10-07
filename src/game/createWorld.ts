@@ -40,7 +40,19 @@ export function createWorld(container: HTMLElement, fogDensity: number): WorldEn
       texture.needsUpdate = true;
     },
     undefined,
-    (error) => console.warn('[Aippy] Concrete texture could not be loaded.', error),
+    (error) => {
+      console.warn('[Aippy] Concrete texture could not be loaded.', error);
+      // Plain shaded architecture remains usable offline or after a failed asset request.
+      scene.traverse(object => {
+        if (!(object instanceof THREE.Mesh)) return;
+        const materials = Array.isArray(object.material) ? object.material : [object.material];
+        for (const material of materials) {
+          if ('map' in material && material.map instanceof THREE.Texture && material.map.source === wallTexture.source) {
+            material.map = null; material.needsUpdate = true;
+          }
+        }
+      });
+    },
   );
   wallTexture.colorSpace = THREE.SRGBColorSpace;
 
@@ -57,7 +69,7 @@ export function createWorld(container: HTMLElement, fogDensity: number): WorldEn
   scene.add(hemisphereLight, sunLight);
   renderer.setSize(container.clientWidth, container.clientHeight);
 
-  return {
+  const world: WorldEngine = {
     scene,
     camera,
     mapCamera,
@@ -96,4 +108,6 @@ export function createWorld(container: HTMLElement, fogDensity: number): WorldEn
     velocityY: 0,
     jumpSignal: 0,
   };
+  architecture.setPaintPin(() => world.paintWorkspace?.selection?.wall);
+  return world;
 }

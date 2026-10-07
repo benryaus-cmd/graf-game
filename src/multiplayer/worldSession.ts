@@ -1,3 +1,5 @@
+import { getRenderSettings } from '@/game/renderSettings';
+import { withinLiveStrokeDistance } from '@/game/liveStrokeDistance';
 import * as THREE from 'three';
 import type { AvatarEmote, LiveSettings, PaintWall, PaintWorkspaceSelection, WorldEngine } from '../game/worldTypes';
 import { MultiplayerConnection, type PlayerIdentity } from './connection';
@@ -149,11 +151,14 @@ export class WorldMultiplayerSession {
     this.artworks = new ArtworkSync(message => this.sendWorld(message), notice => this.emit({ ...this.status, notice }));
     this.paint = new PaintSync({
       send: message => this.sendWorld(message),
-      reset: () => { this.replay.cancel(); this.refreshWalls(); for (const wall of this.walls.values()) this.replay.rebuild(wall); },
+      reset: () => { this.replay.cancel(); this.refreshWalls(); for (const wall of this.walls.values()) { if (this.shouldReplayWall(wall)) this.replay.rebuild(wall); else this.recompose.add(wall.surfaceId!); } },
       draw: (stroke, points, previous) => {
         const surface = decodeSurface(stroke.surfaceId);
         const wall = surface ? this.walls.get(surface.wallId) : null;
-        if (wall) this.replay.enqueue(wall, stroke, points, previous);
+        if (wall) {
+          if (stroke.playerId === this.connection.playerId || this.shouldReplayWall(wall)) this.replay.enqueue(wall, stroke, points, previous);
+          else this.recompose.add(surface!.wallId);
+        }
       },
     });
     this.ownerReferences = new OwnerReferences(world.scene, message => this.connection.send(message), () => this.emitView());
@@ -903,6 +908,9 @@ export class WorldMultiplayerSession {
     }
     if (ordered) this.emitView();
   }
+  private shouldReplayWall(wall: PaintWall): boolean {
+    return withinLiveStrokeDistance(wall, this.world.playerPosition, getRenderSettings().liveStrokeDistance, this.world.paintWorkspace?.selection?.wall);
+  }
   private refreshWalls(): void {
     if (!this.multiplayer) return;
     const next = new Map(this.world.walls.filter(w => w.surfaceId).map(w => [w.surfaceId!, w]));
@@ -910,7 +918,8 @@ export class WorldMultiplayerSession {
     for (const [id, wall] of next) {
       if (this.walls.get(id) === wall) continue;
       this.walls.set(id, wall);
-      this.replay.rebuildFrom(wall, this.paint.forWall(id));
+      if (this.shouldReplayWall(wall)) this.replay.rebuildFrom(wall, this.paint.forWall(id));
+      else this.recompose.add(id);
     }
     this.walls = next;
     this.artworks.refresh(next);
@@ -942,7 +951,7 @@ export class WorldMultiplayerSession {
     for (const id of this.recompose) {
       const wall = this.walls.get(id);
       if (!wall) { this.recompose.delete(id); continue; }
-      if (this.replay.isRebuilding(wall)) continue;
+      if (!this.shouldReplayWall(wall) || this.replay.isRebuilding(wall)) continue;
       this.recompose.delete(id); this.replay.rebuildFrom(wall, this.paint.forWall(id));
     }
     // The server does not echo accepted own stroke sequences. Fetch canonical metadata once

@@ -18,6 +18,8 @@ import { aippyDisplayName } from '@/multiplayer/profile';
 import type { MultiplayerStatus, MultiplayerView } from '@/multiplayer/protocol';
 import type { ServerRole } from '@/multiplayer/permissions';
 import SettingsModal from '@/components/SettingsModal';
+import DeveloperPanel from '@/components/DeveloperPanel';
+import GameSheet from '@/components/GameSheet';
 import RadioControl from '@/components/RadioControl';
 import { useSprayAudio } from '@/components/useSprayAudio';
 import { usePosterPlacement } from '@/game/usePosterPlacement';
@@ -167,6 +169,8 @@ const App = () => {
   useEffect(() => () => emoteViewReturn.current.cancel(), []);
   useEffect(() => { if (viewMode !== 'third') emoteViewReturn.current.cancel(); }, [viewMode]);
   const [devViewerOpen, setDevViewerOpen] = useState(false);
+  const [developerChoice, setDeveloperChoice] = useState(false);
+  const [liveSettingsOpen, setLiveSettingsOpen] = useState(false);
   const [tutorialStep, setTutorialStep] = useState<TutorialStep | null>(null);
   const [tutorialReview, setTutorialReview] = useState(false);
   const [tutorialCompleted, setTutorialCompleted] = useState(readTutorialCompleted);
@@ -507,7 +511,7 @@ const App = () => {
           {activeMenu === 'settings' && !devViewerOpen && (
             <SettingsModal
               onClose={closeMenu}
-              onUnlock={() => { closeMenu(); setDevViewerOpen(true); }}
+              onUnlock={() => { closeMenu(); setDeveloperChoice(true); }}
               radioVolume={radioVolume} onRadioVolume={volume => radioController?.setVolume(volume)}
             >
               <div className="menu-profile">{aippyUser.avatar && <img src={aippyUser.avatar} alt="" referrerPolicy="no-referrer" />}<div><strong>{displayName}</strong><small>GraffCiti</small></div></div>
@@ -528,6 +532,8 @@ const App = () => {
               <section className="tool-section"><h3>RADIO</h3>{radioController && <RadioControl controller={radioController} url={RADIO_STREAM_URL} initialVolume={musicVolume} onInteraction={() => { if (!tutorialReview && tutorialStep === 'radio') setTutorialStep('multiplayer'); }} />}</section>
             </SettingsModal>
           )}
+          {developerChoice && <GameSheet title="DEVELOPER TOOLS" onClose={() => setDeveloperChoice(false)}><div className="menu-grid"><button onClick={() => { setDeveloperChoice(false); setDevViewerOpen(true); }}>PROJECT FILE VIEWER</button><button onClick={() => { setDeveloperChoice(false); setLiveSettingsOpen(true); }}>LIVE GAME SETTINGS</button></div></GameSheet>}
+          {liveSettingsOpen && <DeveloperPanel onClose={() => setLiveSettingsOpen(false)} onFiles={() => { setLiveSettingsOpen(false); setDevViewerOpen(true); }} />}
           {devViewerOpen && (
             <Suspense fallback={(
               <div className="fixed inset-0 z-[60] flex items-center justify-center bg-neutral-950 font-mono text-xs text-neutral-500">

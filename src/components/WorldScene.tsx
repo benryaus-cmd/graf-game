@@ -1,3 +1,5 @@
+import { getRenderSettings, subscribeRenderSettings } from '@/game/renderSettings';
+import { observeWorldPerformance } from '@/game/worldPerformance';
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { createWorld } from '@/game/createWorld';
@@ -124,6 +126,15 @@ const WorldScene = (props: WorldSceneProps) => {
     if (!container) return;
     const world = createWorld(container, liveRef.current.fogDensity);
     worldRef.current = world;
+    const stopPerformance = observeWorldPerformance(world);
+    const applyRenderSettings = () => {
+      const settings = getRenderSettings();
+      world.renderer.setPixelRatio(Math.min(window.devicePixelRatio, settings.renderScale));
+      world.renderer.setSize(container.clientWidth, container.clientHeight);
+      if (world.scene.fog instanceof THREE.FogExp2) world.scene.fog.density = settings.fogDensity;
+    };
+    applyRenderSettings();
+    const stopRenderSettings = subscribeRenderSettings(applyRenderSettings);
     const assetPreview = new AssetPreview(world.scene, world.playerAvatar);
     assetPreviewRef.current = assetPreview;
     const eraserGuide = new EraserGuide(world.scene, world.renderer.domElement);
@@ -182,6 +193,7 @@ const WorldScene = (props: WorldSceneProps) => {
     return () => {
       editGrace.current.resume();
       stopControls();
+      stopPerformance(); stopRenderSettings();
       multiplayer.dispose();
       if (multiplayerRef.current === multiplayer) multiplayerRef.current = null;
       window.removeEventListener('pagehide', savePaint);
@@ -325,7 +337,7 @@ const WorldScene = (props: WorldSceneProps) => {
     world.mapCamera.updateProjectionMatrix();
     world.botsEnabled = props.botsEnabled;
     world.setPaintVisibility(props.layerVisibility);
-    if (world.scene.fog instanceof THREE.FogExp2) world.scene.fog.density = props.fogDensity;
+    if (world.scene.fog instanceof THREE.FogExp2) world.scene.fog.density = getRenderSettings().fogDensity;
     if (world.equippedOutfit !== props.avatar.outfit) world.abilityActive = false;
     world.equippedOutfit = props.avatar.outfit;
     applyAvatarAppearance(world.playerAvatar, props.avatar);

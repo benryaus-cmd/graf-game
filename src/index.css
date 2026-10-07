@@ -420,3 +420,17 @@ button { color: inherit; -webkit-tap-highlight-color: transparent; }
   .paint-workspace-zoom-controls button { padding: 0 6px; }
   .reference-sheet section[aria-label] button { font-size: 10px; }
 }
+
+/* Device-local developer controls: draggable, collapsible and bounded to the host game. */
+.developer-live-panel { position:absolute;z-index:75;left:12px;top:112px;width:min(340px,calc(100% - 24px));max-height:calc(100% - 124px - env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;background:#181b18;border:1px solid #626b5d;border-radius:12px;color:#f1eedf;box-shadow:0 4px 14px #0005; }
+.developer-live-panel header { display:flex;align-items:center;gap:6px;padding:6px 8px;min-height:48px;touch-action:none;cursor:move; }
+.developer-live-panel header strong { flex:1;font-size:12px;letter-spacing:.07em; }
+.developer-live-panel button { min-height:42px;border:1px solid #4a5046;border-radius:7px;background:#272c26;padding:7px 9px;font-size:11px; }
+.developer-live-panel button[aria-pressed=true] { border-color:#da9473;color:#ffd0aa; }
+.developer-live-panel header button { width:40px;min-height:40px;font-size:20px; }
+.developer-live-body { min-height:0;overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y;padding:0 10px 12px; }
+.developer-live-body .paint-range { margin:10px 0; }.developer-live-body .paint-range span { font-size:11px; }
+.developer-live-body input[type=range] { width:100%;min-height:36px; }.developer-live-body textarea { width:100%;height:160px;font-size:10px; }
+.developer-stats { font:11px/1.6 monospace;color:#bdcbb0;margin:8px 0; }
+.developer-live-panel.is-collapsed { width:220px;max-height:48px; }
+@media (max-height:440px) { .developer-live-panel { top:8px;max-height:calc(100% - 16px); } }

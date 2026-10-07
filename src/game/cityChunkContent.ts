@@ -7,6 +7,8 @@ import { addConcreteStreetLamp } from '@/game/cityStreetLamps';
 import type { Collider, PaintWall, Staircase, WalkSurface } from '@/game/worldTypes';
 import { addFixtureBuilding } from '@/game/fixtureBuilding';
 import { assignSurfaceIds } from '@/multiplayer/surfaces';
+import { createCityBlockLayout } from '@/game/cityBlockLayout';
+import { addUrbanCourtyard } from '@/game/urbanCourtyard';
 
 export const CITY_CHUNK_SIZE = 48;
 
@@ -18,11 +20,11 @@ export interface CityChunkContent {
   staircases: Staircase[];
 }
 
-export function createCityChunk(
+export function* prepareCityChunk(
   chunkX: number,
   chunkZ: number,
   materials: CityMaterials,
-): CityChunkContent {
+): Generator<CityChunkContent, CityChunkContent, void> {
   const group = new THREE.Group();
   const centerX = chunkX * CITY_CHUNK_SIZE;
   const centerZ = chunkZ * CITY_CHUNK_SIZE;
@@ -33,47 +35,16 @@ export function createCityChunk(
   const floor = createChunkGround(group, centerX, centerZ, materials.groundMaterial);
   walls.push(floor);
 
-  let seed = (Math.imul(chunkX, 374761393) ^ Math.imul(chunkZ, 668265263)) >>> 0;
-  const random = (): number => {
-    seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
-    return seed / 4294967296;
-  };
-  const towerIndex = random() > 0.72 ? Math.floor(random() * 4) : -1;
-  const locations = [-15.5, 15.5];
-  let buildingIndex = 0;
-
-  locations.forEach((offsetX) => {
-    locations.forEach((offsetZ) => {
-      const x = centerX + offsetX + (random() - 0.5) * 1.1;
-      const z = centerZ + offsetZ + (random() - 0.5) * 1.1;
-      const width = 10.8 + random() * 2.1;
-      const depth = 10.8 + random() * 2.1;
-      if (buildingIndex === towerIndex) {
-        addSkyscraper(
-          group,
-          { walls, colliders, walkSurfaces, staircases },
-          materials,
-          x,
-          z,
-          width,
-          depth,
-          32 + random() * 23,
-        );
-      } else {
-        addHouse(
-          group,
-          { walls, colliders, walkSurfaces, staircases },
-          materials,
-          x,
-          z,
-          width,
-          depth,
-          buildingIndex % 2 === 0,
-        );
-      }
-      buildingIndex += 1;
-    });
-  });
+  yield { group, walls, colliders, walkSurfaces, staircases };
+  const { buildings, random } = createCityBlockLayout(chunkX, chunkZ);
+  for (const building of buildings) {
+    if (building.tower) {
+      addSkyscraper(group, { walls, colliders, walkSurfaces, staircases }, materials, building.x, building.z, building.width, building.depth, building.height);
+    } else {
+      addHouse(group, { walls, colliders, walkSurfaces, staircases }, materials, building.x, building.z, building.width, building.depth, building.stairs);
+    }
+    yield { group, walls, colliders, walkSurfaces, staircases };
+  }
 
   if (chunkX !== 0 || chunkZ !== 0) {
     const tunnel = addTunnel(
@@ -124,5 +95,14 @@ export function createCityChunk(
   }
 
   assignSurfaceIds(chunkX, chunkZ, walls);
+  if (chunkX === 1 && chunkZ === 0) { const courtyard = addUrbanCourtyard(group, colliders, buildings); group.userData.updateScenery = courtyard.userData.updateScenery; }
   return { group, walls, colliders, walkSurfaces, staircases };
+}
+
+/** Synchronous entry retained for bootstrap, tests and compatible callers. */
+export function createCityChunk(chunkX: number, chunkZ: number, materials: CityMaterials): CityChunkContent {
+  const build = prepareCityChunk(chunkX, chunkZ, materials);
+  let result = build.next();
+  while (!result.done) result = build.next();
+  return result.value;
 }
