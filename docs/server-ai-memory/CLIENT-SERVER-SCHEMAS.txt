@@ -1,0 +1,1026 @@
+GRAFFCITI CLIENT <-> SERVER CONTRACT
+Current target: LIVE Batch 6 server
+Purpose: wire the GitHub/Aippy client to the server without guessing payloads.
+
+IMPORTANT CURRENT STATE
+- Live WebSocket: wss://24.144.88.205/multiplayer
+- Protocol remains 2.
+- Batch 6 spatial capability is LIVE.
+- Current production client is still legacy unless it opts in.
+- The proposed networkRevision/client-update gate is NOT part of the currently verified live Batch 6 contract. Do not make the client depend on networkRevision yet.
+- Capability-gate every newer feature from hello.capabilities.
+
+==================================================
+1. HELLO / JOIN / SPATIAL OPT-IN
+==================================================
+
+SERVER -> CLIENT hello
+{
+  "type": "hello",
+  "playerId": "<connection player id>",
+  "protocol": 2,
+  "serverTime": 1234567890,
+  "capabilities": [
+    "presence",
+    "movement",
+    "paint",
+    "eraser",
+    "chat",
+    "artwork",
+    "piece_flatten",
+    "stroke_undo_redo",
+    "admin_bulk_art_remove",
+    "artwork_remove",
+    "owner_server_tools",
+    "owner_reference_persistence",
+    "server_perf_status",
+    "saved_art_library",
+    "art_creation_cooldown",
+    "runtime_server_settings",
+    "spatial_interest_v1",
+    "spatial_world_delta_v1",
+    "player_directory_v1",
+    "world_items",
+    "inventory",
+    "trading",
+    "reports",
+    "resync"
+  ]
+}
+
+CLIENT -> SERVER spatial join
+Send only after hello, and only enable spatial mode if hello.capabilities includes spatial_interest_v1.
+{
+  "type": "join",
+  "roomId": "public",
+  "protocol": 2,
+  "username": "aippy_username_without_at",
+  "nickName": "Aippy nickname",
+  "displayName": "Aippy nickname or fallback",
+  "spatialInterest": true,
+  "position": [x, y, z]
+}
+
+Identity rule already used by server:
+- username and nickName stay separate.
+- server displayName preference is nickName, else @username, else supplied displayName, else PLAYER.
+- do not collapse username/nickName/displayName into one field.
+
+If spatialInterest:true has no valid [x,y,z], server leaves that client legacy/non-spatial.
+
+SERVER -> CLIENT spatial_status
+{
+  "type": "spatial_status",
+  "enabled": true,
+  "requested": true,
+  "reason": null,
+  "config": {
+    "enabled": true,
+    "cellSizeM": 32,
+    "playerNearM": 25,
+    "playerMediumM": 60,
+    "playerFarM": 100,
+    "playerNearHz": 10,
+    "playerMediumHz": 4,
+    "playerFarHz": 1,
+    "livePaintM": 60,
+    "worldRadiusM": 128,
+    "worldSyncMs": 1000
+  },
+  "serverTime": 1234567890
+}
+
+If requested spatial cannot be enabled:
+{
+  "type": "spatial_status",
+  "enabled": false,
+  "requested": true,
+  "reason": "valid_join_position_required",
+  "config": null,
+  "serverTime": 1234567890
+}
+
+==================================================
+2. WORLD SNAPSHOT IN SPATIAL MODE
+==================================================
+
+SERVER -> CLIENT
+{
+  "type": "world_snapshot",
+  "protocol": 2,
+  "roomId": "public",
+  "playerId": "own-player-id",
+  "revision": 123,
+  "sequence": 456,
+  "serverTime": 1234567890,
+  "playerCount": 87,
+  "spatialInterest": { /* same SpatialConfig as above */ },
+  "strokes": [ /* only nearby persistent strokes */ ],
+  "artworks": [ /* only nearby image/poster art */ ],
+  "worldItems": [ /* current server behavior: room world items */ ],
+  "graffitiPieces": [ /* only nearby pieces */ ],
+  "ownerReferences": [ /* only returned to owner accounts */ ],
+  "chatHistory": [ /* only recent chat; server currently keeps/serves the recent window */ ],
+  "playerDirectory": [ /* global lightweight directory; spatial client only */ ],
+  "players": [ /* only players within current spatial visibility range */ ]
+}
+
+DO NOT assume players[] is the full online list once spatial is enabled.
+Use playerDirectory[] for the Online/users UI.
+Use players[] for avatars that should currently exist in the 3D scene.
+
+Directory player schema:
+{
+  "id": "player-id",
+  "playerId": "player-id",
+  "username": "username",
+  "nickName": "nickname",
+  "displayName": "display label",
+  "role": "player|moderator|admin|owner",
+  "accountBound": true
+}
+
+Visible/renderable player schema:
+{
+  "id": "player-id",
+  "username": "username",
+  "nickName": "nickname",
+  "displayName": "display label",
+  "role": "player|moderator|admin|owner",
+  "state": { /* PlayerState */ },
+  "accountBound": true
+}
+
+==================================================
+3. PLAYER DIRECTORY VS RENDERED AVATARS
+==================================================
+
+GLOBAL DIRECTORY ADD:
+SERVER -> CLIENT
+{
+  "type": "player_directory_joined",
+  "player": { /* DirectoryPlayer */ },
+  "serverTime": 1234567890
+}
+
+GLOBAL DIRECTORY REMOVE:
+SERVER -> CLIENT
+{
+  "type": "player_directory_left",
+  "playerId": "player-id",
+  "serverTime": 1234567890
+}
+
+3D AVATAR ENTERS RELEVANCE:
+SERVER -> CLIENT
+{
+  "type": "player_joined",
+  "player": { /* full public player incl state */ },
+  "spatial": true,
+  "serverTime": 1234567890
+}
+
+3D AVATAR LEAVES RELEVANCE BUT IS STILL ONLINE:
+SERVER -> CLIENT
+{
+  "type": "player_left",
+  "playerId": "player-id",
+  "reason": "spatial_out_of_range",
+  "spatial": true,
+  "serverTime": 1234567890
+}
+
+REAL DISCONNECT can also produce player_directory_left and player_left reason:"disconnected".
+
+CRITICAL CLIENT RULE:
+- player_directory_left = remove from Online roster.
+- player_left with spatial:true + spatial_out_of_range = despawn avatar only. DO NOT remove person from Online roster.
+- player_joined with spatial:true = respawn/update avatar. DO NOT duplicate directory entry.
+
+==================================================
+4. PLAYER MOVEMENT
+==================================================
+
+CLIENT -> SERVER
+{
+  "type": "player_state",
+  "state": {
+    "position": [x,y,z],
+    "rotation": [pitch,yaw,roll],
+    "movement": "walking|idle|...",
+    "tool": "spray|eraser|off|...",
+    "jumping": false,
+    "animation": "walking|idle|jumping|...",
+    "emote": "",
+    "visibleHeldItem": "none|sprayCan|basketball|...",
+    "flightState": "grounded|flying|levitating|...",
+    "cosmetics": {
+      "outfit": "...",
+      "top": "...",
+      "bottom": "...",
+      "accessory": "..."
+    }
+  }
+}
+
+SERVER -> relevant clients
+{
+  "type": "player_state",
+  "playerId": "sender-player-id",
+  "state": { /* cleaned PlayerState */ },
+  "serverTime": 1234567890
+}
+
+Server behavior:
+- <=25m: up to incoming/full rate (client currently max ~10 Hz)
+- 25-60m: ~4 Hz
+- 60-100m: ~1 Hz
+- >100m: no movement delivery and avatar leaves spatial relevance.
+
+==================================================
+5. SPATIAL PERSISTENT WORLD DELTAS
+==================================================
+
+SERVER -> CLIENT
+{
+  "type": "spatial_world_delta",
+  "reason": "cell_changed|revision|live_stroke_bootstrap|...",
+  "revision": 123,
+  "sequence": 456,
+  "serverTime": 1234567890,
+  "upsertPieces": [ /* public graffiti pieces */ ],
+  "removePieceIds": ["piece-id"],
+  "upsertArtworks": [ /* artwork objects */ ],
+  "removeArtworkIds": ["artwork-id"],
+  "upsertStrokes": [ /* full stroke objects */ ],
+  "removeStrokeIds": ["stroke-id"]
+}
+
+CRITICAL: spatial remove IDs mean "not currently relevant / unloaded from this client" unless a normal authoritative delete event says it was deleted.
+
+DO NOT feed spatial removePieceIds/removeStrokeIds/removeArtworkIds through permanent delete/tombstone logic.
+They must be temporary unloads so entities can reappear via a later upsert when the player walks back.
+
+Normal authoritative deletion events remain permanent:
+- piece_removed
+- artwork_removed
+- stroke_gesture_undone (specific stroke IDs actually removed from authoritative piece)
+
+Recommended implementation:
+- keep spatial presence/cache state separate from authoritative deletion/tombstone state.
+- upserts add/update nearby entities.
+- spatial removals unmount/release GPU/canvas resources, but must allow a later upsert with the same ID.
+
+==================================================
+6. LIVE PAINT SCHEMAS
+==================================================
+
+CLIENT -> SERVER stroke_begin
+{
+  "type": "stroke_begin",
+  "strokeId": "gesture-uuid.0",
+  "surfaceId": "...",
+  "pieceId": "piece-id",
+  "operation": "paint|erase",
+  "colour": "#rrggbb",
+  "tool": "spray|roller|marker|...",
+  "brushSize": 1,
+  "opacity": 1,
+  "layerIndex": 0,
+  "face": "0"
+}
+
+SERVER stores/broadcasts full stroke:
+{
+  "type": "stroke_begin",
+  "stroke": {
+    "id": "gesture-uuid.0",
+    "playerId": "...",
+    "accountId": "...",
+    "surfaceId": "...",
+    "pieceId": "...",
+    "operation": "paint|erase",
+    "colour": "#rrggbb",
+    "tool": "...",
+    "brushSize": 1,
+    "opacity": 1,
+    "layerIndex": 0,
+    "face": "0",
+    "points": [],
+    "startedAt": 123,
+    "endedAt": null,
+    "revision": 123,
+    "sequence": 456
+  },
+  "revision": 123,
+  "sequence": 456
+}
+
+CLIENT -> SERVER stroke_points
+{
+  "type": "stroke_points",
+  "strokeId": "gesture-uuid.0",
+  "points": [
+    {"x":1,"y":2,"z":3,"pressure":1}
+  ]
+}
+
+SERVER -> relevant clients
+{
+  "type": "stroke_points",
+  "strokeId": "gesture-uuid.0",
+  "playerId": "player-id",
+  "points": [ ... ],
+  "revision": 124,
+  "sequence": 457
+}
+
+CLIENT -> SERVER stroke_end
+{
+  "type": "stroke_end",
+  "strokeId": "gesture-uuid.0"
+}
+
+SERVER -> relevant clients
+{
+  "type": "stroke_end",
+  "strokeId": "gesture-uuid.0",
+  "playerId": "player-id",
+  "revision": 125,
+  "sequence": 458
+}
+
+Live paint is delivered to spatial clients within 60m. Legacy clients still get room-wide delivery.
+
+==================================================
+7. EXACT FULL-GESTURE UNDO / REDO CONTRACT
+==================================================
+
+Capability: stroke_undo_redo
+Server limit: 2 full gestures.
+Undo is allowed only on own active, non-flattened piece.
+Edit history is transient and is NOT persisted across server restart.
+Starting a fresh finger gesture clears redo history.
+
+GESTURE GROUPING RULE:
+The server groups stroke segments by ID prefix before the final numeric .suffix.
+Examples:
+- abc123.0
+- abc123.1
+- abc123.2
+all equal gestureId "abc123".
+A stroke ID with no final .<number> is its own gesture ID.
+
+CLIENT -> SERVER undo
+{
+  "type": "stroke_undo",
+  "pieceId": "piece-id"
+}
+
+SERVER -> ROOM/RELEVANT CLIENTS
+{
+  "type": "stroke_gesture_undone",
+  "pieceId": "piece-id",
+  "gestureId": "abc123",
+  "strokeIds": ["abc123.0", "abc123.1"],
+  "revision": 500,
+  "sequence": 900
+}
+
+SERVER -> REQUESTING CLIENT after undo
+{
+  "type": "stroke_history_state",
+  "pieceId": "piece-id",
+  "canUndo": true,
+  "canRedo": true,
+  "undoDepth": 1,
+  "redoDepth": 1,
+  "limit": 2,
+  "serverTime": 1234567890
+}
+
+CLIENT -> SERVER redo
+{
+  "type": "stroke_redo",
+  "pieceId": "piece-id"
+}
+
+SERVER -> ROOM/RELEVANT CLIENTS
+{
+  "type": "stroke_gesture_redone",
+  "pieceId": "piece-id",
+  "gestureId": "abc123",
+  "strokes": [ /* complete authoritative stroke objects restored by server */ ],
+  "revision": 501,
+  "sequence": 901
+}
+
+SERVER -> REQUESTING CLIENT then sends stroke_history_state again.
+
+Known errors:
+{ "type":"error", "code":"stroke_undo_unavailable" }
+{ "type":"error", "code":"stroke_redo_unavailable" }
+{ "type":"error", "code":"stroke_undo_limit", "limit":2 }
+{ "type":"error", "code":"nothing_to_undo" }
+{ "type":"error", "code":"nothing_to_redo" }
+
+CLIENT WIRING:
+- Add UNDO and REDO beside zoom controls.
+- Apply stroke_gesture_undone by removing the supplied strokeIds and rebuilding only affected wall(s), not full world.
+- Apply stroke_gesture_redone from the supplied full strokes.
+- Buttons should use stroke_history_state; never fake optimistic availability beyond server state.
+- Undo/redo applies to the currently active own piece only.
+
+==================================================
+8. EXACT OWNER PERSISTENT REFERENCE CONTRACT
+==================================================
+
+Capability: owner_reference_persistence
+Owner-only.
+Maximum 50 persistent references per room.
+These are SERVER persistent reference images, distinct from each user's local reference URL library.
+
+IMPORTANT ASSET RULE:
+owner_reference_save.assetRef must resolve to an asset already known to the server artwork asset store. Do not send an arbitrary external URL here.
+If owner selected a local/external reference, use the existing artwork upload path/ArtworkUpload helper first, then send returned assetRef.
+
+CLIENT -> SERVER list
+{ "type": "owner_reference_list" }
+
+SERVER -> CLIENT list
+{
+  "type": "owner_reference_list",
+  "references": [
+    {
+      "id": "ref-id",
+      "referenceId": "ref-id",
+      "assetRef": "https://24.144.88.205/artwork/<uuid>.<ext>",
+      "name": "Reference",
+      "surfaceId": "...",
+      "position": [x,y,z],
+      "quaternion": [x,y,z,w],
+      "width": 4.2,
+      "height": 2.1,
+      "opacity": 0.35,
+      "aboveArt": true,
+      "createdAt": 1234567890,
+      "updatedAt": 1234567890
+    }
+  ],
+  "serverTime": 1234567890
+}
+
+CLIENT -> SERVER create/save NEW owner reference
+{
+  "type": "owner_reference_save",
+  "assetRef": "<server assetRef>",
+  "name": "Default throwup",
+  "surfaceId": "wall-surface-id",
+  "position": [x,y,z],
+  "quaternion": [x,y,z,w],
+  "width": 4.2,
+  "height": 2.1,
+  "opacity": 0.35,
+  "aboveArt": true
+}
+
+CLIENT -> SERVER update EXISTING owner reference
+Same payload plus referenceId:
+{
+  "type": "owner_reference_save",
+  "referenceId": "existing-ref-id",
+  "assetRef": "<server assetRef>",
+  "name": "Updated reference",
+  "surfaceId": "wall-surface-id",
+  "position": [x,y,z],
+  "quaternion": [x,y,z,w],
+  "width": 5,
+  "height": 2.5,
+  "opacity": 0.5,
+  "aboveArt": false
+}
+
+SERVER -> ALL OWNER CONNECTIONS IN ROOM
+{
+  "type": "owner_reference_saved",
+  "reference": { /* exact public reference schema above */ },
+  "serverTime": 1234567890
+}
+
+CLIENT -> SERVER delete
+{
+  "type": "owner_reference_delete",
+  "referenceId": "ref-id"
+}
+
+SERVER -> ALL OWNER CONNECTIONS IN ROOM
+{
+  "type": "owner_reference_deleted",
+  "referenceId": "ref-id",
+  "serverTime": 1234567890
+}
+
+Errors:
+permission_denied
+invalid_reference_id
+owner_reference_limit + limit
+invalid_owner_reference
+owner_reference_not_found
+
+CLIENT BEHAVIOR REQUIRED BY PRODUCT:
+- Normal player reference guide remains temporary/local and disappears on DONE, expiry of the 60s re-edit loop, abandoning/resetting piece, leaving multiplayer, or disconnect.
+- OWNER gets explicit KEEP/SAVE TO SERVER and DELETE SERVER REFERENCE actions.
+- Owner-persistent refs survive reconnect/restart/wipe/reset and are intended for default graffiti seeding/reference workflow.
+- Do not accidentally promote every user's local reference to server persistence.
+
+==================================================
+9. LOCAL USER REFERENCE LIBRARY (NO SERVER SCHEMA)
+==================================================
+
+This is deliberately client-local.
+Use IndexedDB, not multiplayer/server persistence.
+Store enough to show thumbnails and reload later, e.g.
+{
+  "id": "local-reference-id",
+  "name": "...",
+  "sourceUrl": "https://...",        // if URL-based
+  "blob": "IndexedDB Blob",          // if imported/local; implementation choice
+  "thumbnailBlob": "...",
+  "createdAt": 1234567890,
+  "lastUsedAt": 1234567890
+}
+
+Requirements:
+- multiple references
+- thumbnail scroll/grid
+- add by URL/file
+- choose again later
+- delete locally
+- reference colour picker must be able to sample it
+- no server call unless OWNER explicitly chooses keep/save as persistent owner reference.
+
+==================================================
+10. EXACT ADMIN/OWNER REMOVE ALL ART BY USER
+==================================================
+
+Capability: admin_bulk_art_remove
+Permission required: remove_graffiti
+Target username is sent without or with @; server strips @ and lowercases.
+Server role hierarchy still applies: cannot moderate protected/higher role.
+One bulk-art-removal job per room at a time.
+
+CLIENT -> SERVER
+{
+  "type": "admin_remove_user_art",
+  "targetUsername": "some_username"
+}
+
+SERVER -> REQUESTING ADMIN/OWNER: STARTED
+{
+  "type": "admin_remove_user_art_started",
+  "jobId": "job-id",
+  "targetUsername": "some_username",
+  "total": 137,
+  "removed": 0,
+  "removedPieces": 0,
+  "removedArtworks": 0,
+  "removedStrokes": 0,
+  "remaining": 137,
+  "serverTime": 1234567890
+}
+
+SERVER -> REQUESTING ADMIN/OWNER: PROGRESS
+{
+  "type": "admin_remove_user_art_progress",
+  "jobId": "job-id",
+  "targetUsername": "some_username",
+  "total": 137,
+  "removed": 30,
+  "removedPieces": 22,
+  "removedArtworks": 8,
+  "removedStrokes": 941,
+  "remaining": 107,
+  "serverTime": 1234567890
+}
+
+SERVER -> REQUESTING ADMIN/OWNER: COMPLETE
+{
+  "type": "admin_remove_user_art_complete",
+  "jobId": "job-id",
+  "targetUsername": "some_username",
+  "total": 137,
+  "removed": 137,
+  "removedPieces": 102,
+  "removedArtworks": 35,
+  "removedStrokes": 4100,
+  "remaining": 0,
+  "serverTime": 1234567890
+}
+
+During the job, normal authoritative world events are also broadcast:
+PIECE DELETE:
+{
+  "type": "piece_removed",
+  "pieceId": "piece-id",
+  "strokeIds": ["..."],
+  "reason": "admin_remove_user_art",
+  "revision": 123,
+  "sequence": 456
+}
+
+IMAGE/POSTER DELETE:
+{
+  "type": "artwork_removed",
+  "artworkId": "artwork-id",
+  "reason": "admin_remove_user_art",
+  "revision": 124,
+  "sequence": 457
+}
+
+Current server batching:
+- max 10 pieces/artworks per batch combined
+- waits ~75 ms between batches
+- only schedules persistence once per changed batch
+- do NOT replace this with one giant client delete loop.
+
+Errors:
+invalid_target
+target_role_protected
+bulk_art_removal_busy + jobId
+permission_denied
+
+UI:
+- user/profile art view -> admin/owner button REMOVE ALL ART
+- confirm target
+- send ONE admin_remove_user_art request
+- show started/progress/complete from server
+- client must continue applying normal piece_removed/artwork_removed events while progress UI is open.
+
+==================================================
+11. DIRECT SINGLE IMAGE/POSTER DELETE
+==================================================
+
+CLIENT -> SERVER
+{
+  "type": "admin_delete_artwork",
+  "artworkId": "artwork-id"
+}
+
+SERVER -> ROOM/RELEVANT CLIENTS
+{
+  "type": "artwork_removed",
+  "artworkId": "artwork-id",
+  "reason": "admin_deleted",
+  "revision": 123,
+  "sequence": 456
+}
+
+SERVER -> REQUESTING ADMIN/OWNER
+{
+  "type": "admin_delete_artwork_complete",
+  "artworkId": "artwork-id",
+  "serverTime": 1234567890
+}
+
+==================================================
+12. OWNER/ART IDENTITY FOR ART VIEWER
+==================================================
+
+Persistent graffiti piece public schema includes:
+{
+  "id": "piece-id",
+  "pieceId": "piece-id",
+  "surfaceId": "...",
+  "anchor": [x,y,z],
+  "chunkX": 0,
+  "chunkZ": 0,
+  "ownerPlayerId": "legacy/live connection id",
+  "ownerUsername": "durable Aippy username",
+  "ownerNickName": "Aippy nickname",
+  "createdAt": 0,
+  "completedAt": 0,
+  "currentWindowStartedAt": 0,
+  "currentWindowEndsAt": 0,
+  "currentWindowLikes": 0,
+  "lifetimeLikes": 0,
+  "survivalGeneration": 0,
+  "strokeIds": [],
+  "bounds": {"min":[x,y,z],"max":[x,y,z]},
+  "flattened": true,
+  "assetRef": "...",
+  "face": "0",
+  "position": [x,y,z],
+  "quaternion": [x,y,z,w],
+  "width": 1,
+  "height": 1,
+  "flattenedAt": 0,
+  "status": "active",
+  "revision": 0,
+  "sequence": 0
+}
+
+Poster/image artwork server object includes:
+{
+  "id": "artwork-id",
+  "actionId": "...",
+  "ownerPlayerId": "...",
+  "ownerAccountId": "...",          // server-internal object may carry this
+  "ownerUsername": "username",
+  "ownerNickName": "nickname",
+  "assetRef": "...",
+  "surfaceId": "...",
+  "face": "0",
+  "position": [x,y,z],
+  "rotation": [x,y,z,w],
+  "width": 1,
+  "height": 1,
+  "createdAt": 0,
+  "revision": 0,
+  "sequence": 0
+}
+
+Art viewer product rule:
+- display real nickName/username where available.
+- profile link/select uses username/player profile identity, not text "Owner" or "Admin".
+- role can be shown as secondary badge only if useful.
+- owner/admin art should not replace identity with generic OWNER/ADMIN.
+
+==================================================
+13. SAVED ART LIBRARY SERVER CONTRACT
+==================================================
+
+Capability: saved_art_library
+This is server/account saved reusable finished art. It is DIFFERENT from local reference URL library.
+
+SavedArt item:
+{
+  "id": "saved-art-id",
+  "name": "Saved art",
+  "assetRef": "...",
+  "width": 1,
+  "height": 1,
+  "sourcePieceId": "piece-id",
+  "savedAt": 1234567890
+}
+
+CLIENT -> SERVER list
+{ "type":"saved_art_list" }
+
+SERVER -> CLIENT
+{
+  "type":"saved_art_library",
+  "items":[ /* SavedArt[] */ ],
+  "reuseCostCredits":25,
+  "maxItems":50,
+  "serverTime":1234567890
+}
+
+CLIENT -> SERVER save existing OWN flattened piece
+{
+  "type":"saved_art_save",
+  "pieceId":"piece-id",
+  "name":"optional custom name"
+}
+
+SERVER -> CLIENT
+{
+  "type":"saved_art_saved",
+  "item":{/* SavedArt */},
+  "items":[/* entire updated SavedArt[] */],
+  "serverTime":1234567890
+}
+
+CLIENT -> SERVER delete
+{
+  "type":"saved_art_delete",
+  "savedArtId":"saved-art-id"
+}
+
+SERVER -> CLIENT
+{
+  "type":"saved_art_deleted",
+  "savedArtId":"saved-art-id",
+  "items":[/* updated list */],
+  "serverTime":1234567890
+}
+
+CLIENT -> SERVER place/reuse
+{
+  "type":"saved_art_place",
+  "savedArtId":"saved-art-id",
+  "pieceId":"new-piece-id",
+  "surfaceId":"...",
+  "anchor":[x,y,z],
+  "bounds":{"min":[x,y,z],"max":[x,y,z]},
+  "face":"0",
+  "position":[x,y,z],
+  "quaternion":[x,y,z,w],
+  "width":1,
+  "height":1
+}
+
+SERVER broadcasts normal piece_created + piece_flattened, then sender gets:
+{
+  "type":"saved_art_placed",
+  "savedArtId":"saved-art-id",
+  "piece":{/* public graffiti piece */},
+  "cost":25,
+  "balance":975,
+  "serverTime":1234567890
+}
+
+Potential errors include:
+invalid_piece
+piece_not_flattened
+saved_art_asset_missing
+saved_art_limit (+ maxItems)
+saved_art_not_found
+invalid_saved_art_place
+protected_area_overlap (+ overlapPieceId)
+insufficient_credits (+ balance)
+art_creation_cooldown
+
+==================================================
+14. ART CREATION COOLDOWN ERROR
+==================================================
+
+SERVER -> CLIENT
+{
+  "type":"error",
+  "code":"art_creation_cooldown",
+  "ok":false,
+  "limit":2,
+  "windowSeconds":60,
+  "retryAfterMs":12345,
+  "serverTime":1234567890
+}
+
+Use this error instead of inventing a client-only cooldown.
+
+==================================================
+15. SERVER PERFORMANCE STATUS (OWNER)
+==================================================
+
+CLIENT -> SERVER
+{ "type":"server_perf_status" }
+
+SERVER -> CLIENT
+{
+  "type":"server_perf_status",
+  "metrics": { /* server performanceSnapshot object */ },
+  "serverTime":1234567890
+}
+
+This is owner-only. Do not poll rapidly from ordinary clients.
+
+Health endpoint also exposes Batch 6 spatial counters such as:
+{
+  "spatial": {
+    "awareConnections": 120,
+    "playerStateDeliveredSpatial": 123,
+    "playerStateAvoided": 456,
+    "livePaintDeliveredSpatial": 789,
+    "livePaintAvoided": 101112
+  }
+}
+
+==================================================
+16. CLIENT FILES TO CHANGE FIRST
+==================================================
+
+Current GitHub source already has the right multiplayer architecture. Modify it; do not create a second multiplayer stack.
+
+1) src/multiplayer/connection.ts
+- It already waits for hello before join.
+- Extend join to send spatialInterest:true + initial position IF hello.capabilities includes spatial_interest_v1.
+- Preserve legacy fallback if capability missing.
+- Keep username/nickName/displayName separate.
+- Recognize spatial_status and any future update-required error without making connection state lie.
+
+2) src/multiplayer/worldSession.ts
+- join() has direct access to this.world.playerPosition; pass initial [x,y,z] into connection.connect.
+- Handle world_snapshot.playerDirectory separately from world_snapshot.players.
+- Handle player_directory_joined / player_directory_left.
+- Keep Online roster global while RemotePlayers only contains spatially relevant avatars.
+- Handle spatial_world_delta.
+- Temporary spatial removals MUST NOT use permanent tombstone/delete behavior.
+- Existing per-frame player_state already sends position at max 10Hz; preserve it.
+- Wire undo/redo methods and history state.
+- Wire owner reference list/save/delete.
+- Wire bulk removal progress.
+
+3) src/multiplayer/protocol.ts
+Add typed interfaces/readers for:
+- SpatialConfig
+- DirectoryPlayer
+- SpatialStatus
+- SpatialWorldDelta
+- StrokeHistoryState
+- StrokeGestureUndone
+- StrokeGestureRedone
+- OwnerReference
+- OwnerReferenceList/Saved/Deleted
+- AdminRemoveUserArtProgress union
+- SavedArtItem/library responses if not already represented
+Do not leave these as guessed anonymous any-shapes if avoidable.
+
+4) src/multiplayer/playerDirectory.ts + remotePlayers.ts
+- directory is global identity/online list.
+- remotePlayers is only current 3D avatar set.
+- spatial out-of-range removes avatar but keeps directory identity.
+
+5) src/multiplayer/paintSync.ts + paintReplay.ts
+- Apply stroke_gesture_undone by deleting supplied authoritative stroke IDs.
+- Apply stroke_gesture_redone from supplied strokes.
+- Rebuild only affected surfaces/walls.
+- Add a temporary spatial unload path distinct from permanent reject/delete/tombstone.
+
+6) src/multiplayer/pieceSync.ts
+- Add/upsert piece support suitable for spatial_world_delta.
+- spatial removePieceIds = unload only.
+- piece_removed = permanent delete.
+- Keep ownerUsername/ownerNickName available to art viewer.
+
+7) src/multiplayer/artworkSync.ts
+- MAX_CONCURRENT_IMAGE_LOADS: change 10 -> 7.
+- add spatial upsert/unmount handling that can reload same artwork ID later.
+- permanent artwork_removed still deletes.
+- retain async image.decoding.
+
+8) src/game/referenceImage.ts / referenceGuide.ts + ReferenceSheet/ReferenceControls
+- local reference library in IndexedDB.
+- reference disposal lifecycle.
+- owner explicit server persistence path using owner_reference_* schemas.
+- reference remains non-raycastable so it never blocks painting.
+
+==================================================
+17. PRODUCT REQUIREMENTS TO IMPLEMENT WITH THESE CONTRACTS
+==================================================
+
+PAINTING UI
+- UNDO / REDO beside zoom controls; last 2 full finger gestures.
+- move Brush Settings control between Brush and Colour.
+- replace Drip button with ERAZE; white button, black text.
+- colour picker samples world rendered colour, including reference guide image, not only painted canvas data.
+
+REFERENCES
+- ordinary reference disappears when user is done with piece, 60-second re-edit period ends, piece resets/abandoned, disconnect, or multiplayer leave.
+- owner gets explicit KEEP/SAVE SERVER REFERENCE and DELETE SERVER REFERENCE.
+- local URL/file reference library with thumbnails in IndexedDB.
+
+ART VIEW / NEARBY ART
+- show creator nickName/username and open their profile.
+- do not label user merely Owner/Admin.
+- selected/viewed art must visibly pulse/throb for >=3 sec and be visible through walls.
+- Nearby Art -> View should move/look as now AND trigger same >=3 sec through-wall pulse.
+
+ADMIN
+- profile/user -> Remove All Art.
+- send exactly one admin_remove_user_art request.
+- display server progress.
+- no giant client-side delete loop.
+
+CHAT
+- server already supplies recent chat history. Keep snapshot/chat incremental behavior; do not request historical archive beyond server window.
+
+PERFORMANCE
+- ArtworkSync image concurrency 10 -> 7.
+- use Batch 6 spatial mode.
+- unload off-range 3D/image resources instead of keeping everything mounted.
+- never destroy authoritative identity/state merely because a thing left spatial relevance.
+- do not repeatedly rebuild whole world/canvas for one change.
+
+MULTIPLAYER UI
+- in SOLO, pressing SOLO should only ask "Join multiplayer?" Yes connects; No closes. Do not open the full settings sheet.
+- in multiplayer, Online still opens connected-user list.
+- top bar: "Credits XYZ" -> "C XYZ".
+- remove word "Online" beside green online/player-count indicator; keep the icon/count.
+
+==================================================
+18. DO NOT INVENT / DO NOT CHANGE
+==================================================
+
+- Do not create a new backend, WebSocket server, VM, protocol, room architecture, or second React root.
+- Do not change wss://24.144.88.205/multiplayer.
+- Do not use nickname to determine permissions. Trust server permissions/role messages only.
+- Do not make multiplayer mandatory. Solo stays fully usable.
+- Do not treat spatial unload as deletion.
+- Do not reintroduce deferred/old flatten behavior or position-mismatch checks.
+- Do not change finished piece flatten semantics unless required for the above wiring.
+- Do not increase image concurrency.
+- Do not add a new networkRevision dependency until the server-side revision gate is actually deployed and verified live.
+- Preserve existing saves, settings, shell, Aippy identity integration and current gameplay.
+
+BUILD/REPORT
+After implementation:
+- production build/typecheck PASS
+- list exact files changed
+- confirm spatial join is sent only when server advertises capability
+- confirm world_snapshot spatial mode is recognized
+- confirm Online roster uses playerDirectory while avatars use players/player_joined/player_left
+- confirm spatial world entities unload/reload without permanent tombstones
+- confirm undo/redo round trip from request -> broadcast -> history state
+- confirm owner reference list/save/delete round trip
+- confirm admin bulk remove started/progress/complete UI
+- confirm ArtworkSync concurrency = 7
+- confirm no second multiplayer implementation/backend/root was added

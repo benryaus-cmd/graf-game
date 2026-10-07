@@ -1,0 +1,253 @@
+GRAFFCITI CLIENT HANDOVER — BATCH 7 / FINAL CLIENT WIRING
+
+Work in the CURRENT benryaus-cmd/graf-game project. Do not redesign the game or rebuild multiplayer architecture. The live DigitalOcean server already implements the backend features below. Your job is to wire the existing client/UI to them, preserve current gameplay, and make targeted performance-safe changes.
+
+LIVE SERVER
+- WSS: wss://24.144.88.205/multiplayer
+- Health: https://24.144.88.205/health
+- Base protocol remains protocol: 2.
+- Server network revision is 6.
+- Production target room cap is 120.
+- Server is running spatial interest management. Legacy full-room mode remains temporarily allowed only until this client build is deployed.
+- After this client build is live, owner will set server setting minimumNetworkRevision from 0 to 6. At that point old/wrong clients must receive client_update_required and disconnect.
+- Do not create a new backend, VM, Docker stack, WebSocket endpoint or protocol.
+
+==================================================
+1. REQUIRED FIRST: BATCH 7 NETWORK / SPATIAL CLIENT
+==================================================
+
+Update the existing multiplayer client, mainly src/multiplayer/connection.ts, src/multiplayer/worldSession.ts, src/multiplayer/protocol.ts and the existing sync classes.
+
+On protocol-2 join send ALL of:
+
+{
+  type: 'join',
+  roomId: 'public',
+  protocol: 2,
+  networkRevision: 6,
+  capabilities: [
+    'spatial_interest_v1',
+    'spatial_world_delta_v1',
+    'player_directory_v1'
+  ],
+  spatialInterest: true,
+  position: [x, y, z],
+  username,
+  nickName,
+  displayName
+}
+
+The initial position must be the real current world.playerPosition. Do not invent [0,0,0] if the player is elsewhere. Extend MultiplayerConnection.connect cleanly so WorldMultiplayerSession can pass the initial position.
+
+The server hello now includes networkRevision, minimumNetworkRevision and requiredClientCapabilities. If the server requires a network revision higher than this client supports, fail multiplayer cleanly with a clear "Update GraffCiti to use multiplayer" style message and keep solo available.
+
+Handle error code client_update_required explicitly. Do not reconnect-loop.
+
+Spatial player semantics:
+- world_snapshot.players contains only nearby/renderable players.
+- world_snapshot.playerDirectory contains the lightweight room-wide identity directory.
+- player_directory_joined / player_directory_left update the ONLINE/player/profile directory only.
+- player_joined means spawn/show a nearby 3D avatar.
+- player_left with spatial:true or reason spatial_out_of_range means remove/hide that remote 3D avatar ONLY. Do NOT mark that person offline; keep them in playerDirectory.
+- player_directory_left means they actually disconnected and should leave the online directory.
+- player_state continues to update nearby avatars normally.
+
+Handle spatial_world_delta incrementally:
+- upsertPieces
+- removePieceIds
+- upsertArtworks
+- removeArtworkIds
+- upsertStrokes
+- removeStrokeIds
+
+CRITICAL: spatial removal means "unload because it is far away", NOT "authoritatively delete forever". Do not feed spatial removeStrokeIds through the current rejection/tombstone path in PaintSync.removeStrokeIds/rejectPiece, because that would prevent the same art loading again when the player walks back into the area. Add a separate temporary/unload path for spatial streaming. Same principle for pieces/artwork: unload render/state cleanly but allow later upsert to restore them.
+
+Do not full-resnapshot/rebuild the whole city for every spatial delta. Apply deltas in batches. When strokes are removed/added, collect affected walls and rebuild each affected wall at most once per received delta.
+
+Keep current local-first painting. The local painter must never wait for server round trips to see their own paint.
+
+==================================================
+2. PAINTING / TOOL UI
+==================================================
+
+UNDO / REDO
+Add Undo and Redo controls near the existing zoom in/out controls.
+Server already implements full-gesture undo/redo with a limit of 2 gestures.
+One gesture means finger/pointer down until finger/pointer up, even if PaintSync split it into multiple internal stroke segments.
+Send:
+- { type: 'stroke_undo', pieceId }
+- { type: 'stroke_redo', pieceId }
+Handle:
+- stroke_history_state: canUndo, canRedo, undoDepth, redoDepth, limit
+- stroke_gesture_undone: remove its strokeIds and rebuild affected walls once
+- stroke_gesture_redone: restore the returned strokes and rebuild affected walls once
+Disable buttons when unavailable. Do not implement a separate local undo model that disagrees with server authority.
+
+BRUSH / COLOUR
+Move the Brush setting so its section sits between Brush and Colour in the intended control order. Preserve existing spray heads/interpolation.
+
+ERAZE
+Replace the visible "Drip" control with "ERAZE" exactly.
+The ERAZE button must be white with black text.
+Use the existing eraseMode / eraser operation. Do not create a second erase system.
+
+COLOUR PICKER
+The colour picker must sample visible colour from the world, not only existing paint buffers. It must be able to pick from the reference image as well as walls/art/paint where visually appropriate.
+The reference guide currently deliberately does not raycast as a paint target; preserve that painting behaviour. Implement colour sampling without making the reference image block painting.
+
+==================================================
+3. REFERENCE IMAGE SYSTEM
+==================================================
+
+NORMAL USER REFERENCE LIFETIME
+A normal user's active reference guide is temporary to the current piece/edit session.
+Remove it when the user is no longer interacting with that piece, including:
+- DONE/finalise piece
+- the existing 60-second re-edit/reset window expires
+- disconnect / multiplayer session reset
+It must not remain floating forever after the relevant piece session is over.
+
+OWNER PERSISTENT REFERENCES
+Server already supports owner_reference_list / owner_reference_save / owner_reference_delete and capability owner_reference_persistence.
+Wire this only for owner role.
+Owner can explicitly KEEP a reference as a persistent world reference, or DELETE it.
+This is deliberately an owner world-seeding tool: owner may use persistent references to re-seed/default graffiti after a server wipe/reset.
+Do not make every user's references globally persistent.
+
+LOCAL URL REFERENCE LIBRARY
+Build a local browser library for references using IndexedDB, not localStorage blobs.
+User can add multiple URL/file references, see thumbnail + name, select/reuse one later, and delete local library entries.
+Keep this local to that device/browser. Do not upload the user's private reference library to the multiplayer server.
+Reuse existing src/game/referenceImage.ts / ReferenceSheet / ReferenceControls rather than replacing the reference system.
+
+==================================================
+4. ART VIEWER / PROFILES / HIGHLIGHTING
+==================================================
+
+OWNER IDENTITY
+Poster/image art viewer and graffiti viewer must show the real creator identity from server metadata:
+- nickName as primary display name when available
+- @username separately
+- role as a small badge only when relevant
+Do not replace my identity with generic text like "Owner" or "Admin" merely because I have that role. If something is explicitly admin/server art, that can be labelled as such.
+
+Make the creator identity clickable/tappable to open the existing player profile UI. Offline owners should still be representable from stored username/nickName metadata; do not require the creator to currently be nearby.
+
+ART HIGHLIGHT
+When a piece is selected/viewed, highlight it for at least 3 seconds.
+The actual art/piece must visibly pulse/throb, not only its bounding box.
+The locator/highlight must be visible through walls so if the user is standing on the back side of the wall they can tell the selected art is on the other side.
+Do not permanently change the artwork texture/material.
+
+NEARBY ART
+Selecting VIEW in Nearby Art must continue moving/focusing the player as it does now, then trigger the same proper >=3 second through-wall pulse/highlight. Replace the current roughly 1-second box-only feedback.
+
+==================================================
+5. ADMIN / OWNER ART REMOVAL
+==================================================
+
+On another user's profile, admin/owner must have "REMOVE ALL ART" when permissions allow it.
+Use the existing server staged job:
+{ type: 'admin_remove_user_art', targetUsername }
+
+Server already removes in batches instead of trying to destroy hundreds of pieces at once. Handle and show progress for:
+- admin_remove_user_art_started
+- admin_remove_user_art_progress
+- admin_remove_user_art_complete
+Also handle bulk_art_removal_busy / target_role_protected cleanly.
+
+Make single/bulk removal feel faster client-side:
+- remove/unload returned items promptly
+- batch affected-wall rebuilds
+- do not replay/rebuild a wall once per removed stroke
+- do not freeze the render thread processing a huge delete in one synchronous loop
+Do NOT replace the staged server job with a client loop sending 100 delete requests.
+
+==================================================
+6. CHAT / SOCIAL
+==================================================
+
+Server already serves only the configured recent chat window; current production setting is 60 minutes. Keep the received history and continue live messages from there. Do not request/recreate older chat client-side.
+
+ONLINE button behaviour in multiplayer is correct: it shows connected users. Preserve it.
+
+When in SOLO, pressing the SOLO status/control must NOT open the full settings menu. Show a small confirmation: "Join multiplayer?" YES connects, cancel/no leaves solo unchanged.
+
+==================================================
+7. PERFORMANCE / IMAGE LOADING
+==================================================
+
+In src/multiplayer/artworkSync.ts change:
+MAX_CONCURRENT_IMAGE_LOADS = 10
+TO:
+MAX_CONCURRENT_IMAGE_LOADS = 7
+
+Preserve image.decoding = 'async'.
+
+The larger performance fix is Batch 6 spatial streaming. Do not defeat it by keeping/rendering every remote player or every artwork in memory after the server says it is out of range.
+
+Avoid synchronous mass canvas rebuilds. Spatial deltas and admin removals must coalesce affected surfaces/walls and rebuild each once.
+Dispose removed Three.js meshes/geometries/materials/textures correctly, while allowing spatially-unloaded entities to be loaded again later.
+
+Do not add fake FPS throttles or degrade the local player's paint responsiveness as a shortcut.
+
+==================================================
+8. TOP BAR / SMALL UI CLEANUP
+==================================================
+
+Shorten the top bar:
+- "CREDITS XYZ" -> "C XYZ"
+- keep the green multiplayer/online indicator/count but remove the literal word "Online"
+Preserve the existing ONLINE user list behaviour.
+
+==================================================
+9. SERVER FEATURES ALREADY IMPLEMENTED — WIRE, DO NOT REBUILD
+==================================================
+
+The live server already has these systems. Do not invent replacements:
+- protocol v2 WSS endpoint
+- account username/nickName/displayName separation
+- role/permissions returned by server
+- last-hour chat snapshots
+- durable art ownership
+- 24h protection and runtime-configurable settings
+- 76h survival window and likes policy
+- immediate piece flatten flow
+- full-gesture undo/redo, last 2 gestures
+- staged remove-all-user-art jobs
+- owner persistent references
+- saved art library server messages
+- art creation cooldown
+- owner web settings/reset/wipe/restart tools
+- async/debounced persistence
+- spatial interest management and spatial world deltas
+- 120-player production target/cap
+- network revision 6 gate capability
+
+Do not reintroduce deferred flatten. Do not create a second backend. Do not add another React root. Do not rewrite working painting/interpolation/account/moderation systems.
+
+==================================================
+10. IMPORTANT FINAL NETWORK-GATE RELEASE SEQUENCE
+==================================================
+
+During development the server setting minimumNetworkRevision remains 0 so the current live client still connects.
+
+Before declaring this update complete, verify the NEW client actually sends networkRevision: 6, all three client capabilities, spatialInterest: true, and a valid initial position, and that the server returns spatial_status enabled:true.
+
+Build and test the project.
+
+Report:
+- exact files changed
+- network revision join payload implemented: YES/NO
+- spatial_status enabled in test: YES/NO
+- spatial_world_delta wired: YES/NO
+- playerDirectory vs nearby avatar semantics wired: YES/NO
+- temporary spatial unload can re-load later: YES/NO
+- undo/redo wired: YES/NO
+- owner persistent reference controls wired: YES/NO
+- local reference library wired: YES/NO
+- bulk remove progress wired: YES/NO
+- ArtworkSync concurrency: 7
+- build: PASS/FAIL
+
+DO NOT tell the owner to set minimumNetworkRevision=6 until the new client build is deployed and confirmed working. After deployment the owner will set Minimum client network revision to 6 in the server owner page and save. That is the final hard cut-over that makes old/wrong clients unable to join.
