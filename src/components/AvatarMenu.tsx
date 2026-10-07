@@ -1,6 +1,7 @@
 import type { AvatarEmote } from '@/game/worldTypes';
 import { useState } from 'react';
 import GameSheet from './GameSheet';
+import { setAssetPreviewPreference, useAssetPreviewPreference } from '@/game/assetPreviewPreference';
 import { SHOP_ITEMS, type GameProgress, type ShopCategory, type ShopItem } from '@/game/progression';
 
 interface AvatarMenuProps {
@@ -30,6 +31,7 @@ const EMOTES: Array<{ id: AvatarEmote; icon: string; label: string }> = [
 
 const AvatarMenu = ({ progress, panelColor, purchasesDisabled, onClose, onPurchase, onEquip, onEmote }: AvatarMenuProps) => {
   const [category, setCategory] = useState<ShopCategory | 'emote'>('outfit');
+  const preview = useAssetPreviewPreference();
   const items = category === 'emote' ? [] : SHOP_ITEMS.filter((item) => item.category === category);
   const equipped = category === 'emote' ? '' : progress[category];
 
@@ -37,6 +39,18 @@ const AvatarMenu = ({ progress, panelColor, purchasesDisabled, onClose, onPurcha
     <GameSheet title="STREET CLOSET" subtitle="Your look" onClose={onClose} closeLabel="Close closet" className="avatar-sheet">
       <div className="closet-balance"><span>🪙</span> {progress.coins} SOLO COINS <small>{purchasesDisabled ? 'SOLO SHOP PAUSED' : 'EARN BY PAINTING'}</small></div>
       {purchasesDisabled && <p className="closet-footnote">Inventory, purchases, pickups and trading are unavailable until verified Aippy accounts are connected. You can still wear your existing solo looks.</p>}
+      <div className="closet-items" aria-label="Character model">
+        <button type="button" className={`closet-item ${preview.model === 'original' ? 'closet-item-selected' : ''}`} aria-pressed={preview.model === 'original'} onClick={() => setAssetPreviewPreference({ ...preview, model: 'original' })}>
+          <span className="closet-copy"><b>EXISTING CHARACTER</b><small>Your equipped clothes and gear</small></span><span className="closet-action">{preview.model === 'original' ? 'ON' : 'WEAR'}</span>
+        </button>
+        <button type="button" className={`closet-item ${preview.model === 'hoodie' ? 'closet-item-selected' : ''}`} aria-pressed={preview.model === 'hoodie'} onClick={() => setAssetPreviewPreference({ ...preview, model: 'hoodie' })}>
+          <span className="closet-copy"><b>HOODIE CHARACTER</b><small>Free Quaternius model · preview on this device</small></span><span className="closet-action">{preview.model === 'hoodie' ? 'ON' : 'TRY'}</span>
+        </button>
+        <button type="button" className="closet-item" aria-pressed={preview.building} onClick={() => setAssetPreviewPreference({ ...preview, building: !preview.building })}>
+          <span className="closet-copy"><b>BUILDING PREVIEW</b><small>Near spawn · toggle off to compare performance</small></span><span className="closet-action">{preview.building ? 'ON' : 'OFF'}</span>
+        </button>
+      </div>
+      {preview.model === 'hoodie' && <p className="closet-footnote">See your character in third person. This device preview uses its own clothes; your existing outfit, abilities and multiplayer appearance are preserved. The original character stays visible until the model loads.</p>}
       <nav className="closet-tabs" aria-label="Closet categories">
         {TABS.map((tab) => (
           <button
@@ -64,14 +78,14 @@ const AvatarMenu = ({ progress, panelColor, purchasesDisabled, onClose, onPurcha
         <div className="closet-items">
           {items.map((item) => {
             const owned = progress.owned.includes(item.id);
-            const selected = equipped === item.id.slice(item.id.indexOf(':') + 1);
+            const selected = preview.model === 'original' && equipped === item.id.slice(item.id.indexOf(':') + 1);
             return (
               <button
                 key={item.id}
                 type="button"
                 className={`closet-item ${item.exclusive ? 'closet-item-exclusive' : ''} ${selected ? 'closet-item-selected' : ''}`}
                 disabled={(owned && selected) || (!owned && purchasesDisabled)}
-                onClick={() => (owned ? onEquip : onPurchase)(item)}
+                onClick={() => { setAssetPreviewPreference({ ...preview, model: 'original' }); (owned ? onEquip : onPurchase)(item); }}
               >
                 <span
                   className={`closet-swatch ${item.category === 'outfit' ? `swatch-${item.id.split(':')[1]}` : ''}`}

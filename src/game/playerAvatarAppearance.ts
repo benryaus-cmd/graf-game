@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { AvatarAppearance } from '@/game/progression';
 import type { AvatarEmote } from '@/game/worldTypes';
 import type { AvatarParts } from '@/game/playerAvatarTypes';
+import { updateAssetPreviewAvatar } from '@/game/assetPreview';
 
 const ARM_DOWN = new THREE.Vector3(0, -1, 0);
 const THINKING_HAND = new THREE.Vector3(-0.65, 0.58, 0.49).normalize();
@@ -45,6 +46,7 @@ export function updatePlayerAvatar(
   walking: boolean,
   airborne: boolean,
 ): void {
+  updateAssetPreviewAvatar(avatar, delta, walking, airborne);
   const parts = avatar.userData.parts as AvatarParts;
   const elapsed = (Number(avatar.userData.elapsed) || 0) + delta;
   avatar.userData.elapsed = elapsed;

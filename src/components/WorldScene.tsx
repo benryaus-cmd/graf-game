@@ -23,6 +23,8 @@ import { workspaceWorldBounds } from '@/game/paintWorkspaceFeedback';
 import type { AdminAction, AdminActionOptions } from '@/multiplayer/adminActions';
 import { ReferenceGuide, type ReferenceSettings } from '@/game/referenceGuide';
 import { PieceEditGrace } from '@/game/pieceEditGrace';
+import { AssetPreview } from '@/game/assetPreview';
+import { useAssetPreviewPreference } from '@/game/assetPreviewPreference';
 
 export interface MultiplayerRequest { action: 'join' | 'leave' | 'chat' | 'resync' | 'like' | 'inspect' | 'delete-piece' | 'set-role' | 'paint-over' | 'quote-protection' | 'buy-protection' | 'admin-action' | 'select-player' | 'keep-reference' | 'delete-reference' | 'creator-select' | 'inspect-artwork' | 'delete-artwork'; creator?: { playerId?: string; username: string; nickName: string }; text?: string; role?: ServerRole; colour?: string; protectionEnabled?: boolean; adminAction?: AdminAction; options?: AdminActionOptions; sequence: number }
 
@@ -50,6 +52,8 @@ interface WorldSceneProps {
 }
 
 const WorldScene = (props: WorldSceneProps) => {
+  const previewPreference = useAssetPreviewPreference();
+  const assetPreviewRef = useRef<AssetPreview | null>(null);
   const workspaceCallbackRef = useRef(props.onWorkspaceChange);
   workspaceCallbackRef.current = props.onWorkspaceChange;
   const colorPickCallbackRef = useRef(props.onColorPick);
@@ -111,6 +115,8 @@ const WorldScene = (props: WorldSceneProps) => {
     if (!container) return;
     const world = createWorld(container, liveRef.current.fogDensity);
     worldRef.current = world;
+    const assetPreview = new AssetPreview(world.scene, world.playerAvatar);
+    assetPreviewRef.current = assetPreview;
     const guide = new ReferenceGuide(world);
     referenceRef.current = guide;
     world.onPaintWorkspaceChange = workspace => {
@@ -164,10 +170,13 @@ const WorldScene = (props: WorldSceneProps) => {
       if (posterRef.current) disposePosterPlacementSession(world, posterRef.current);
       posterRef.current = null;
       guide.dispose(); referenceRef.current = null;
+      assetPreview.dispose(); assetPreviewRef.current = null;
       disposeWorld(world);
       if (worldRef.current === world) worldRef.current = null;
     };
   }, []);
+
+  useEffect(() => { void assetPreviewRef.current?.configure(previewPreference); }, [previewPreference]);
 
   const editGrace = useRef(new PieceEditGrace());
 
