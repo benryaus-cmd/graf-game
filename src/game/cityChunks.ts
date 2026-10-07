@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import type { PaintWall, Collider, Staircase, WalkSurface } from '@/game/worldTypes';
+import { FIXTURE_POSITION, FIXTURE_VISIBILITY_DISTANCE } from '@/game/fixtureBuilding';
 import { CITY_CHUNK_SIZE, createCityChunk } from '@/game/cityChunkContent';
 import type { CityMaterials } from '@/game/cityStructures';
 import type { CityChunk, PaintCache } from '@/game/cityChunkTypes';
@@ -28,6 +29,15 @@ export function createCityChunkStream(scene: THREE.Scene, cityMaterials: CityMat
   let centerZ: number | null = null;
   let paintSession: 'solo' | 'multiplayer' = 'solo';
   let paintGeneration = 0;
+  let retainedFixture = false;
+
+  // Match the former preview's camera-based cutoff, including canvas/map views.
+  const previousRender = scene.onBeforeRender;
+  scene.onBeforeRender = (...args) => {
+    previousRender.apply(scene, args);
+    const camera = args[2];
+    active.get('0:-1')?.group.userData.updateFixture?.(camera.position.x, camera.position.z);
+  };
 
   const saveOneChunk = (key: string, chunk: CityChunk): void => {
     if (paintSession !== 'solo') return;
@@ -52,7 +62,11 @@ export function createCityChunkStream(scene: THREE.Scene, cityMaterials: CityMat
     active.forEach(chunk => chunk.group.userData.updateFixture?.(x, z));
     const nextX = Math.floor(x / CITY_CHUNK_SIZE + 0.5);
     const nextZ = Math.floor(z / CITY_CHUNK_SIZE + 0.5);
-    if (nextX === centerX && nextZ === centerZ) return;
+    // Retain the owner chunk even outside the ordinary 3x3 neighborhood.
+    // Eight metres covers the existing 5.6m third-person camera offset.
+    const retainFixture = x * x + (z - FIXTURE_POSITION.z) ** 2 < (FIXTURE_VISIBILITY_DISTANCE + 8) ** 2;
+    if (nextX === centerX && nextZ === centerZ && retainFixture === retainedFixture) return;
+    retainedFixture = retainFixture;
     centerX = nextX;
     centerZ = nextZ;
     const wanted = new Set<string>();
@@ -61,6 +75,7 @@ export function createCityChunkStream(scene: THREE.Scene, cityMaterials: CityMat
         wanted.add(`${nextX + offsetX}:${nextZ + offsetZ}`);
       }
     }
+    if (retainFixture) wanted.add('0:-1');
     active.forEach((chunk, key) => {
       if (wanted.has(key)) return;
       saveOneChunk(key, chunk);

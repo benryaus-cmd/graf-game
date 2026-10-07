@@ -49,7 +49,7 @@ test('workspace camera includes building context then restores every original la
 test('close grain, far cutoff and collider allow reachable slab painting', () => {
   const fixture = addFixtureBuilding(new THREE.Group());
   fixture.updateDistance(0, FIXTURE_POSITION.z); assert.equal(fixture.root.visible, true); assert.equal(fixture.detail.value, 1);
-  fixture.updateDistance(30, FIXTURE_POSITION.z); assert.equal(fixture.root.visible, true); assert.equal(fixture.detail.value, 0);
+  fixture.updateDistance(21, FIXTURE_POSITION.z); assert.equal(fixture.root.visible, true); assert.equal(fixture.detail.value, 0);
   fixture.updateDistance(81, FIXTURE_POSITION.z); assert.equal(fixture.root.visible, false);
   fixture.updateDistance(0, FIXTURE_POSITION.z);
   fixture.root.updateMatrixWorld(true);

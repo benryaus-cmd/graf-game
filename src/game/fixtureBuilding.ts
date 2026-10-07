@@ -7,7 +7,8 @@ import { createFixtureGrain, applyFixtureGrain } from '@/game/fixtureBuildingGra
 export { FIXTURE_DEPTH, FIXTURE_POSITION } from '@/game/fixtureBuildingFaces';
 
 const MODEL_URL = 'https://raw.githubusercontent.com/benryaus-cmd/graf-game/77b8bb73af715da9dbd691dbddae109316e394fd/public/assets/preview/building.glb';
-const RANGE = 80;
+export const FIXTURE_VISIBILITY_DISTANCE = 80;
+const GRAIN_DISTANCE = FIXTURE_VISIBILITY_DISTANCE / 4;
 type Load = (url: string, signal: AbortSignal) => Promise<Model>;
 
 export function addFixtureBuilding(parent: THREE.Group, load: Load = loadModel) {
@@ -70,8 +71,8 @@ export function addFixtureBuilding(parent: THREE.Group, load: Load = loadModel) 
 
   function updateDistance(x: number, z: number): void {
     const distanceSq = x * x + (z - FIXTURE_POSITION.z) ** 2;
-    root.visible = distanceSq < RANGE * RANGE;
-    detail.value = distanceSq < (RANGE / 3) ** 2 ? 1 : 0;
+    root.visible = distanceSq < FIXTURE_VISIBILITY_DISTANCE * FIXTURE_VISIBILITY_DISTANCE;
+    detail.value = distanceSq < GRAIN_DISTANCE ** 2 ? 1 : 0;
   }
   function dispose(): void {
     if (closed) return;
