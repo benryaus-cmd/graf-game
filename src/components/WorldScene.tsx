@@ -24,6 +24,8 @@ import type { AdminAction, AdminActionOptions } from '@/multiplayer/adminActions
 import { ReferenceGuide, type ReferenceSettings } from '@/game/referenceGuide';
 import { PieceEditGrace } from '@/game/pieceEditGrace';
 
+export interface MultiplayerRequest { action: 'join' | 'leave' | 'chat' | 'resync' | 'like' | 'inspect' | 'delete-piece' | 'set-role' | 'paint-over' | 'quote-protection' | 'buy-protection' | 'admin-action' | 'select-player' | 'keep-reference' | 'delete-reference' | 'creator-select' | 'inspect-artwork' | 'delete-artwork'; creator?: { playerId?: string; username: string; nickName: string }; text?: string; role?: ServerRole; colour?: string; protectionEnabled?: boolean; adminAction?: AdminAction; options?: AdminActionOptions; sequence: number }
+
 interface WorldSceneProps {
   reference?: ReferenceSettings | null;
   onReferenceMove?: (x: number, y: number) => void;
@@ -33,7 +35,7 @@ interface WorldSceneProps {
   onWorkspaceChange: (view: PaintWorkspaceView) => void;
   eyedropperActive: boolean;
   onColorPick: (colour: string | null) => void;
-  multiplayerRequest: { action: 'join' | 'leave' | 'chat' | 'resync' | 'like' | 'inspect' | 'delete-piece' | 'set-role' | 'paint-over' | 'quote-protection' | 'buy-protection' | 'admin-action' | 'select-player'; text?: string; role?: ServerRole; colour?: string; protectionEnabled?: boolean; adminAction?: AdminAction; options?: AdminActionOptions; sequence: number } | null;
+  multiplayerRequest: MultiplayerRequest | null;
   displayName: string; username: string; nickName: string; onMultiplayerStatus: (status: MultiplayerStatus) => void;
   cosmetics: PlayerCosmetics; onMultiplayerView: (view: MultiplayerView) => void;
   sky: SkyMode; paintMode: boolean; eraseMode: boolean; color: string;
@@ -176,6 +178,14 @@ const WorldScene = (props: WorldSceneProps) => {
     else if (request.action === 'leave') multiplayerRef.current?.leave();
     else if (request.action === 'chat') multiplayerRef.current?.sendChat(request.text ?? '');
     else if (request.action === 'inspect') multiplayerRef.current?.inspectPiece(request.text ?? '');
+    else if (request.action === 'creator-select' && request.creator) multiplayerRef.current?.selectCreator(request.creator);
+    else if (request.action === 'inspect-artwork') multiplayerRef.current?.inspectArtwork(request.text ?? '');
+    else if (request.action === 'delete-artwork') multiplayerRef.current?.deleteArtwork(request.text ?? '');
+    else if (request.action === 'keep-reference') {
+      const draft = referenceRef.current?.capture();
+      if (draft) void multiplayerRef.current?.keepReference(draft);
+    }
+    else if (request.action === 'delete-reference') multiplayerRef.current?.deleteReference(request.text ?? '');
     else if (request.action === 'select-player') multiplayerRef.current?.selectPlayer(request.text ?? '');
     else if (request.action === 'like') multiplayerRef.current?.likePiece(request.text ?? '');
     else if (request.action === 'delete-piece') multiplayerRef.current?.deletePiece(request.text ?? '');
@@ -190,6 +200,8 @@ const WorldScene = (props: WorldSceneProps) => {
   useEffect(() => {
     const world = worldRef.current, request = props.workspaceRequest;
     if (!world || !request) return;
+    if (request.action === 'undo') { multiplayerRef.current?.undoStroke(); return; }
+    if (request.action === 'redo') { multiplayerRef.current?.redoStroke(); return; }
     editGrace.current.resume();
     world.onPaintEnd?.();
     if (request.action === 'start') {

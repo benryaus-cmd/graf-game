@@ -12,7 +12,7 @@ export default function CanvasCredits({ balance, online = false }: { balance: nu
     return () => window.clearTimeout(timer);
   }, [balance]);
   return <span className="canvas-credit-status" aria-label="Canvas credits" title={online ? 'Online reward: +2 credits per full minute' : undefined}>
-    CREDITS {balance === null ? '—' : balance.toLocaleString()}
+    C {balance === null ? '—' : balance.toLocaleString()}
     {gain > 0 && <b className="canvas-credit-gain" role="status">+{gain}</b>}
   </span>;
 }

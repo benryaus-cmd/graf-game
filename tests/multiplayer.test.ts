@@ -123,7 +123,8 @@ test('upgraded protocol 2 joins using the existing messages and accepts its expa
   connection.connect('Aippy nickname', 'public'); socket.readyState = 1;
   socket.receive({ type: 'hello', playerId: 'server-v2-id', protocol: 2, serverTime: 123,
     capabilities: ['presence', 'movement', 'paint', 'eraser', 'chat', 'artwork', 'world_items', 'inventory', 'trading', 'reports', 'resync'] });
-  assert.deepEqual(socket.sent[0], { type: 'join', protocol: 2, roomId: 'public', displayName: 'Aippy nickname' });
+  assert.deepEqual(socket.sent[0], { type: 'join', protocol: 2, roomId: 'public', displayName: 'Aippy nickname',
+    networkRevision: 6, capabilities: ['spatial_interest_v1', 'spatial_world_delta_v1', 'player_directory_v1'] });
   socket.receive({ type: 'world_snapshot', protocol: 2, roomId: 'public', playerId: 'server-v2-id',
     revision: 5, sequence: 10, serverTime: 124, playerCount: 1, strokes: [], players: [],
     artworks: [], worldItems: [], graffitiPieces: [], chatHistory: [] });
@@ -635,11 +636,11 @@ test('poster image decoding starts in a bounded queue and advances as loads sett
   sync.snapshot(Array.from({ length: 12 }, (_, index) => saved(String(index), index)));
   const walls = new Map([[wall.surfaceId!,wall]]);
   sync.refresh(walls); sync.refresh(walls);
-  assert.equal(images.length, 10);
+  assert.equal(images.length, 7);
   images[0].onload(); sync.refresh(walls);
-  assert.equal(images.length, 11);
+  assert.equal(images.length, 8);
   images[1].onerror(); sync.refresh(walls);
-  assert.equal(images.length, 12);
+  assert.equal(images.length, 9);
   sync.clear();
 });
 
@@ -688,11 +689,11 @@ test('timed out artwork loads release their concurrency slot and queued images c
   sync.snapshot(Array.from({ length: 11 }, (_, index) => saved(String(index))));
   const walls = new Map([[wall.surfaceId!, wall]]);
   sync.refresh(walls);
-  assert.equal(images.length, 10);
+  assert.equal(images.length, 7);
   timers[0](); sync.refresh(walls);
   assert.equal(images[0].src, '');
-  assert.equal(images.length, 11);
-  images[10].onload();
+  assert.equal(images.length, 8);
+  images[7].onload();
   assert.ok((wall.layers[0]?.mesh ?? wall.mesh).children.some(child => child.userData.posterArtwork));
   sync.clear();
 });
@@ -761,7 +762,7 @@ test('protocol 2 role changes use exact server wire and remote role broadcasts w
   } finally { session.dispose(); globalThis.WebSocket = previousSocket; }
 });
 
-test('repeated player picks notify the UI, ordinary updates stay silent and departures clear selection', () => {
+test('repeated player picks notify the UI, ordinary updates stay silent and departures retain the profile offline', () => {
   const sockets: Socket[] = [], previousSocket = globalThis.WebSocket;
   (globalThis as any).WebSocket = class extends Socket { constructor() { super(); sockets.push(this); } };
   const world: any = { scene: new THREE.Scene(), walls: [], setPaintSession() {}, playerPosition: new THREE.Vector3(), playerYaw: 0, playerPitch: 0, paintRevision: 0, renderer: { domElement: {} } };
@@ -779,7 +780,7 @@ test('repeated player picks notify the UI, ordinary updates stay silent and depa
     socket.receive({ type: 'player_role_changed', playerId: 'target', username: 'artist', role: 'moderator' });
     assert.equal(views.at(-1).playerPickSequence, first + 1);
     socket.receive({ type: 'player_left', playerId: 'target' });
-    assert.equal(views.at(-1).selectedPlayer, null);
+    assert.deepEqual(views.at(-1).selectedPlayer, { playerId: 'target', username: 'artist', nickName: 'Artist', role: 'moderator', online: false });
   } finally { session.dispose(); globalThis.WebSocket = previousSocket; }
 });
 

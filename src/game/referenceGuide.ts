@@ -3,6 +3,8 @@ import type { PaintWorkspaceSelection, WorldEngine } from './worldTypes';
 import { PAINT_WORKSPACE_LAYER } from './paintWorkspace';
 import { elementPointerPoint } from './pointerCoordinates';
 import { REFERENCE_ABOVE_ORDER } from './worldOverlayOrder';
+import { encodeSurface } from '../multiplayer/surfaces';
+import type { OwnerReferenceDraft } from '../multiplayer/ownerReferences';
 
 export interface ReferenceSettings { url: string; name: string; visible: boolean; moving: boolean; opacity: number; scale: number; x: number; y: number; rotation: number; aboveArt?: boolean }
 export function referenceFit(imageWidth: number, imageHeight: number, width: number, height: number) {
@@ -71,6 +73,17 @@ export class ReferenceGuide {
     const localX = x * Math.cos(angle) + y * Math.sin(angle);
     const localY = -x * Math.sin(angle) + y * Math.cos(angle);
     return Math.abs(localX) <= fit.width * s.scale / 2 && Math.abs(localY) <= fit.height * s.scale / 2;
+  }
+  capture(): OwnerReferenceDraft | null {
+    const settings = this.settings, selection = this.world.paintWorkspace?.selection;
+    if (!settings || !selection?.wall.surfaceId || !this.mesh.material.map) return null;
+    this.refresh();
+    this.mesh.updateWorldMatrix(true, false);
+    const position = new THREE.Vector3(), quaternion = new THREE.Quaternion(), scale = new THREE.Vector3();
+    this.mesh.matrixWorld.decompose(position, quaternion, scale);
+    return { url: settings.url, name: settings.name, surfaceId: encodeSurface(selection.wall.surfaceId, selection.face, 0),
+      position: position.toArray() as [number, number, number], quaternion: quaternion.toArray() as [number, number, number, number],
+      width: scale.x, height: scale.y, opacity: settings.opacity, aboveArt: settings.aboveArt !== false };
   }
   point(event: { clientX: number; clientY: number }, element: HTMLElement): THREE.Vector2 | null {
     const selection: PaintWorkspaceSelection | null | undefined = this.world.paintWorkspace?.selection;

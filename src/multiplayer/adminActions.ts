@@ -1,7 +1,7 @@
 import type { Message } from './protocol';
 import type { ServerRole } from './permissions';
 
-export type AdminAction = 'give-credits' | 'kick' | 'ban' | 'unban' | 'mute' | 'unmute';
+export type AdminAction = 'give-credits' | 'kick' | 'ban' | 'unban' | 'mute' | 'unmute' | 'remove-all-art';
 export interface AdminActionOptions {
   amount?: number;
   durationSeconds?: number | null;
@@ -28,6 +28,7 @@ export function buildAdminAction(
   if (action === 'give-credits' ? actorRole !== 'owner' : !canUseAdminActions(actorRole, targetRole)) return null;
   const username = normalizeUsername(targetUsername);
   if (!username) return null;
+  if (action === 'remove-all-art') return { type: 'admin_remove_user_art', targetUsername: username };
   const reason = normalizeReason(options.reason);
   if (options.reason !== undefined && reason === null) return null;
 

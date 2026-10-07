@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react';
 import { useRotatedSheetScroll } from '@/components/useRotatedSheetScroll';
 import type { ReactNode } from 'react';
 export interface PaintWorkspaceView { selected: boolean; active: boolean; width: number; height: number; zoom?: number; sizeLinked?: boolean; started?: boolean; hasPaint?: boolean; moving?: boolean; editableUntil?: number; bounds?: { min: [number, number, number]; max: [number, number, number] } }
-export type PaintWorkspaceAction = 'start' | 'enter' | 'exit' | 'clear' | 'finish' | 'resize' | 'zoom' | 'fit' | 'link' | 'move';
-interface Props { view: PaintWorkspaceView; painting: boolean; onAction: (action: PaintWorkspaceAction, size?: number, height?: number, title?: string, protectionEnabled?: boolean) => void; onReference?: () => void; protectionControls?: ReactNode; geometryLocked?: boolean; protectedUntil?: number | null; compact?: boolean; initialCollapsed?: boolean; collapsed?: boolean; onCollapsedChange?: (value: boolean) => void; pieceTitle?: string; onPieceTitleChange?: (title: string) => void; protectionEnabled?: boolean; startDisabled?: boolean; startLabel?: string }
-export default function PaintWorkspaceHud({ view, painting, onAction, onReference, protectionControls, geometryLocked = false, protectedUntil, compact = false, initialCollapsed = true, collapsed: controlledCollapsed, onCollapsedChange, pieceTitle = '', onPieceTitleChange, protectionEnabled = false, startDisabled = false, startLabel = 'START PAINTING' }: Props) {
+export type PaintWorkspaceAction = 'start' | 'enter' | 'exit' | 'clear' | 'finish' | 'resize' | 'zoom' | 'fit' | 'link' | 'move' | 'undo' | 'redo';
+export interface PaintWorkspaceHistory { canUndo: boolean; canRedo: boolean; undoDepth: number; redoDepth: number; limit: number }
+interface Props { history?: PaintWorkspaceHistory; view: PaintWorkspaceView; painting: boolean; onAction: (action: PaintWorkspaceAction, size?: number, height?: number, title?: string, protectionEnabled?: boolean) => void; onReference?: () => void; protectionControls?: ReactNode; geometryLocked?: boolean; protectedUntil?: number | null; compact?: boolean; initialCollapsed?: boolean; collapsed?: boolean; onCollapsedChange?: (value: boolean) => void; pieceTitle?: string; onPieceTitleChange?: (title: string) => void; protectionEnabled?: boolean; startDisabled?: boolean; startLabel?: string }
+export default function PaintWorkspaceHud({ history, view, painting, onAction, onReference, protectionControls, geometryLocked = false, protectedUntil, compact = false, initialCollapsed = true, collapsed: controlledCollapsed, onCollapsedChange, pieceTitle = '', onPieceTitleChange, protectionEnabled = false, startDisabled = false, startLabel = 'START PAINTING' }: Props) {
   const scroll = useRotatedSheetScroll();
   const [localCollapsed, setLocalCollapsed] = useState(initialCollapsed);
   const collapsed = controlledCollapsed ?? localCollapsed;
@@ -27,6 +28,8 @@ export default function PaintWorkspaceHud({ view, painting, onAction, onReferenc
       <span>{(view.zoom ?? 1).toFixed(2)}×</span>
       <button type="button" aria-label="Zoom in" onClick={() => onAction('zoom', Math.min(8, (view.zoom ?? 1) + .25))}>+</button>
       <button type="button" onClick={() => onAction('fit')}>FIT</button>
+      <button type="button" aria-label="Undo last paint stroke" disabled={!history?.canUndo} onClick={() => { if (history?.canUndo) onAction('undo'); }}>UNDO</button>
+      <button type="button" aria-label="Redo last paint stroke" disabled={!history?.canRedo} onClick={() => { if (history?.canRedo) onAction('redo'); }}>REDO</button>
     </aside>}
     <aside className={`paint-workspace-controls${minimized ? ' is-collapsed' : ''}`} aria-label="Painting area" {...scroll}>
     {view.moving && <button type="button" data-tutorial="canvas-move" className="workspace-move-done" onClick={() => { setCollapsed(true); onAction('move', 0); }}>DONE MOVING</button>}

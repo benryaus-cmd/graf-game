@@ -6,9 +6,16 @@ import type { SharedStroke, StrokePoint } from './protocol';
 import { headForTool, nextHoldSamples } from '../game/sprayHeads';
 
 interface PaintJob {
-  stroke: SharedStroke; surface: ReturnType<typeof decodeSurface>; points: StrokePoint[]; previous: StrokePoint | null; holdSamples: number[]; index: number; count: number;
+  stroke: SharedStroke; surface: ReturnType<typeof decodeSurface>; points: StrokePoint[]; previous: StrokePoint | null; holdCount?: number; holdPrevious?: StrokePoint | null; index: number; count: number;
 }
-interface WallReplay { original: PaintWall; target: PaintWall; jobs: PaintJob[]; staging: boolean; committing: boolean; commitIndex: number }
+interface ReplaySource {
+  strokes: readonly SharedStroke[];
+  index: number;
+  job: PaintJob | null;
+  tails: Map<string, StrokePoint>;
+  liveLimits: Map<string, { stroke: SharedStroke; count: number }>;
+}
+interface WallReplay { original: PaintWall; target: PaintWall; jobs: PaintJob[]; source: ReplaySource | null; staging: boolean; committing: boolean; commitIndex: number }
 
 export class PaintReplay {
   private replays = new Map<string, WallReplay>();
@@ -44,30 +51,30 @@ export class PaintReplay {
       };
       layers.push(layer); return layer;
     } };
-    this.replays.set(wall.surfaceId, { original: wall, target, jobs: [], staging: true, committing: false, commitIndex: 0 });
+    this.replays.set(wall.surfaceId, { original: wall, target, jobs: [], source: null, staging: true, committing: false, commitIndex: 0 });
+  }
+  /** Submit a canonical wall in O(1); visit strokes and prepare samples inside update's budget. */
+  rebuildFrom(wall: PaintWall, strokes: readonly SharedStroke[]): void {
+    this.rebuild(wall);
+    const replay = wall.surfaceId && this.replays.get(wall.surfaceId);
+    if (replay) replay.source = { strokes, index: 0, job: null, tails: new Map(), liveLimits: new Map() };
   }
   enqueue(wall: PaintWall, stroke: SharedStroke, points: StrokePoint[], previous: StrokePoint | null): void {
     if (!wall.surfaceId || !points.length) return;
     let replay = this.replays.get(wall.surfaceId);
     if (!replay) {
-      replay = { original: wall, target: wall, jobs: [], staging: false, committing: false, commitIndex: 0 };
+      replay = { original: wall, target: wall, jobs: [], source: null, staging: false, committing: false, commitIndex: 0 };
       this.replays.set(wall.surfaceId, replay);
     }
     if (replay.staging && replay.committing) { replay.commitIndex = 0; replay.committing = false; }
-    const last = this.dwellByStroke.get(stroke.strokeId);
-    let prior = last?.point ?? previous;
-    let count = last?.count ?? 0;
-    const holdSamples = points.map(point => {
-      count = nextHoldSamples(prior ? { worldPoint: [prior.x, prior.y, prior.z], holdSamples: count || 1 } : null, [point.x, point.y, point.z]);
-      prior = point;
-      return count;
-    });
-    if (points.length) {
-      this.dwellByStroke.delete(stroke.strokeId);
-      this.dwellByStroke.set(stroke.strokeId, { point: points[points.length - 1], count, wallSurfaceId: wall.surfaceId });
-      while (this.dwellByStroke.size > 10_000) this.dwellByStroke.delete(this.dwellByStroke.keys().next().value!);
+    if (replay.source) {
+      // Mutable active strokes can grow before their canonical job is visited. Keep their
+      // newly appended samples solely in the live queue, after the canonical wall history.
+      const boundary = Math.max(0, stroke.points.length - points.length);
+      const prior = replay.source.liveLimits.get(stroke.strokeId);
+      replay.source.liveLimits.set(stroke.strokeId, { stroke, count: prior?.stroke === stroke ? Math.min(prior.count, boundary) : boundary });
     }
-    replay.jobs.push({ stroke, surface: decodeSurface(stroke.surfaceId), points, previous, holdSamples, index: 0, count: points.length });
+    replay.jobs.push({ stroke, surface: decodeSurface(stroke.surfaceId), points, previous, index: 0, count: points.length });
   }
   isRebuilding(wall: PaintWall): boolean { return !!this.replays.get(wall.surfaceId!)?.staging; }
   removeMissing(walls: Map<string, PaintWall>): void {
@@ -82,20 +89,52 @@ export class PaintReplay {
     const deadline = performance.now() + 3;
     let remaining = 256;
     for (const [id, replay] of this.replays) {
-      while (replay.jobs.length && remaining > 0 && performance.now() < deadline) {
-        const job = replay.jobs[0];
+      while ((replay.source || replay.jobs.length) && remaining > 0 && performance.now() < deadline) {
+        const source = replay.source;
+        if (source && !source.job) {
+          if (source.index >= source.strokes.length) { replay.source = null; continue; }
+          const stroke = source.strokes[source.index++];
+          const surface = decodeSurface(stroke.surfaceId);
+          const limit = source.liveLimits.get(stroke.strokeId);
+          const count = limit?.stroke === stroke ? Math.min(stroke.points.length, limit.count) : stroke.points.length;
+          if (surface?.wallId === id && count > 0) {
+            const split = stroke.strokeId.lastIndexOf('.');
+            const segment = Number(stroke.strokeId.slice(split + 1));
+            const previousId = split >= 0 && Number.isInteger(segment) && segment > 0 ? `${stroke.strokeId.slice(0, split + 1)}${segment - 1}` : '';
+            source.job = { stroke, surface, points: stroke.points, previous: source.tails.get(previousId) ?? null, index: 0, count };
+            source.tails.set(stroke.strokeId, stroke.points[count - 1]);
+          }
+          // Empty/invalid records consume work too; large metadata-only batches cannot monopolise a frame.
+          remaining--;
+          continue;
+        }
+        const job = source?.job ?? replay.jobs[0];
         const surface = job.surface;
-        if (!surface) { replay.jobs.shift(); continue; }
+        if (!surface) { replay.jobs.shift(); remaining--; continue; }
+        if (job.holdCount === undefined) {
+          const last = this.dwellByStroke.get(job.stroke.strokeId);
+          job.holdCount = last?.count ?? 0;
+          job.holdPrevious = last?.point ?? job.previous;
+        }
+        const point = job.points[job.index];
+        const prior = job.holdPrevious;
+        job.holdCount = nextHoldSamples(prior ? { worldPoint: [prior.x, prior.y, prior.z], holdSamples: job.holdCount || 1 } : null, [point.x, point.y, point.z]);
+        job.holdPrevious = point;
         const previousPoint = job.index > 0 ? job.points[job.index - 1] : job.previous;
-        renderNetworkPoint(replay.target, surface.face, surface.layer, job.stroke, job.points[job.index], previousPoint, this.visibility(), job.holdSamples[job.index]);
+        renderNetworkPoint(replay.target, surface.face, surface.layer, job.stroke, point, previousPoint, this.visibility(), job.holdCount);
         job.index++; remaining--;
-        if (job.index >= job.count) replay.jobs.shift();
+        if (job.index >= job.count) {
+          this.dwellByStroke.delete(job.stroke.strokeId);
+          this.dwellByStroke.set(job.stroke.strokeId, { point, count: job.holdCount, wallSurfaceId: id });
+          while (this.dwellByStroke.size > 10_000) this.dwellByStroke.delete(this.dwellByStroke.keys().next().value!);
+          if (source) source.job = null; else replay.jobs.shift();
+        }
       }
-      if (!replay.jobs.length && replay.staging) {
+      if (!replay.source && !replay.jobs.length && replay.staging) {
         replay.committing = true;
         if (!this.commit(replay, deadline)) break;
       }
-      if (!replay.jobs.length && !replay.committing) {
+      if (!replay.source && !replay.jobs.length && !replay.committing) {
         this.dispose(replay); this.replays.delete(id);
       }
       if (remaining <= 0 || performance.now() >= deadline) break;

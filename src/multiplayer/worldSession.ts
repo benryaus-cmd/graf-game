@@ -9,6 +9,7 @@ import { PlayerSync } from './playerSync';
 import { SpeechBubble } from '../game/speechBubble';
 import { RemotePlayers } from './remotePlayers';
 import { PlayerDirectory } from './playerDirectory';
+import { SpatialDirectory } from './spatialDirectory';
 import { readChatMute } from './chatMute';
 import { decodeSurface, encodeSurface } from './surfaces';
 import { ChatSync } from './chat';
@@ -35,6 +36,9 @@ import {
 } from './pieceFlatten';
 import { setWorkspaceInvalid, workspaceWorldBounds } from '../game/paintWorkspaceFeedback';
 import { pulsePieceBounds } from './piecePulse';
+import { OwnerReferences, type OwnerReferenceDraft } from './ownerReferences';
+import { readAdminArtRemovalProgress } from './adminArtRemoval';
+import { readSpatialStatus, readSpatialDelta, readStrokeHistory, readGestureUndone, readGestureRedone } from './spatialProtocol';
 
 export class WorldMultiplayerSession {
   private connection: MultiplayerConnection;
@@ -42,6 +46,18 @@ export class WorldMultiplayerSession {
   private replay: PaintReplay;
   private players: RemotePlayers;
   private profiles = new PlayerDirectory();
+  private directory = new SpatialDirectory();
+  private spatialEnabled = false;
+  private ownerReferences: OwnerReferences;
+  private ownerReferenceBusy = false;
+  private ownerReferencesRequested = false;
+  private ownerReferenceNotice = '';
+  private ownerReferenceGeneration = 0;
+  private strokeHistory: MultiplayerView['strokeHistory'] = null;
+  private historyBusy = false;
+  private artRemoval: MultiplayerView['artRemoval'] = null;
+  private artRemovalTarget: string | null = null;
+  private selectedArtworkId: string | null = null;
   private ownIdentity = { username: '', nickName: 'PLAYER' };
   private playerSync: PlayerSync;
   private chat: ChatSync;
@@ -100,11 +116,12 @@ export class WorldMultiplayerSession {
     this.connection = new MultiplayerConnection(MULTIPLAYER_URL, status => {
       if (status.phase === 'disconnected' || status.phase === 'connecting') {
         this.protection?.reset();
+        this.resetClientTools();
         this.serverPermissions = null;
         this.world.adminFreePaint = false;
         this.selectedPlayer = null; this.roleChange = undefined; this.adminResult = undefined; this.chatMute = null;
         this.selectedPieceForView = null;
-        this.paint.interrupted(); this.artworks.interrupted(); this.players.clear(); this.ownSpeech.dispose(); this.serverPlayerCount = null;
+        this.paint.interrupted(); this.artworks.interrupted(); this.players.clear(); this.directory.clear(); this.spatialEnabled = false; this.ownSpeech.dispose(); this.serverPlayerCount = null;
         this.emitView();
       }
       this.emit(status);
@@ -124,7 +141,7 @@ export class WorldMultiplayerSession {
         const affected = new Set<string>(this.removalWalls); this.removalWalls.clear();
         for (const id of removedStrokeIds ?? []) { const stroke = this.paint.strokes.get(id); const surface = stroke && decodeSurface(stroke.surfaceId); if (surface) affected.add(surface.wallId); }
         this.paint.removeStrokeIds(removedStrokeIds ?? []);
-        for (const id of affected) { const wall = this.walls.get(id); if (wall) { this.replay.rebuild(wall); for (const stroke of this.paint.forWall(id)) this.paint.replay(stroke); } }
+        for (const id of affected) this.recompose.add(id);
       }
       this.emitView();
     });
@@ -139,6 +156,7 @@ export class WorldMultiplayerSession {
         if (wall) this.replay.enqueue(wall, stroke, points, previous);
       },
     });
+    this.ownerReferences = new OwnerReferences(world.scene, message => this.connection.send(message), () => this.emitView());
     this.playerSync = new PlayerSync(message => this.connection.send(message));
     this.protection = new ProtectionSync(message => this.connection.send(message), () => this.emitView());
     world.onPaintSample = (wall, hit, settings, continues) => {
@@ -183,9 +201,22 @@ export class WorldMultiplayerSession {
       ));
       const piece = hit ? choosePieceAtWorldPoint(this.pieces.pieces.values(), [hit.point.x, hit.point.y, hit.point.z]) : null;
       this.selectedPieceForView = piece?.pieceId ?? null;
+      this.selectedArtworkId = null;
+      if (piece) this.pulsePiece(piece.pieceId);
+      else if (hit) {
+        const artwork = this.artworks.entries().slice().reverse().find(value => {
+          if (value.id.startsWith('piece:')) return false;
+          const matrix = this.artworkWorldMatrix(value);
+          if (!matrix) return false;
+          const point = hit.point.clone().applyMatrix4(matrix.invert());
+          return Math.abs(point.z) < .15 && Math.abs(point.x) <= value.width / 2 && Math.abs(point.y) <= value.height / 2;
+        });
+        this.selectedArtworkId = artwork?.id ?? null;
+        if (artwork) this.pulseArtwork(artwork.id);
+      }
       this.piecePickSequence++;
       this.emitView();
-      return !!piece;
+      return !!piece || !!this.selectedArtworkId;
     };
     world.onPaintEnd = () => this.paint.end();
     world.onMultiplayerFrame = (delta, settings) => this.update(delta, settings);
@@ -193,7 +224,7 @@ export class WorldMultiplayerSession {
   completePiece(title?: string): void {
     this.paint.end();
     if (this.selectedPieceId) this.pieces.complete(this.selectedPieceId, title);
-    this.selectedPieceId = null; this.selectedPiece = null;
+    this.selectedPieceId = null; this.selectedPiece = null; this.strokeHistory = null; this.historyBusy = false;
     this.protection?.setCurrentBounds(null, null);
   }
   preparePieceFlatten(): void {
@@ -323,7 +354,7 @@ export class WorldMultiplayerSession {
     const piece = this.pieces.pieces.get(pieceId);
     if (!piece) return false;
     this.piecePulseStop?.();
-    this.piecePulseStop = pulsePieceBounds(this.world.scene, piece.protectionBounds ?? piece.bounds);
+    this.pulsePiece(pieceId);
     const dx = piece.anchor[0] - this.world.playerPosition.x;
     const dy = piece.anchor[1] - this.world.playerPosition.y;
     const dz = piece.anchor[2] - this.world.playerPosition.z;
@@ -387,21 +418,117 @@ export class WorldMultiplayerSession {
   }
   adminAction(action: AdminAction, targetUsername: string, options: AdminActionOptions): boolean {
     if (!this.connection.connected || this.connection.protocol !== 2) return false;
-    const message = buildAdminAction(this.serverPermissions?.role, this.players.roleForUsername(targetUsername) ?? (this.selectedPlayer?.username.toLowerCase() === targetUsername.toLowerCase() ? this.selectedPlayer.role : undefined), action, targetUsername, options);
-    return !!message && this.connection.send(message);
+    if (action === 'remove-all-art' && (!this.canRemoveAllArt() || this.artRemovalTarget)) return false;
+    const message = buildAdminAction(this.serverPermissions?.role, this.directory.roleForUsername(targetUsername) ?? (this.selectedPlayer?.username.toLowerCase() === targetUsername.toLowerCase() ? this.selectedPlayer.role : undefined), action, targetUsername, options);
+    const sent = !!message && this.connection.send(message);
+    if (sent && action === 'remove-all-art') { this.artRemovalTarget = targetUsername.replace(/^@/, '').toLowerCase(); this.artRemoval = null; this.emitView(); }
+    return sent;
+  }
+  private canKeepReference(): boolean {
+    return this.connection.connected && this.connection.protocol === 2 && this.serverPermissions?.role === 'owner' && this.connection.capabilities.includes('owner_reference_persistence');
+  }
+  private canRemoveAllArt(): boolean {
+    return this.connection.connected && this.connection.protocol === 2 && ['owner','admin'].includes(this.serverPermissions?.role ?? '') && canDeletePieces(this.serverPermissions) && this.connection.capabilities.includes('admin_bulk_art_remove');
+  }
+  private syncOwnerAccess(): void {
+    const enabled = this.canKeepReference();
+    this.ownerReferences.setAccess(enabled);
+    if (enabled && !this.ownerReferencesRequested) this.ownerReferencesRequested = this.ownerReferences.list();
+    if (!enabled) this.ownerReferencesRequested = false;
+  }
+  private resetClientTools(): void {
+    this.ownerReferencesRequested = false; this.ownerReferenceGeneration++; this.ownerReferenceBusy = false; this.ownerReferenceNotice = '';
+    this.ownerReferences?.setAccess(false); this.strokeHistory = null; this.historyBusy = false;
+    this.artRemoval = null; this.artRemovalTarget = null; this.selectedArtworkId = null;
+    this.piecePulseStop?.(); this.piecePulseStop = null;
+  }
+  async keepReference(draft: OwnerReferenceDraft): Promise<boolean> {
+    if (!this.canKeepReference() || this.ownerReferenceBusy) return false;
+    const generation = this.ownerReferenceGeneration;
+    this.ownerReferenceBusy = true; this.ownerReferenceNotice = 'Uploading reference…'; this.emitView();
+    const sent = await this.ownerReferences.save(draft);
+    if (generation !== this.ownerReferenceGeneration) return false;
+    if (!sent) { this.ownerReferenceBusy = false; this.ownerReferenceNotice = 'Could not keep the reference. Please try again.'; }
+    else if (this.ownerReferenceBusy) this.ownerReferenceNotice = 'Saving reference…';
+    this.emitView(); return sent;
+  }
+  deleteReference(referenceId: string): boolean {
+    if (!this.canKeepReference() || this.ownerReferenceBusy) return false;
+    const sent = this.ownerReferences.remove(referenceId);
+    if (sent) { this.ownerReferenceBusy = true; this.ownerReferenceNotice = 'Removing reference…'; this.emitView(); }
+    return sent;
+  }
+  undoStroke(): boolean { return this.requestStrokeHistory('stroke_undo'); }
+  redoStroke(): boolean { return this.requestStrokeHistory('stroke_redo'); }
+  private requestStrokeHistory(type: 'stroke_undo' | 'stroke_redo'): boolean {
+    const piece = this.selectedPieceId ? this.pieces.pieces.get(this.selectedPieceId) : undefined;
+    if (!this.connection.connected || !this.connection.capabilities.includes('stroke_undo_redo') || !piece || piece.owner !== this.connection.playerId || piece.flattened || !this.world.paintWorkspace?.selection || this.paint.drawing || this.historyBusy || this.strokeHistory?.pieceId !== piece.pieceId || !(type === 'stroke_undo' ? this.strokeHistory.canUndo : this.strokeHistory.canRedo)) return false;
+    const sent = this.connection.send({ type, pieceId: piece.pieceId });
+    if (sent) { this.historyBusy = true; this.emitView(); }
+    return sent;
+  }
+  private queueSurfaces(surfaceIds: readonly string[]): void {
+    for (const id of surfaceIds) { const surface = decodeSurface(id); if (surface) this.recompose.add(surface.wallId); }
+  }
+  private observeOrder(message: Message): void {
+    if (Number.isSafeInteger(message.sequence)) this.order.sequence = Math.max(this.order.sequence, message.sequence as number);
+    if (Number.isSafeInteger(message.revision)) this.order.revision = Math.max(this.order.revision, message.revision as number);
+  }
+  selectCreator(identity: { playerId?: string; username: string; nickName: string }): void {
+    const username = identity.username.replace(/^@/, '').trim().slice(0,40);
+    const online = this.directory.roster().find(value => username && value.username.toLowerCase() === username.toLowerCase());
+    const own = username && username.toLowerCase() === this.ownIdentity.username.toLowerCase();
+    this.selectedPlayer = online ? { ...online, online: true } : own && this.connection.playerId ? { playerId: this.connection.playerId, ...this.ownIdentity, role: this.serverPermissions?.role, online: this.connection.connected } : { playerId: identity.playerId ?? '', username, nickName: identity.nickName.slice(0,40) || (username ? '@' + username : 'PLAYER'), online: false };
+    this.playerPickSequence++; this.emitView();
+  }
+  private pulsePiece(pieceId: string): void {
+    const piece = this.pieces.pieces.get(pieceId); if (!piece) return;
+    const bounds = piece.protectionBounds ?? piece.bounds;
+    this.piecePulseStop?.();
+    this.piecePulseStop = pulsePieceBounds(this.world.scene, bounds, 3400, () => {
+      const flat = this.artworks.meshFor('piece:' + pieceId); if (flat) return [flat];
+      return [...this.walls.values()].filter(wall => {
+        const box = new THREE.Box3().setFromObject(wall.mesh);
+        return box.intersectsBox(new THREE.Box3(new THREE.Vector3(...bounds.min), new THREE.Vector3(...bounds.max)));
+      }).flatMap(wall => wall.layers.map(layer => layer.mesh));
+    }, this.world.renderer);
+  }
+  private artworkWorldMatrix(artwork: import('./artworkSync').SharedArtwork): THREE.Matrix4 | null {
+    const surface = decodeSurface(artwork.surfaceId), wall = surface && this.walls.get(surface.wallId);
+    if (!wall) return null;
+    const parent = wall.layers[0]?.mesh ?? wall.mesh; parent.updateWorldMatrix(true, false);
+    return parent.matrixWorld.clone().multiply(new THREE.Matrix4().compose(new THREE.Vector3(...artwork.position), new THREE.Quaternion(...artwork.quaternion), new THREE.Vector3(1,1,1)));
+  }
+  private pulseArtwork(artworkId: string): void {
+    const artwork = this.artworks.entries().find(value => value.id === artworkId); if (!artwork) return;
+    const matrix = this.artworkWorldMatrix(artwork); if (!matrix) return;
+    const corners = [[-1,-1],[-1,1],[1,-1],[1,1]].map(([x,y]) => new THREE.Vector3(x * artwork.width / 2, y * artwork.height / 2, 0).applyMatrix4(matrix));
+    const box = new THREE.Box3().setFromPoints(corners).expandByScalar(.025);
+    this.piecePulseStop?.(); this.piecePulseStop = pulsePieceBounds(this.world.scene, { min: box.min.toArray(), max: box.max.toArray() }, 3400, () => { const mesh = this.artworks.meshFor(artworkId); return mesh ? [mesh] : []; }, this.world.renderer);
+  }
+  inspectArtwork(artworkId: string): boolean {
+    const artwork = this.artworks.entries().find(value => value.id === artworkId); if (!artwork) return false;
+    this.pulseArtwork(artworkId);
+    const matrix = this.artworkWorldMatrix(artwork); if (!matrix) return false;
+    const delta = new THREE.Vector3().setFromMatrixPosition(matrix).sub(this.world.playerPosition);
+    this.world.playerYaw = Math.atan2(-delta.x, -delta.z); this.world.playerPitch = THREE.MathUtils.clamp(Math.atan2(delta.y, Math.hypot(delta.x,delta.z)), -1.24,1.18); this.world.cameraMode = 'first'; return true;
+  }
+  deleteArtwork(artworkId: string): boolean {
+    return this.connection.connected && this.connection.capabilities.includes('artwork_remove') && canDeletePieces(this.serverPermissions) && !!artworkId && this.connection.send({ type: 'admin_delete_artwork', artworkId });
   }
   selectPlayer(playerId: string): void {
-    const online = this.players.get(playerId) ?? (playerId === this.connection.playerId ? { playerId, ...this.ownIdentity, role: this.serverPermissions?.role } : null);
+    const online = this.directory.get(playerId) ?? (playerId === this.connection.playerId ? { playerId, ...this.ownIdentity, role: this.serverPermissions?.role } : null);
     const profile = online ?? this.profiles.get(playerId);
     this.selectedPlayer = profile ? { ...profile, online: !!online && this.connection.connected } : null;
     this.playerPickSequence++; this.emitView();
   }
   setRole(targetUsername: string, role: ServerRole): boolean {
     const ownRole = this.serverPermissions?.role;
-    if (!this.connection.connected || this.connection.protocol !== 2 || !targetUsername || !canManageRole(ownRole, this.players.roleForUsername(targetUsername), role)) return false;
+    if (!this.connection.connected || this.connection.protocol !== 2 || !targetUsername || !canManageRole(ownRole, this.directory.roleForUsername(targetUsername), role)) return false;
     return this.sendWorld({ type: 'admin_set_role', targetUsername, role });
   }
   join(displayName: string, roomId = DEFAULT_ROOM_ID, identity?: PlayerIdentity): void {
+    this.resetClientTools();
     this.profiles = new PlayerDirectory();
     this.ownIdentity = { username: identity?.username?.replace(/^@/, '') ?? '', nickName: identity?.nickName || displayName };
     this.protection.reset();
@@ -412,9 +539,12 @@ export class WorldMultiplayerSession {
     this.completePiece(); this.pieces.clear(); clearPaintWorkspace(this.world);
     this.paint.interrupted(); this.artworks.interrupted(); this.players.clear(); this.ownSpeech.dispose(); this.playerSync.reset(); this.serverPlayerCount = null;
     this.flattenPrepareGeneration++; this.pendingFlatten = null;
-    this.connection.connect(displayName, roomId, identity);
+    this.directory.clear(); this.spatialEnabled = false;
+    this.connection.connect(displayName, roomId, identity, this.world.playerPosition.toArray());
   }
   leave(): void {
+    this.resetClientTools();
+    this.directory.clear(); this.spatialEnabled = false;
     this.piecePulseStop?.(); this.piecePulseStop = null;
     this.protection.reset();
     this.serverPermissions = null;
@@ -430,6 +560,8 @@ export class WorldMultiplayerSession {
     this.world.setPaintSession('solo'); this.world.paintRevision++;
   }
   dispose(): void {
+    this.resetClientTools(); this.ownerReferences.dispose();
+    this.directory.clear(); this.spatialEnabled = false;
     this.piecePulseStop?.(); this.piecePulseStop = null;
     this.protection.reset();
     this.serverPermissions = null;
@@ -577,6 +709,40 @@ export class WorldMultiplayerSession {
   }
 
   private message(message: Message): void {
+    const spatialStatus = readSpatialStatus(message);
+    if (spatialStatus) { this.spatialEnabled = spatialStatus.enabled; this.emitView(); return; }
+    const spatialDelta = readSpatialDelta(message);
+    if (spatialDelta && this.spatialEnabled) {
+      // Interest changes may carry the same world sequence as the preceding event.
+      // They change membership, not global mutation order; never tombstone them.
+      this.observeOrder(message);
+      this.queueSurfaces(this.paint.unloadStrokeIds(spatialDelta.removeStrokeIds));
+      this.queueSurfaces(this.paint.upsertStrokes(spatialDelta.upsertStrokes));
+      const unloaded = spatialDelta.removePieceIds.filter(id => id !== this.selectedPieceId);
+      this.pieces.applySpatial(spatialDelta.upsertPieces, unloaded);
+      for (const id of unloaded) { this.artworks.unloadArtwork('piece:' + id); this.protection.protections.delete(id); }
+      for (const id of spatialDelta.removeArtworkIds) this.artworks.unloadArtwork(id);
+      this.artworks.upsert(spatialDelta.upsertArtworks);
+      this.artworks.upsert(spatialDelta.upsertPieces.map(flattenedPieceArtworkMessage).filter((v): v is Message => !!v));
+      for (const piece of spatialDelta.upsertPieces) if (piece.protectedUntil !== undefined) this.protection.protections.set(piece.pieceId, { pieceId: piece.pieceId, protectedUntil: piece.protectedUntil });
+      this.artworks.refresh(this.walls); this.emitView(); return;
+    }
+    const history = readStrokeHistory(message);
+    if (history) { if (history.pieceId === this.selectedPieceId) { this.strokeHistory = history; this.historyBusy = false; this.emitView(); } return; }
+    if (message.type.startsWith('owner_reference_')) {
+      if (this.canKeepReference()) {
+        this.ownerReferences.accept(message);
+        if (message.type === 'owner_reference_saved' || message.type === 'owner_reference_deleted') { this.ownerReferenceBusy = false; this.ownerReferenceNotice = message.type === 'owner_reference_saved' ? 'Reference kept.' : 'Reference removed.'; this.emitView(); }
+      }
+      return;
+    }
+    const removal = readAdminArtRemovalProgress(message, this.artRemovalTarget ? { targetUsername: this.artRemovalTarget, jobId: this.artRemoval?.jobId } : undefined);
+    if (removal && this.canRemoveAllArt()) { this.artRemoval = removal; if (removal.type === 'admin_remove_user_art_complete') this.artRemovalTarget = null; this.emitView(); return; }
+    if (message.type === 'error') {
+      if (['stroke_undo_unavailable','stroke_redo_unavailable','stroke_undo_limit','undo_unavailable','redo_unavailable','undo_limit','nothing_to_undo','nothing_to_redo'].includes(String(message.code))) { this.historyBusy = false; this.emitView(); }
+      if (this.ownerReferenceBusy) { this.ownerReferenceBusy = false; this.ownerReferenceNotice = 'Could not keep the reference. Please try again.'; this.emitView(); }
+      if (this.artRemovalTarget) { this.artRemovalTarget = null; this.emitView(); }
+    }
     const chatMute = readChatMute(message);
     if (chatMute) { this.chatMute = chatMute; this.emitView(); return; }
     if (['admin_give_credits_complete', 'admin_ban_complete', 'admin_unban_complete'].includes(message.type) && typeof message.targetUsername === 'string') {
@@ -604,13 +770,15 @@ export class WorldMultiplayerSession {
     }
     if (message.type === 'permissions') {
       this.serverPermissions = readPermissions(message);
+      this.syncOwnerAccess();
       this.world.adminFreePaint = this.connection.connected && this.connection.protocol === 2 && canAdminPaint(this.serverPermissions);
       this.emit({ ...this.status, role: this.serverPermissions?.role ?? 'player' });
       return;
     }
     if (message.type === 'player_role_changed' && typeof message.playerId === 'string' && typeof message.username === 'string' && isServerRole(message.role)) {
       this.players.roleChanged(message.playerId, message.username, message.role);
-      if (this.selectedPlayer?.playerId === message.playerId) this.selectedPlayer = this.players.get(message.playerId);
+      this.directory.roleChanged(message.playerId, message.username, message.role);
+      if (this.selectedPlayer?.playerId === message.playerId) this.selectedPlayer = { ...this.selectedPlayer, role: message.role };
       this.emitView(); return;
     }
     if (message.type === 'admin_set_role_complete' && typeof message.targetUsername === 'string' && isServerRole(message.previousRole) && isServerRole(message.role) && typeof message.serverTime === 'number') {
@@ -625,6 +793,8 @@ export class WorldMultiplayerSession {
       this.order.snapshot(message);
       this.world.setPaintSession('multiplayer'); this.refreshWalls();
       this.players.clear(); this.ownSpeech.dispose();
+      if (Array.isArray(message.playerDirectory)) this.spatialEnabled = true;
+      this.directory.snapshot(Array.isArray(message.playerDirectory) ? message.playerDirectory : Array.isArray(message.players) ? message.players : [], this.connection.playerId);
       for (const player of Array.isArray(message.players) ? message.players : []) {
         this.players.joined(player, this.connection.playerId);
       }
@@ -645,17 +815,30 @@ export class WorldMultiplayerSession {
         ...(Array.isArray(message.artworks) ? message.artworks : []),
         ...flattenedPieceArtworks,
       ]);
+      this.syncOwnerAccess();
+      this.ownerReferences.snapshot(Array.isArray(message.ownerReferences) ? message.ownerReferences : []);
       this.accounts.snapshotWorldItems(Array.isArray(message.worldItems) ? message.worldItems : []);
       this.artworks.refresh(this.walls); this.playerSync.reset(); this.emitView();
       return;
     }
-    const ordered = message.type.startsWith('piece_') || message.type.startsWith('stroke_') || message.type.startsWith('artwork_') || message.type.startsWith('item_') || message.type === 'chat_message';
+    const ordered = message.type !== 'stroke_history_state' && (message.type.startsWith('piece_') || message.type.startsWith('stroke_') || message.type.startsWith('artwork_') || message.type.startsWith('item_') || message.type === 'chat_message');
     if (ordered && !this.order.accept(message)) return;
-    if (message.type === 'player_joined') {
-      this.players.joined(message.player, this.connection.playerId); this.serverPlayerCount = null; this.emit(this.status); this.emitView();
+    if (message.type === 'player_directory_joined') {
+      this.directory.joined(message.player, this.connection.playerId); this.serverPlayerCount = null; this.emit(this.status); this.emitView();
+    } else if (message.type === 'player_directory_left' && typeof message.playerId === 'string') {
+      this.directory.left(message.playerId); this.players.left(message.playerId); this.serverPlayerCount = null;
+      if (this.selectedPlayer?.playerId === message.playerId) this.selectedPlayer = { ...this.selectedPlayer, online: false };
+      this.emit(this.status); this.emitView();
+    } else if (message.type === 'player_joined') {
+      this.players.joined(message.player, this.connection.playerId);
+      if (!this.spatialEnabled) { this.directory.joined(message.player, this.connection.playerId); this.serverPlayerCount = null; }
+      this.emit(this.status); this.emitView();
     } else if (message.type === 'player_left' && typeof message.playerId === 'string') {
-      this.players.left(message.playerId); this.serverPlayerCount = null; this.emit(this.status);
-      if (this.selectedPlayer?.playerId === message.playerId) { this.selectedPlayer = ['admin', 'owner'].includes(this.serverPermissions?.role ?? '') ? { ...this.selectedPlayer, online: false } : null; }
+      this.players.left(message.playerId);
+      const spatial = message.spatial === true || message.reason === 'spatial_out_of_range';
+      if (!spatial) { this.directory.left(message.playerId); this.serverPlayerCount = null; }
+      this.emit(this.status);
+      if (!spatial && this.selectedPlayer?.playerId === message.playerId) this.selectedPlayer = { ...this.selectedPlayer, online: false };
       this.emitView();
     } else if (message.type === 'player_count') {
       const count = message.playerCount ?? message.count;
@@ -665,6 +848,9 @@ export class WorldMultiplayerSession {
       this.players.state(message.playerId, message.state);
     } else if (message.type === 'player_action' && message.playerId !== this.connection.playerId) this.players.action(message);
     else if (message.type === 'chat_message') this.chat.accept(message);
+    else if (message.type === 'artwork_removed' && typeof message.artworkId === 'string') {
+      this.artworks.removeArtwork(message.artworkId); if (this.selectedArtworkId === message.artworkId) { this.selectedArtworkId = null; this.piecePulseStop?.(); this.piecePulseStop = null; }
+    }
     else if (message.type === 'artwork_place' || message.type === 'artwork_placed') { this.artworks.accept(message); this.artworks.refresh(this.walls); }
     else if (message.type.startsWith('piece_')) {
       if (message.type === 'piece_removed' && typeof message.pieceId === 'string') {
@@ -674,7 +860,7 @@ export class WorldMultiplayerSession {
       if (message.type === 'piece_removed' && message.pieceId === this.selectedPieceId) {
         this.selectedPieceId = null; this.selectedPiece = null; this.world.paintRevision++;
       }
-      if (message.type === 'piece_removed' && message.pieceId === this.selectedPieceForView) this.selectedPieceForView = null;
+      if (message.type === 'piece_removed' && message.pieceId === this.selectedPieceForView) { this.selectedPieceForView = null; this.piecePulseStop?.(); this.piecePulseStop = null; }
       if (message.type === 'piece_removed' && typeof message.pieceId === 'string') this.protection.protections.delete(message.pieceId);
       this.pieces.accept(message);
       if (message.type === 'piece_flattened' && typeof message.pieceId === 'string') {
@@ -695,7 +881,12 @@ export class WorldMultiplayerSession {
     }
     else if (message.type.startsWith('item_')) this.accounts.worldItemEvent(message);
     else if (message.type.startsWith('stroke_')) {
-      this.paint.accept(message);
+      const undone = readGestureUndone(message), redone = readGestureRedone(message);
+      if (undone) {
+        this.queueSurfaces(undone.strokeIds.map(id => this.paint.strokes.get(id)?.surfaceId).filter((id): id is string => !!id));
+        this.paint.removeStrokeIds(undone.strokeIds);
+      } else if (redone) this.queueSurfaces(this.paint.restoreStrokes(redone.strokes));
+      else this.paint.accept(message);
       if (message.type === 'stroke_end' && typeof message.strokeId === 'string') {
         // A snapshot stores whole strokes with their final sequence. Recompose on completion to
         // converge live interleaved strokes and later snapshot replay to the same final order.
@@ -712,9 +903,8 @@ export class WorldMultiplayerSession {
     this.replay.removeMissing(next);
     for (const [id, wall] of next) {
       if (this.walls.get(id) === wall) continue;
-      this.replay.rebuild(wall);
       this.walls.set(id, wall);
-      for (const stroke of this.paint.forWall(id)) this.paint.replay(stroke);
+      this.replay.rebuildFrom(wall, this.paint.forWall(id));
     }
     this.walls = next;
     this.artworks.refresh(next);
@@ -747,12 +937,11 @@ export class WorldMultiplayerSession {
       const wall = this.walls.get(id);
       if (!wall) { this.recompose.delete(id); continue; }
       if (this.replay.isRebuilding(wall)) continue;
-      this.recompose.delete(id); this.replay.rebuild(wall);
-      for (const saved of this.paint.forWall(id)) this.paint.replay(saved);
+      this.recompose.delete(id); this.replay.rebuildFrom(wall, this.paint.forWall(id));
     }
     // The server does not echo accepted own stroke sequences. Fetch canonical metadata once
     // the brush is idle; never interrupt input or repeatedly restart a long wall reconstruction.
-    if (this.connection.connected && this.sharedRevision > this.requestedRevision && !this.paint.drawing && !this.replay.rebuilding && performance.now() - this.lastSharedAt > 1500) {
+    if (!this.spatialEnabled && this.connection.connected && this.sharedRevision > this.requestedRevision && !this.paint.drawing && !this.replay.rebuilding && performance.now() - this.lastSharedAt > 1500) {
       if (this.resync()) this.requestedRevision = this.sharedRevision;
     }
     const position = this.world.playerPosition.toArray();
@@ -783,10 +972,14 @@ export class WorldMultiplayerSession {
     if (selectedPiece && !pieces.some(piece => piece.pieceId === selectedPiece.pieceId)) pieces.push(selectedPiece);
     const protection = this.protection;
     const protectedUntil = this.selectedPieceId ? protection?.protections.get(this.selectedPieceId)?.protectedUntil ?? null : null;
-    const onlinePlayers = this.players.roster();
+    const onlinePlayers = this.directory.roster();
     if (this.connection.connected && this.connection.playerId) onlinePlayers.unshift({ playerId: this.connection.playerId, ...this.ownIdentity, role: this.serverPermissions?.role });
     this.profiles.sync(onlinePlayers, this.chat.messages);
-    const view: MultiplayerView = { chatMute: this.chatMute, onlinePlayers, ownPlayerId: this.connection.connected ? this.connection.playerId : null, adminResult: this.adminResult, protection: protection ? { creditBalance: protection.creditBalance, quote: protection.quote, quotes: protection.quotes, protectionEnabled: this.canvasProtectionEnabled, purchased: !!this.world.paintWorkspace?.selection?.purchaseApproved, pendingQuote: !!protection.pendingQuotePieceId, pendingPurchase: !!protection.pendingPurchasePieceId, protectedUntil, notice: protection.notice } : undefined, chat: this.chat.messages, revision: this.order.revision, selectedPlayer: this.selectedPlayer, playerPickSequence: this.playerPickSequence, selectedPieceId: this.selectedPieceForView, piecePickSequence: this.piecePickSequence, roleChange: this.roleChange,
+    const view: MultiplayerView = { spatialEnabled: this.spatialEnabled,
+      strokeHistory: this.strokeHistory?.pieceId === this.selectedPieceId ? { ...this.strokeHistory, canUndo: !this.historyBusy && !this.paint.drawing && this.strokeHistory.canUndo, canRedo: !this.historyBusy && !this.paint.drawing && this.strokeHistory.canRedo } : null,
+      ownerReferences: this.ownerReferences?.records ?? [], canKeepReference: this.canKeepReference(), ownerReferenceBusy: this.ownerReferenceBusy, ownerReferenceNotice: this.ownerReferenceNotice,
+      artRemoval: this.artRemoval, artworks: this.artworks.entries().filter(value => !value.id.startsWith('piece:')), selectedArtworkId: this.selectedArtworkId,
+      chatMute: this.chatMute, onlinePlayers, ownPlayerId: this.connection.connected ? this.connection.playerId : null, adminResult: this.adminResult, protection: protection ? { creditBalance: protection.creditBalance, quote: protection.quote, quotes: protection.quotes, protectionEnabled: this.canvasProtectionEnabled, purchased: !!this.world.paintWorkspace?.selection?.purchaseApproved, pendingQuote: !!protection.pendingQuotePieceId, pendingPurchase: !!protection.pendingPurchasePieceId, protectedUntil, notice: protection.notice } : undefined, chat: this.chat.messages, revision: this.order.revision, selectedPlayer: this.selectedPlayer, playerPickSequence: this.playerPickSequence, selectedPieceId: this.selectedPieceForView, piecePickSequence: this.piecePickSequence, roleChange: this.roleChange,
       accountFeaturesAvailable: this.accounts.available, worldItemCount: this.accounts.worldItems.size,
       pieces };
     const serial = JSON.stringify(view);
@@ -805,10 +998,11 @@ export class WorldMultiplayerSession {
     status = {
       ...status,
       role: status.phase === 'connected' ? this.serverPermissions?.role : undefined,
+      canRemoveAllArt: this.canRemoveAllArt(),
       canDeletePieces: this.connection.connected && canDeletePieces(this.serverPermissions),
       canAdminPaint: this.connection.connected && this.connection.protocol === 2 && canAdminPaint(this.serverPermissions),
     };
-    const next = { ...status, playerCount: status.phase === 'connected' ? this.serverPlayerCount ?? this.players.count + 1 : 0 };
+    const next = { ...status, playerCount: status.phase === 'connected' ? this.serverPlayerCount ?? this.directory.count + 1 : 0 };
     if (JSON.stringify(next) === JSON.stringify(this.status)) return;
     this.status = next; this.report(next);
   }

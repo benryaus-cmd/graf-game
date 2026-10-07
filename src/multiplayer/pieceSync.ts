@@ -9,6 +9,9 @@ export interface PieceMetadata {
   chunkX?: number;
   chunkZ?: number;
   owner?: string | number;
+  ownerPlayerId?: string;
+  ownerUsername?: string;
+  ownerNickName?: string;
   createdAt?: number;
   completedAt?: number;
   currentWindowStartedAt?: number;
@@ -120,8 +123,9 @@ export function readPieceMetadata(value: unknown): PieceMetadata | null {
   const currentWindowStartedAt = timestamp(v.currentWindowStartedAt);
   const currentWindowEndsAt = timestamp(v.currentWindowEndsAt);
   if (currentWindowStartedAt !== undefined && currentWindowEndsAt !== undefined && currentWindowEndsAt < currentWindowStartedAt) return null;
-  const owner = typeof v.owner === 'string' && v.owner.length <= 120 ? v.owner
-    : typeof v.owner === 'number' && Number.isFinite(v.owner) ? v.owner : undefined;
+  const ownerValue = v.owner ?? v.ownerPlayerId;
+  const owner = typeof ownerValue === 'string' && ownerValue.length <= 120 ? ownerValue
+    : typeof ownerValue === 'number' && Number.isFinite(ownerValue) ? ownerValue : undefined;
 
   const flatAssetRef = artworkAssetRef(v.assetRef);
   const flatSurfaceId =
@@ -165,6 +169,9 @@ export function readPieceMetadata(value: unknown): PieceMetadata | null {
   return {
     pieceId: v.pieceId.trim(), anchor, bounds: { min, max },
     chunkX: safeOptionalInt(v.chunkX), chunkZ: safeOptionalInt(v.chunkZ), owner,
+    ownerPlayerId: typeof v.ownerPlayerId === 'string' ? v.ownerPlayerId.slice(0,120) : undefined,
+    ownerUsername: typeof v.ownerUsername === 'string' ? v.ownerUsername.replace(/^@/, '').trim().slice(0,40) : undefined,
+    ownerNickName: typeof v.ownerNickName === 'string' ? v.ownerNickName.trim().slice(0,40) : undefined,
     createdAt, completedAt, currentWindowStartedAt, currentWindowEndsAt,
     currentWindowLikes: count(v.currentWindowLikes), lifetimeLikes: count(v.lifetimeLikes),
     survivalGeneration: count(v.survivalGeneration), strokeIds,
@@ -221,6 +228,19 @@ export class PieceSync {
     for (const [id, piece] of next) {
       this.pieces.set(id, piece);
       if (authoritative.has(id)) this.optimistic.delete(id);
+    }
+    this.notify();
+  }
+
+  /** Temporary spatial membership, with no authoritative stroke deletion signal. */
+  applySpatial(values: readonly unknown[], removeIds: readonly string[]): void {
+    for (const id of removeIds) { this.pieces.delete(id); this.optimistic.delete(id); }
+    for (const value of values) {
+      const parsed = readPieceMetadata(value);
+      if (!parsed) continue;
+      const title = parsed.title || this.localTitles.get(parsed.pieceId);
+      this.pieces.set(parsed.pieceId, title ? { ...parsed, title } : parsed);
+      this.optimistic.delete(parsed.pieceId);
     }
     this.notify();
   }

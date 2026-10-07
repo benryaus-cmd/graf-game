@@ -1,10 +1,16 @@
 import { useEffect, useState } from 'react';
 import GameSheet from './GameSheet';
+import type { SharedArtwork } from '@/multiplayer/artworkSync';
 import type { PieceMetadata } from '@/multiplayer/pieceSync';
 
 interface GraffitiPiecesProps {
   open?: boolean; onOpenChange?: (open: boolean) => void;
   pieces: PieceMetadata[];
+  artworks?: SharedArtwork[];
+  selectedArtworkId?: string | null;
+  onViewArtwork?: (artworkId: string) => void;
+  onDeleteArtwork?: (artworkId: string) => boolean;
+  onCreatorSelect?: (identity: { playerId?: string; username: string; nickName: string }) => void;
   connected: boolean;
   onLike: (pieceId: string) => boolean;
   onResync: () => void;
@@ -36,17 +42,20 @@ const protectionLabel = (piece: PieceMetadata, now: number) => {
   return `PROTECTED · ${Math.floor(minutes / 60)}h ${minutes % 60}m remaining`;
 };
 
-const GraffitiPieces = ({ open: controlledOpen, onOpenChange, pieces, connected, onLike, onResync, onView, canDeletePieces = false, onDelete, selectedPieceId, piecePickSequence, canPaintOver, paintColour = '#ffffff', onPaintOver }: GraffitiPiecesProps) => {
+const GraffitiPieces = ({ open: controlledOpen, onOpenChange, pieces, artworks = [], selectedArtworkId, onViewArtwork, onDeleteArtwork, onCreatorSelect, connected, onLike, onResync, onView, canDeletePieces = false, onDelete, selectedPieceId, piecePickSequence, canPaintOver, paintColour = '#ffffff', onPaintOver }: GraffitiPiecesProps) => {
   const [coverColour, setCoverColour] = useState(paintColour);
   const [protectionGain, setProtectionGain] = useState(false);
   const [localOpen, setLocalOpen] = useState(false);
   const open = controlledOpen ?? localOpen;
   const setOpen = (value: boolean | ((current: boolean) => boolean)) => { const next = typeof value === 'function' ? value(open) : value; if (onOpenChange) onOpenChange(next); else setLocalOpen(next); };
+  const [viewingArtworkId, setViewingArtworkId] = useState<string | null>(selectedArtworkId ?? null);
   const [viewingPieceId, setViewingPieceId] = useState<string | null>(selectedPieceId ?? null);
   const [now, setNow] = useState(() => Date.now());
   const [pendingLikes, setPendingLikes] = useState<PendingLikes>({});
   const [sendError, setSendError] = useState<string | null>(null);
   const [deleteNotice, setDeleteNotice] = useState<string | null>(null);
+  const viewingArtwork = artworks.find(artwork => artwork.id === viewingArtworkId);
+  const visibleArtworks = artworks.slice(0, 20);
   const visiblePieces = pieces.slice(0, 20);
   const viewingPiece = pieces.find(piece => piece.pieceId === viewingPieceId);
   useEffect(() => {
@@ -59,8 +68,17 @@ const GraffitiPieces = ({ open: controlledOpen, onOpenChange, pieces, connected,
   useEffect(() => {
     if (selectedPieceId === undefined) return;
     setViewingPieceId(selectedPieceId);
+    if (selectedPieceId) setViewingArtworkId(null);
     if (selectedPieceId && controlledOpen === undefined) setLocalOpen(true);
   }, [selectedPieceId, piecePickSequence]);
+  useEffect(() => {
+    if (selectedArtworkId === undefined) return;
+    setViewingArtworkId(selectedArtworkId);
+    if (selectedArtworkId) { setViewingPieceId(null); if (controlledOpen === undefined) setLocalOpen(true); }
+  }, [selectedArtworkId]);
+  useEffect(() => {
+    if (viewingArtworkId && !artworks.some(artwork => artwork.id === viewingArtworkId)) setViewingArtworkId(null);
+  }, [artworks, viewingArtworkId]);
   useEffect(() => {
     if (viewingPieceId && !pieces.some(piece => piece.pieceId === viewingPieceId)) setViewingPieceId(null);
   }, [pieces, viewingPieceId]);
@@ -99,15 +117,28 @@ const GraffitiPieces = ({ open: controlledOpen, onOpenChange, pieces, connected,
     else setDeleteNotice('Delete request could not be sent. Check your connection and permissions.');
   };
 
+  const creator = (art: { ownerPlayerId?: string; ownerUsername?: string; ownerNickName?: string }) => {
+    const username = art.ownerUsername?.replace(/^@/, '') ?? '';
+    const nickName = art.ownerNickName || (username ? `@${username}` : 'Creator unavailable');
+    const label = <>{nickName}{username && <small> @{username}</small>}</>;
+    return onCreatorSelect && (username || art.ownerPlayerId)
+      ? <button type="button" className="art-creator" aria-label={`View profile of ${nickName}`} style={smallButtonStyle} onClick={() => onCreatorSelect({ playerId: art.ownerPlayerId, username, nickName })}>{label}</button>
+      : <span className="art-creator">{label}</span>;
+  };
+  const requestArtworkDelete = (artwork: SharedArtwork) => {
+    if (!connected || !canDeletePieces || !onDeleteArtwork) { setDeleteNotice('Image deletion is unavailable. Check the connection and your permissions.'); return; }
+    setDeleteNotice(onDeleteArtwork(artwork.id) ? 'Delete requested. Waiting for the server removal event.' : 'Delete request could not be sent. Check your connection and permissions.');
+  };
+
   return (
     <div className="graffiti-pieces" style={{ pointerEvents: 'auto', fontFamily: 'inherit' }}>
       <button
         type="button" aria-expanded={open} aria-controls="graffiti-pieces-panel"
         onClick={() => setOpen((value) => !value)}
         style={{ minHeight: 40, padding: '0 12px', border: '1px solid rgba(244,242,230,.28)', borderRadius: 4, background: 'rgba(23,24,22,.78)', color: '#f3f1e9', fontFamily: 'inherit', fontSize: 9, fontWeight: 900, letterSpacing: '.1em', cursor: 'pointer' }}
-      >ART <span aria-hidden="true">{pieces.length ? ` ${pieces.length}` : ''}</span></button>
+      >ART <span aria-hidden="true">{pieces.length + artworks.length ? ` ${pieces.length + artworks.length}` : ''}</span></button>
       {open && (
-        <GameSheet title={viewingPiece ? 'ARTWORK' : 'NEARBY ART'} onClose={() => setOpen(false)} closeLabel="Close nearby art" className="art-sheet">
+        <GameSheet title={viewingPiece || viewingArtwork ? 'ARTWORK' : 'NEARBY ART'} onClose={() => setOpen(false)} closeLabel="Close nearby art" className="art-sheet">
           <div id="graffiti-pieces-panel">
           <details className="piece-connection"><summary>Connection options</summary><button type="button" onClick={onResync} disabled={!connected}>REFRESH ART</button></details>
           {!connected && <p style={noteStyle} role="status">Connect to see shared pieces and send likes.</p>}
@@ -118,6 +149,7 @@ const GraffitiPieces = ({ open: controlledOpen, onOpenChange, pieces, connected,
               <button type="button" onClick={() => setViewingPieceId(null)} style={{ ...smallButtonStyle, marginBottom: 8 }}>BACK TO NEARBY ART</button>
               <div style={{ display: 'grid', gap: 6 }}>
                 <b style={{ fontSize: 12 }}>{viewingPiece.title || 'Graffiti piece'}</b>
+                {creator(viewingPiece)}
                 <span style={{ color: '#aeb2aa', fontSize: 9 }}>X {Math.round(viewingPiece.anchor[0])} · Z {Math.round(viewingPiece.anchor[2])}</span>
                 <span style={{ color: '#b8bcb4', fontSize: 9 }}>{statusLabel(viewingPiece.status)} · GENERATION {viewingPiece.survivalGeneration ?? 0}</span>
                 <span style={{ color: '#c5e6b4', fontSize: 9 }}>{protectionLabel(viewingPiece, now)}</span>
@@ -142,7 +174,16 @@ const GraffitiPieces = ({ open: controlledOpen, onOpenChange, pieces, connected,
                 </fieldset></details>}
               </div>
             </article>
-          ) : visiblePieces.length === 0 ? (
+          ) : viewingArtwork ? (
+            <article aria-label="Image or poster details" style={{ display: 'grid', gap: 8 }}>
+              <button type="button" onClick={() => setViewingArtworkId(null)} style={smallButtonStyle}>BACK TO NEARBY ART</button>
+              <b>Image / poster</b>
+              {creator(viewingArtwork)}
+              <img src={viewingArtwork.assetRef} alt="Shared image or poster" style={{ display: 'block', width: '100%', maxHeight: 180, objectFit: 'contain', borderRadius: 4 }} />
+              <span style={noteStyle}>X {Math.round(viewingArtwork.position[0])} · Z {Math.round(viewingArtwork.position[2])}</span>
+              {canDeletePieces && onDeleteArtwork && <button type="button" disabled={!connected} onClick={() => requestArtworkDelete(viewingArtwork)} style={smallButtonStyle}>DELETE IMAGE</button>}
+            </article>
+          ) : visiblePieces.length === 0 && visibleArtworks.length === 0 ? (
             <p style={noteStyle} role="status">No shared pieces nearby yet.</p>
           ) : (
             <ul style={{ display: 'grid', gap: 8, margin: 0, padding: 0, listStyle: 'none' }}>
@@ -156,11 +197,12 @@ const GraffitiPieces = ({ open: controlledOpen, onOpenChange, pieces, connected,
                     <div style={{ display: 'flex', alignItems: 'start', gap: 8 }}>
                       <div style={{ display: 'grid', flex: 1, gap: 5 }}>
                         <b style={{ fontSize: 11 }}>{label}</b>
+                        {creator(piece)}
                         <span style={{ color: '#aeb2aa', fontSize: 9 }}>X {Math.round(piece.anchor[0])} · Z {Math.round(piece.anchor[2])}</span>
                         <span style={{ color: '#b8bcb4', fontSize: 9 }}>{statusLabel(piece.status)} · GENERATION {piece.survivalGeneration ?? 0}</span>
                         <span style={{ color: '#c5e6b4', fontSize: 9 }}>{protectionLabel(piece, now)}</span>
                       </div>
-                      <button type="button" onClick={() => { setViewingPieceId(piece.pieceId); onView?.(piece.pieceId); }} style={smallButtonStyle}>VIEW</button>
+                      <button type="button" onClick={() => { setViewingArtworkId(null); setViewingPieceId(piece.pieceId); onView?.(piece.pieceId); }} style={smallButtonStyle}>VIEW</button>
                       {canDeletePieces && onDelete && <button type="button" onClick={() => requestDelete(piece)} disabled={!connected} style={{ ...smallButtonStyle, color: '#ffc0b2', opacity: connected ? 1 : .62 }}>DELETE</button>}
                       <button
                         type="button" onClick={() => requestLike(piece)} disabled={!connected || pending}
@@ -177,6 +219,14 @@ const GraffitiPieces = ({ open: controlledOpen, onOpenChange, pieces, connected,
                   </li>
                 );
               })}
+            {visibleArtworks.map(artwork => <li key={artwork.id} style={{ display: 'grid', gap: 7, padding: 10, border: '1px solid rgba(255,255,255,.13)', borderRadius: 4 }}>
+              <b>Image / poster</b>
+              {creator(artwork)}
+              <div className="button-row">
+                <button type="button" style={smallButtonStyle} onClick={() => { setViewingPieceId(null); setViewingArtworkId(artwork.id); onViewArtwork?.(artwork.id); }}>VIEW IMAGE</button>
+                {canDeletePieces && onDeleteArtwork && <button type="button" style={smallButtonStyle} disabled={!connected} onClick={() => requestArtworkDelete(artwork)}>DELETE IMAGE</button>}
+              </div>
+            </li>)}
             </ul>
           )}
           </div>

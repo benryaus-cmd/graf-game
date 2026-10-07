@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import GameSheet from './GameSheet';
 import type { ServerRole } from '@/multiplayer/permissions';
-import type { MultiplayerView } from '@/multiplayer/protocol';
+import type { AdminArtRemovalProgress, MultiplayerView } from '@/multiplayer/protocol';
 import { buildAdminAction, canUseAdminActions, type AdminAction, type AdminActionOptions } from '@/multiplayer/adminActions';
 
 const ROLES: ServerRole[] = ['player', 'moderator', 'admin', 'owner'];
@@ -18,17 +18,24 @@ interface Props {
   onSetRole: (username: string, role: ServerRole) => boolean;
   onAdminAction: (action: AdminAction, targetUsername: string, options: AdminActionOptions) => boolean;
   adminResult?: MultiplayerView['adminResult'];
+  canRemoveAllArt?: boolean;
+  artRemoval?: AdminArtRemovalProgress | null;
 }
 
 const ACTION_ACKS: Record<AdminAction, string> = {
-  'give-credits': 'admin_give_credits_complete', kick: '', mute: '', unmute: '', ban: 'admin_ban_complete', unban: 'admin_unban_complete',
+  'remove-all-art': '', 'give-credits': 'admin_give_credits_complete', kick: '', mute: '', unmute: '', ban: 'admin_ban_complete', unban: 'admin_unban_complete',
 };
 const DURATIONS: Array<{ label: string; value: number | null }> = [
   { label: '10 MIN', value: 600 }, { label: '1 HOUR', value: 3600 }, { label: '1 DAY', value: 86400 },
   { label: '7 DAYS', value: 604800 }, { label: 'PERMANENT', value: null },
 ];
 
-export default function PlayerInteractionCard({ isSelf, onPlayers, onChat, open = true, onClose = () => {}, selected, ownRole, connected, notice, roleChange, onSetRole, onAdminAction, adminResult }: Props) {
+export default function PlayerInteractionCard({ isSelf, onPlayers, onChat, open = true, onClose = () => {}, selected, ownRole, connected, notice, roleChange, onSetRole, onAdminAction, adminResult, canRemoveAllArt = false, artRemoval }: Props) {
+  const [removeConfirmTarget, setRemoveConfirmTarget] = useState<{ username: string; nickName: string } | null>(null);
+  const removalRequested = useRef(false);
+  const removalBaseline = useRef<AdminArtRemovalProgress | null | undefined>(undefined);
+  const removalNoticeBaseline = useRef<string | undefined>(undefined);
+  const removalJobId = useRef<string | null>(null);
   const [expanded, setExpanded] = useState(false);
   const [pending, setPending] = useState<{ username: string; role: ServerRole } | null>(null);
   const [success, setSuccess] = useState('');
@@ -42,9 +49,10 @@ export default function PlayerInteractionCard({ isSelf, onPlayers, onChat, open 
   const [muteMinutes, setMuteMinutes] = useState('30');
   const [reason, setReason] = useState('');
   const handledAdminResult = useRef<Props['adminResult']>(undefined);
-  useEffect(() => { setExpanded(false); setPending(null); setSuccess(''); setActionPending(null); setActionMessage(''); }, [selected?.playerId]);
+  useEffect(() => { setRemoveConfirmTarget(null); removalRequested.current = false; removalJobId.current = null; setExpanded(false); setPending(null); setSuccess(''); setActionPending(null); setActionMessage(''); }, [selected?.playerId, selected?.username]);
   useEffect(() => {
     if (!connected) {
+      removalRequested.current = false;
       setPending(null);
       if (actionPending) {
         setActionPending(null);
@@ -77,10 +85,27 @@ export default function PlayerInteractionCard({ isSelf, onPlayers, onChat, open 
     setActionMessage(result);
   }, [adminResult, actionPending]);
   useEffect(() => {
-    if (!actionPending) return;
+    if (!actionPending || actionPending.action === 'remove-all-art') return;
     const timer = window.setTimeout(() => { setActionPending(null); setActionMessage('No server confirmation received. Check the connection and try again.'); }, 10_000);
     return () => window.clearTimeout(timer);
   }, [actionPending]);
+  useEffect(() => {
+    if (!actionPending || actionPending.action !== 'remove-all-art' || !artRemoval || artRemoval === removalBaseline.current ||
+        artRemoval.targetUsername.replace(/^@/, '').toLowerCase() !== actionPending.username.toLowerCase() ||
+        (removalJobId.current && removalJobId.current !== artRemoval.jobId)) return;
+    removalJobId.current = artRemoval.jobId;
+    if (artRemoval.type === 'admin_remove_user_art_complete') {
+      removalRequested.current = false;
+      setActionPending(null);
+      setActionMessage(`Art removal completed for @${actionPending.username}. ${artRemoval.removed} removed.`);
+    }
+  }, [artRemoval, actionPending]);
+  useEffect(() => {
+    if (!notice || notice === removalNoticeBaseline.current || actionPending?.action !== 'remove-all-art') return;
+    removalRequested.current = false;
+    setActionPending(null);
+    setActionMessage('Art removal request could not continue. See the server notice.');
+  }, [notice, actionPending]);
   if (!selected || !open) return null;
   const role = selected.role;
   const canManage = connected && selected.online !== false && (ownRole === 'owner' || (ownRole === 'admin' && !!role && role !== 'owner'));
@@ -89,21 +114,25 @@ export default function PlayerInteractionCard({ isSelf, onPlayers, onChat, open 
   const canAdmin = !isSelf && connected && canUseAdminActions(ownRole, role);
   const roles = ownRole === 'owner' ? ROLES : ownRole === 'admin' ? ROLES.filter(role => role !== 'owner') : [];
   const username = selected.username.replace(/^@/, '');
+  const matchingRemoval = canSeeAdminInfo && !(actionPending?.action === 'remove-all-art' && artRemoval === removalBaseline.current) && artRemoval?.targetUsername.replace(/^@/, '').toLowerCase() === username.toLowerCase() ? artRemoval : null;
+  const removalBusy = !!matchingRemoval && matchingRemoval.type !== 'admin_remove_user_art_complete';
   const selectedAmount = creditChoice === 'custom' ? Number(customAmount) : Number(creditChoice);
   const banDuration = customDuration ? Number(durationMinutes) * 60 : duration;
   const validDuration = !customDuration || (Number.isSafeInteger(Number(durationMinutes)) && Number(durationMinutes) >= 1 && Number(durationMinutes) <= 525600);
   const requestAction = (action: AdminAction, options: AdminActionOptions = {}) => {
     if (!(action === 'give-credits' ? canGiveCredits : canAdmin) || !username || actionPending || (selected.online === false && action === 'kick')) return;
+    if (action === 'remove-all-art' && (!canRemoveAllArt || removalRequested.current || removalBusy)) return;
     const message = buildAdminAction(ownRole, role, action, username, options);
     if (!message) { setActionMessage('This action is unavailable for the selected player or its values are invalid.'); return; }
     if (onAdminAction(action, username, options)) {
+      if (action === 'remove-all-art') { removalRequested.current = true; removalBaseline.current = artRemoval; removalNoticeBaseline.current = notice; removalJobId.current = null; }
       const amount = action === 'give-credits' ? options.amount : undefined;
       if (action === 'kick' || action === 'mute' || action === 'unmute') {
         setActionPending(null);
         setActionMessage(action === 'kick' ? `Kick requested for @${username}. Waiting for the player to leave.` : `${action === 'mute' ? 'Mute' : 'Unmute'} requested for @${username}. The server controls chat access.`);
       } else {
         setActionPending({ action, username, amount });
-        setActionMessage(`Request sent. Waiting for the server to confirm ${action.replace('-', ' ')}.`);
+        setActionMessage(action === 'remove-all-art' ? 'Request sent. Waiting for the server to start art removal.' : `Request sent. Waiting for the server to confirm ${action.replace('-', ' ')}.`);
       }
     } else setActionMessage('Request could not be sent. Check the connection and your role.');
   };
@@ -124,6 +153,18 @@ export default function PlayerInteractionCard({ isSelf, onPlayers, onChat, open 
           <button type="button" disabled={!Number.isSafeInteger(selectedAmount) || selectedAmount < 1 || selectedAmount > 1_000_000_000 || !!actionPending}
             onClick={() => requestAction('give-credits', { amount: selectedAmount, reason })}>SEND CREDITS</button>
     </div></details>}
+    {canAdmin && canRemoveAllArt && username && <>
+      <button type="button" className="player-remove-art" disabled={!!actionPending || removalBusy} onClick={() => setRemoveConfirmTarget({ username, nickName: selected.nickName || `@${username}` })}>REMOVE ALL ART</button>
+      {removeConfirmTarget?.username === username && <div className="player-art-removal-confirm" aria-label="Confirm removal of all art">
+        <p>Remove all art by <strong>{removeConfirmTarget.nickName}</strong> (@{removeConfirmTarget.username})?</p>
+        <button type="button" disabled={!!actionPending || removalBusy} onClick={() => { requestAction('remove-all-art'); setRemoveConfirmTarget(null); }}>CONFIRM REMOVE ALL ART</button>
+        <button type="button" onClick={() => setRemoveConfirmTarget(null)}>CANCEL REMOVAL</button>
+      </div>}
+    </>}
+    {matchingRemoval && <div className="player-art-removal-progress" role="status">
+      <p>{matchingRemoval.type === 'admin_remove_user_art_complete' ? 'Art removal completed' : matchingRemoval.type === 'admin_remove_user_art_started' ? 'Art removal started' : 'Removing art'} for @{username}: {matchingRemoval.removed} / {matchingRemoval.total} removed · {matchingRemoval.remaining} remaining</p>
+      <small>{matchingRemoval.removedPieces} pieces · {matchingRemoval.removedArtworks} images/posters · {matchingRemoval.removedStrokes} strokes</small>
+    </div>}
     {canAdmin && username && selected.online !== false && <button type="button" className="player-kick" disabled={!!actionPending} onClick={() => requestAction('kick', { reason })}>KICK PLAYER</button>}
     {canAdmin && username && <div className="player-role-admin">
       <button type="button" className="player-role-admin-toggle" aria-expanded={expanded} onClick={() => setExpanded(value => !value)}>ADMIN</button>
@@ -156,7 +197,7 @@ export default function PlayerInteractionCard({ isSelf, onPlayers, onChat, open 
     </div>}
     {pending && <p role="status">Waiting for the server to assign {pending.role} to @{pending.username}…</p>}
     {success && <p role="status">{success}</p>}
-    {actionPending && <p role="status">{actionMessage}</p>}
+    {actionPending && !(actionPending.action === 'remove-all-art' && matchingRemoval) && <p role="status">{actionMessage}</p>}
     {!actionPending && actionMessage && <p role={actionMessage.startsWith('Request could not') || actionMessage.startsWith('No server') ? 'alert' : 'status'}>{actionMessage}</p>}
     {notice && <p role="alert">{notice}</p>}
   </div></GameSheet>;

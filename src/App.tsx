@@ -4,9 +4,8 @@ import { lazy, Suspense, useEffect, useMemo, useRef, useState, type CSSPropertie
 import menuBackground from '@/assets/graffciti-menu.webp';
 import { aippyTweaks } from '@aippy/runtime/tweaks';
 import GameHud, { type HudMenu } from '@/components/GameHud';
-import WorldScene from '@/components/WorldScene';
+import WorldScene, { type MultiplayerRequest } from '@/components/WorldScene';
 import LookJoystick from '@/components/LookJoystick';
-import type { AdminAction, AdminActionOptions } from '@/multiplayer/adminActions';
 import CanvasCredits from '@/components/CanvasCredits';
 import ProtectionControls from '@/components/ProtectionControls';
 import GraffitiPieces from '@/components/GraffitiPieces';
@@ -59,11 +58,11 @@ const App = () => {
   const displayName = aippyDisplayName(aippyUser);
   const [multiplayerStatus, setMultiplayerStatus] = useState<MultiplayerStatus>({ phase: 'solo', playerCount: 0 });
   const [multiplayerView, setMultiplayerView] = useState<MultiplayerView>({ chat: [], revision: 0, accountFeaturesAvailable: false, worldItemCount: 0 });
-  const [multiplayerRequest, setMultiplayerRequest] = useState<{ action: 'join' | 'leave' | 'chat' | 'resync' | 'like' | 'inspect' | 'delete-piece' | 'set-role' | 'paint-over' | 'quote-protection' | 'buy-protection' | 'admin-action' | 'select-player'; text?: string; role?: ServerRole; colour?: string; protectionEnabled?: boolean; adminAction?: AdminAction; options?: AdminActionOptions; sequence: number } | null>(null);
-  const requestMultiplayer = (action: 'join' | 'leave' | 'chat' | 'resync' | 'like' | 'inspect' | 'delete-piece' | 'set-role' | 'paint-over' | 'quote-protection' | 'buy-protection' | 'admin-action' | 'select-player', text?: string, role?: ServerRole, colour?: string, protectionEnabled?: boolean) => {
-    if (action === 'inspect') { setPaintMode(false); requestWorkspace('exit'); setViewMode('first'); }
-    if (action === 'join' || action === 'leave') { poster.cancel(); requestWorkspace('clear'); }
-    setMultiplayerRequest(previous => ({ action, text, role, colour, protectionEnabled, sequence: (previous?.sequence ?? 0) + 1 }));
+  const [multiplayerRequest, setMultiplayerRequest] = useState<MultiplayerRequest | null>(null);
+  const requestMultiplayer = (action: MultiplayerRequest['action'], text?: string, role?: ServerRole, colour?: string, protectionEnabled?: boolean, creator?: MultiplayerRequest['creator']) => {
+    if (action === 'inspect' || action === 'inspect-artwork') { setPaintMode(false); requestWorkspace('exit'); setViewMode('first'); }
+    if (action === 'join' || action === 'leave') { setReference(null); poster.cancel(); requestWorkspace('clear'); }
+    setMultiplayerRequest(previous => ({ action, text, role, colour, protectionEnabled, creator, sequence: (previous?.sequence ?? 0) + 1 }));
   };
   const accentColor = tweaks.accentColor.useState();
   const panelColor = tweaks.panelColor.useState();
@@ -94,7 +93,13 @@ const App = () => {
   const [reference, setReference] = useState<ReferenceSettings | null>(null);
   useEffect(() => { const url = reference?.url; return () => { if (url) URL.revokeObjectURL(url); }; }, [reference?.url]);
   const [workspaceView, setWorkspaceView] = useState<PaintWorkspaceView>({ selected: false, active: false, width: 0, height: 0 });
-  useEffect(() => { if (!workspaceView.selected) { setCanvasCollapsed(true); setReference(current => current?.moving ? { ...current, moving: false } : current); } }, [workspaceView.selected]);
+  useEffect(() => { if (!workspaceView.selected) { setCanvasCollapsed(true); setReference(null); } }, [workspaceView.selected]);
+  useEffect(() => { setReference(null); }, [multiplayerStatus.phase, multiplayerView.ownPlayerId]);
+  const referenceRevision = useRef(multiplayerView.revision);
+  useEffect(() => {
+    if (multiplayerView.revision < referenceRevision.current) setReference(null);
+    referenceRevision.current = multiplayerView.revision;
+  }, [multiplayerView.revision]);
   const [localPieceNames, setLocalPieceNames] = useState<Record<string, string>>(readLocalPieceNames);
   const [pieceTitleDraft, setPieceTitleDraft] = useState('');
   const [protectionEnabled, setProtectionEnabled] = useState(false);
@@ -191,8 +196,8 @@ const App = () => {
     return () => observer.disconnect();
   }, []);
   useEffect(() => {
-    if (multiplayerView.selectedPieceId) setActiveMenu('art');
-  }, [multiplayerView.selectedPieceId, multiplayerView.piecePickSequence]);
+    if (multiplayerView.selectedPieceId || multiplayerView.selectedArtworkId) setActiveMenu('art');
+  }, [multiplayerView.selectedPieceId, multiplayerView.selectedArtworkId, multiplayerView.piecePickSequence]);
   useEffect(() => {
     if (multiplayerView.selectedPlayer) setActiveMenu('player');
     else setActiveMenu(current => current === 'player' ? null : current);
@@ -382,7 +387,7 @@ const App = () => {
   const jumpLabel = progress.outfit === 'jax' ? 'FLY' : progress.outfit === 'ringmaster' ? 'LEVITATE'
     : progress.outfit === 'pomni' ? 'HIGH JUMP' : 'JUMP';
 
-  const workspaceHud = <PaintWorkspaceHud collapsed={canvasCollapsed} onCollapsedChange={setCanvasCollapsed} onReference={() => { setCanvasCollapsed(true); toggleMenu('reference'); }} view={workspaceView} painting={paintMode && !adminFreePaint} onAction={requestWorkspace}
+  const workspaceHud = <PaintWorkspaceHud history={multiplayerView.strokeHistory ?? undefined} collapsed={canvasCollapsed} onCollapsedChange={setCanvasCollapsed} onReference={() => { setCanvasCollapsed(true); toggleMenu('reference'); }} view={workspaceView} painting={paintMode && !adminFreePaint} onAction={requestWorkspace}
             protectionEnabled={protectionEnabled} startDisabled={protectionStartDisabled} startLabel={protectionStartLabel}
             pieceTitle={pieceTitleDraft} onPieceTitleChange={setPieceTitleDraft}
             protectedUntil={multiplayerView.protection?.protectedUntil} geometryLocked={!!multiplayerView.protection?.pendingPurchase || !!multiplayerView.protection?.purchased}
@@ -463,7 +468,7 @@ const App = () => {
             topControls={<>
               <div className="top-network-controls">
                 {multiplayerStatus.phase !== 'solo' ? <CanvasCredits online={multiplayerStatus.phase === 'connected'} balance={multiplayerView.protection?.creditBalance ?? null} /> : <span className="canvas-credit-status" aria-label="Solo coins">🪙 {progress.coins}</span>}
-                {<GraffitiPieces open={activeMenu === 'art'} onOpenChange={open => setActiveMenu(open ? 'art' : null)} canPaintOver={!!multiplayerStatus.canAdminPaint} paintColour={color} onPaintOver={(pieceId, colour) => { if (!multiplayerStatus.canAdminPaint) return false; requestMultiplayer('paint-over', pieceId, undefined, colour); return true; }} selectedPieceId={multiplayerView.selectedPieceId} piecePickSequence={multiplayerView.piecePickSequence} pieces={multiplayerView.pieces ?? []} connected={multiplayerStatus.phase === 'connected'} role={multiplayerStatus.role} canDeletePieces={multiplayerStatus.canDeletePieces} onDelete={pieceId => { if (multiplayerStatus.phase !== 'connected' || !multiplayerStatus.canDeletePieces) return false; requestMultiplayer('delete-piece', pieceId); return true; }} onLike={pieceId => { if (multiplayerStatus.phase !== 'connected') return false; requestMultiplayer('like', pieceId); return true; }} onResync={() => requestMultiplayer('resync')} onView={pieceId => requestMultiplayer('inspect', pieceId)} />}
+                {<GraffitiPieces open={activeMenu === 'art'} onOpenChange={open => setActiveMenu(open ? 'art' : null)} canPaintOver={!!multiplayerStatus.canAdminPaint} paintColour={color} onPaintOver={(pieceId, colour) => { if (!multiplayerStatus.canAdminPaint) return false; requestMultiplayer('paint-over', pieceId, undefined, colour); return true; }} artworks={multiplayerView.artworks ?? []} selectedArtworkId={multiplayerView.selectedArtworkId} onViewArtwork={id => requestMultiplayer('inspect-artwork', id)} onDeleteArtwork={id => { if (multiplayerStatus.phase !== 'connected' || !multiplayerStatus.canDeletePieces) return false; requestMultiplayer('delete-artwork', id); return true; }} onCreatorSelect={creator => requestMultiplayer('creator-select', undefined, undefined, undefined, undefined, creator)} selectedPieceId={multiplayerView.selectedPieceId} piecePickSequence={multiplayerView.piecePickSequence} pieces={multiplayerView.pieces ?? []} connected={multiplayerStatus.phase === 'connected'} role={multiplayerStatus.role} canDeletePieces={multiplayerStatus.canDeletePieces} onDelete={pieceId => { if (multiplayerStatus.phase !== 'connected' || !multiplayerStatus.canDeletePieces) return false; requestMultiplayer('delete-piece', pieceId); return true; }} onLike={pieceId => { if (multiplayerStatus.phase !== 'connected') return false; requestMultiplayer('like', pieceId); return true; }} onResync={() => requestMultiplayer('resync')} onView={pieceId => requestMultiplayer('inspect', pieceId)} />}
                 <MultiplayerControls chatMute={multiplayerView.chatMute} chatOpen={activeMenu === 'chat'} onChatToggle={() => toggleMenu('chat')} onChatClose={closeMenu} onOpenMenu={() => toggleMenu('settings')} onPlayers={() => toggleMenu('players')} onPlayerSelect={id => requestMultiplayer('select-player', id)} status={multiplayerStatus} displayName={displayName} avatar={aippyUser.avatar} profileLoading={aippyUser.isLoading}
                   onJoin={() => requestMultiplayer('join')} onLeave={() => requestMultiplayer('leave')}
                   messages={multiplayerView.chat} onChat={text => requestMultiplayer('chat', text)} onResync={() => requestMultiplayer('resync')} />
@@ -474,11 +479,15 @@ const App = () => {
           <div hidden={menuBlocking || !!reference?.moving}>{workspaceHud}</div>
           {workspaceView.selected && !menuBlocking && reference && (reference.moving || canvasCollapsed) && <ReferenceControls guide={reference} onChange={setReference} onOpen={() => toggleMenu('reference')} />}
           {activeMenu === 'players' && <PlayersSheet players={multiplayerView.onlinePlayers ?? []} ownPlayerId={multiplayerView.ownPlayerId} onSelect={id => requestMultiplayer('select-player', id)} onChat={() => toggleMenu('chat')} onClose={closeMenu} />}
-          {activeMenu === 'reference' && <ReferenceSheet selected={workspaceView.selected} guide={reference} onChange={setReference} onClose={closeMenu} />}
+          {activeMenu === 'reference' && <ReferenceSheet selected={workspaceView.selected} guide={reference} onChange={setReference} onClose={closeMenu}
+            ownerReferences={multiplayerView.ownerReferences ?? []} canKeepReference={!!multiplayerView.canKeepReference}
+            ownerReferenceBusy={multiplayerView.ownerReferenceBusy} ownerReferenceNotice={multiplayerView.ownerReferenceNotice}
+            onKeepReference={multiplayerView.canKeepReference ? () => requestMultiplayer('keep-reference') : undefined}
+            onDeleteOwnerReference={multiplayerView.canKeepReference ? id => requestMultiplayer('delete-reference', id) : undefined} />}
           {eyedropperActive && <aside className="eyedropper-hint" role="status"><span>{eyedropperNotice}</span><button type="button" onClick={() => setEyedropperActive(false)}>CANCEL</button></aside>}
           <div hidden={activeMenu === 'paint'}>
-          <PlayerInteractionCard isSelf={multiplayerView.selectedPlayer?.playerId === multiplayerView.ownPlayerId} onPlayers={() => toggleMenu('players')} onChat={() => toggleMenu('chat')} open={activeMenu === 'player'} onClose={closeMenu} adminResult={multiplayerView.adminResult} onAdminAction={(action, targetUsername, options) => {
-            if (multiplayerStatus.phase !== 'connected' || !['admin', 'owner'].includes(multiplayerStatus.role ?? '') || (action === 'give-credits' && multiplayerStatus.role !== 'owner')) return false;
+          <PlayerInteractionCard canRemoveAllArt={!!multiplayerStatus.canRemoveAllArt} artRemoval={multiplayerView.artRemoval} isSelf={multiplayerView.selectedPlayer?.playerId === multiplayerView.ownPlayerId} onPlayers={() => toggleMenu('players')} onChat={() => toggleMenu('chat')} open={activeMenu === 'player'} onClose={closeMenu} adminResult={multiplayerView.adminResult} onAdminAction={(action, targetUsername, options) => {
+            if (multiplayerStatus.phase !== 'connected' || !['admin', 'owner'].includes(multiplayerStatus.role ?? '') || (action === 'give-credits' && multiplayerStatus.role !== 'owner') || (action === 'remove-all-art' && !multiplayerStatus.canRemoveAllArt)) return false;
             setMultiplayerRequest(previous => ({ action: 'admin-action', text: targetUsername, adminAction: action, options, sequence: (previous?.sequence ?? 0) + 1 }));
             return true;
           }} selected={multiplayerView.selectedPlayer} ownRole={multiplayerStatus.role} connected={multiplayerStatus.phase === 'connected'} notice={multiplayerStatus.notice} roleChange={multiplayerView.roleChange}

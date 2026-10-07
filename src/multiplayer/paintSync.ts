@@ -186,6 +186,41 @@ export class PaintSync {
   }
   replay(stroke: SharedStroke): void { this.adapter.draw(stroke, stroke.points, this.continuationPoint(stroke.strokeId)); }
 
+  /** Streaming unload is reversible and must never create rejection tombstones. */
+  unloadStrokeIds(ids: readonly string[]): string[] {
+    const surfaces = new Set<string>();
+    for (const id of new Set(ids)) {
+      const stroke = this.strokes.get(id);
+      if (!stroke || this.active?.stroke.strokeId === id || (this.local.has(id) && !this.confirmedLocal.has(id))) continue;
+      surfaces.add(stroke.surfaceId);
+      this.strokes.delete(id); this.index.delete(id); this.local.delete(id); this.confirmedLocal.delete(id);
+    }
+    return [...surfaces];
+  }
+  /** Batch membership changes only; caller rebuilds each affected wall once. */
+  upsertStrokes(values: readonly unknown[]): string[] {
+    const surfaces = new Set<string>();
+    for (const value of values) {
+      const incoming = readStroke(value);
+      if (!incoming || this.rejectedStrokeIds.has(incoming.strokeId) || (incoming.pieceId && this.rejectedPieceIds.has(incoming.pieceId))) continue;
+      const old = this.strokes.get(incoming.strokeId), local = this.local.get(incoming.strokeId);
+      if (old) surfaces.add(old.surfaceId);
+      if (local && (this.active?.stroke === local || local.points.length > incoming.points.length)) {
+        Object.assign(local, { ...incoming, points: local.points });
+        this.strokes.set(local.strokeId, local); this.index.changed(local);
+      } else { this.strokes.set(incoming.strokeId, incoming); this.index.set(incoming); }
+      if (incoming.sequence !== undefined) this.confirmLocal(incoming.strokeId);
+      surfaces.add(incoming.surfaceId);
+    }
+    return [...surfaces];
+  }
+  /** Only an explicit authoritative redo may restore an undone stroke ID. */
+  restoreStrokes(values: readonly unknown[]): string[] {
+    const strokes = values.map(readStroke).filter((stroke): stroke is SharedStroke => !!stroke);
+    for (const stroke of strokes) this.rejectedStrokeIds.delete(stroke.strokeId);
+    return this.upsertStrokes(strokes);
+  }
+
   /** Remove strokes named by an authoritative piece-removal broadcast. Returns affected surfaces for one rebuild each. */
   removeStrokeIds(ids: readonly string[]): string[] {
     const surfaces = new Set<string>();

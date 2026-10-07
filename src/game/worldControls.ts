@@ -10,7 +10,7 @@ import { updatePosterPreview } from '@/game/posterPreview';
 import { elementPointerIsRotated, elementPointerPoint } from '@/game/pointerCoordinates';
 import { centeredPaintWorkspaceBounds, clearPaintWorkspace, movePaintWorkspaceToUv, selectPaintWorkspaceFace, updatePaintWorkspaceCamera } from '@/game/paintWorkspace';
 import { isPaintTargetReachable } from '@/game/paintTargeting';
-import { samplePaintColour } from '@/game/paintEyedropper';
+import { sampleVisibleWorldColour } from '@/game/paintEyedropper';
 
 export function attachWorldControls(
   world: WorldEngine,
@@ -123,18 +123,7 @@ export function attachWorldControls(
     if (pointerId !== null || (event.pointerType === 'mouse' && (!event.isPrimary || event.button !== 0))) return;
     if (settings.current.eyedropperActive) {
       endStroke();
-      refreshWalls();
-      const point = elementPointerPoint(canvas, event);
-      pointer.set(point.x * 2 - 1, 1 - point.y * 2);
-      raycaster.setFromCamera(pointer, world.paintWorkspace?.active ? world.paintWorkspace.camera : world.cameraMode === 'map' ? world.mapCamera : world.camera);
-      const hit = raycaster.intersectObjects(wallMeshes, false)[0];
-      const wall = hit && wallLookup.get(hit.object);
-      const selection = world.paintWorkspace?.selection;
-      if (hit?.face && hit.uv && wall && (world.paintWorkspace?.active ? selection?.wall === wall && selection.face === (hit.face.materialIndex ?? 0) : isPaintTargetReachable(raycaster.ray, hit.point, hit.distance, world.playerPosition, world.colliders))) {
-        const face = hit.face.materialIndex ?? 0;
-        const scale = wall.uvScales[face] ?? { u: 1, v: 1 };
-        world.onColorPick?.(samplePaintColour(wall, face, hit.uv.x / scale.u, hit.uv.y / scale.v));
-      } else world.onColorPick?.(null);
+      world.onColorPick?.(sampleVisibleWorldColour(world, event));
       return;
     }
     if (!settings.current.paintMode && !posterState.current && !world.paintWorkspace?.active && world.onPlayerPick?.(event)) return;

@@ -15,7 +15,7 @@ type PaintLayerControl = { name: string; visible: boolean };
 type PaintTool = 'paint' | 'eraser' | 'off';
 const HEADS: Array<{ id: BrushHead; label: string }> = [
   { id: 'fine', label: 'FINE' }, { id: 'soft', label: 'SOFT' }, { id: 'fat', label: 'FAT' },
-  { id: 'marker', label: 'MARKER' }, { id: 'roller', label: 'ROLLER' }, { id: 'drip', label: 'DRIP' },
+  { id: 'marker', label: 'MARKER' }, { id: 'roller', label: 'ROLLER' },
 ];
 
 interface PaintDockProps {
@@ -126,8 +126,13 @@ const PaintDock = (props: PaintDockProps) => {
       {posterMode ? <PosterStudio size={props.posterSize} onSizeChange={props.onPosterSizeChange} onStartPlacement={props.onStartPosterPlacement} /> : <>
         <section className="tool-section"><h3>BRUSH</h3>
           <div className="paint-heads" aria-label="Brush heads" data-tutorial="brush-heads">
-            {HEADS.map(head => { const selected = (props.brushHead ?? 'soft') === head.id; return <button key={head.id} type="button" className={selected ? 'paint-head-selected' : undefined} aria-pressed={selected} onClick={() => props.onBrushHeadChange?.(head.id)}>{head.label}</button>; })}
+            {HEADS.map(head => { const selected = !props.eraseMode && (props.brushHead ?? 'soft') === head.id; return <button key={head.id} type="button" className={selected ? 'paint-head-selected' : undefined} aria-pressed={selected} onClick={() => props.onBrushHeadChange?.(head.id)}>{head.label}</button>; })}
+            <button type="button" className={props.eraseMode ? 'paint-head-selected' : undefined} aria-pressed={props.eraseMode} style={{ background: '#ffffff', color: '#000000' }} onClick={() => { props.onToolChange('eraser'); (props.onClose ?? props.onToggle)(); }}>ERAZE</button>
           </div>
+        </section>
+        <section className="tool-section"><h3>BRUSH SETTINGS</h3>
+          <BrushTuning advanced={tuningOpen} color={props.color} hue={hue} darkness={darkness} paleness={paleness} brushSize={props.brushSize} opacity={props.opacity} onHueChange={updateHue} onSizeChange={props.onBrushSizeChange} onOpacityChange={props.onOpacityChange} onDarknessChange={updateDarkness} onPalenessChange={updatePaleness} />
+          <button type="button" className="disclosure-button" aria-expanded={tuningOpen} onClick={() => setTuningOpen(value => !value)}>{tuningOpen ? 'Less colour tuning' : 'Advanced colour tuning'} <span>{tuningOpen ? '−' : '+'}</span></button>
         </section>
         <section className="tool-section"><h3>COLOUR <span className="color-readout"><i style={{ backgroundColor: props.color }} />{props.color.toUpperCase()}</span></h3>
           <div className="swatches" aria-label="Color palette">
@@ -144,12 +149,7 @@ const PaintDock = (props: PaintDockProps) => {
         </section>
         <div className="tool-mode" aria-label="Paint operation">
           <button type="button" aria-pressed={selectedTool === 'paint'} onClick={() => { props.onToolChange('paint'); (props.onClose ?? props.onToggle)(); }}><img src={assetsData.IMAGE_ERCF} alt="" />SPRAY</button>
-          <button type="button" aria-pressed={selectedTool === 'eraser'} onClick={() => { props.onToolChange('eraser'); (props.onClose ?? props.onToggle)(); }}>ERASE</button>
         </div>
-        <section className="tool-section"><h3>BRUSH SETTINGS</h3>
-          <BrushTuning advanced={tuningOpen} color={props.color} hue={hue} darkness={darkness} paleness={paleness} brushSize={props.brushSize} opacity={props.opacity} onHueChange={updateHue} onSizeChange={props.onBrushSizeChange} onOpacityChange={props.onOpacityChange} onDarknessChange={updateDarkness} onPalenessChange={updatePaleness} />
-          <button type="button" className="disclosure-button" aria-expanded={tuningOpen} onClick={() => setTuningOpen(value => !value)}>{tuningOpen ? 'Less colour tuning' : 'Advanced colour tuning'} <span>{tuningOpen ? '−' : '+'}</span></button>
-        </section>
         <section className="tool-section"><h3>LAYERS <small>LAYER {props.selectedLayer + 1}</small></h3>
           <div className="layer-list" aria-label="Drawing layers">{props.layers.slice(0, 5).map((layer, index) => <div className={`layer-chip ${props.selectedLayer === index ? 'layer-chip-selected' : ''}`} key={layer.name}>
             <button className="layer-select" type="button" aria-label={`Select ${layer.name}`} aria-pressed={props.selectedLayer === index} onClick={() => props.onLayerSelect(index)}>{index + 1}</button>

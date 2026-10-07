@@ -6,7 +6,7 @@ import type { Message } from './protocol';
 import { ArtworkUpload } from './artworkUpload';
 import { artworkAssetRef } from './artworkAssets';
 
-interface SharedArtwork extends PosterArtwork { id: string; surfaceId: string; face: string; assetRef: string; sequence?: number }
+export interface SharedArtwork extends PosterArtwork { id: string; surfaceId: string; face: string; assetRef: string; sequence?: number; ownerPlayerId?: string; ownerUsername?: string; ownerNickName?: string }
 interface PosterLoad { wall: PaintWall; image: HTMLImageElement; assetRef: string; token: object; timer: ReturnType<typeof setTimeout> }
 export function readArtwork(value: unknown): SharedArtwork | null {
   if (!value || typeof value !== 'object') return null;
@@ -20,11 +20,14 @@ export function readArtwork(value: unknown): SharedArtwork | null {
       (v.width as number) <= 0 || (v.height as number) <= 0 || (v.width as number) > 100 || (v.height as number) > 100) return null;
   return { id, surfaceId: v.surfaceId, face: typeof v.face === 'string' ? v.face : String(decodeSurface(v.surfaceId)!.face),
     assetRef, image: assetRef, position: v.position as [number,number,number], quaternion: quaternion as [number,number,number,number],
-    width: v.width as number, height: v.height as number, sequence: Number.isSafeInteger(v.sequence) ? v.sequence as number : undefined };
+    width: v.width as number, height: v.height as number, sequence: Number.isSafeInteger(v.sequence) ? v.sequence as number : undefined,
+    ownerPlayerId: typeof v.ownerPlayerId === 'string' ? v.ownerPlayerId.slice(0,120) : undefined,
+    ownerUsername: typeof v.ownerUsername === 'string' ? v.ownerUsername.replace(/^@/, '').trim().slice(0,40) : undefined,
+    ownerNickName: typeof v.ownerNickName === 'string' ? v.ownerNickName.trim().slice(0,40) : undefined };
 }
 
 export class ArtworkSync {
-  private static readonly MAX_CONCURRENT_IMAGE_LOADS = 10;
+  private static readonly MAX_CONCURRENT_IMAGE_LOADS = 7;
   private static readonly IMAGE_LOAD_TIMEOUT_MS = 20_000;
   private records = new Map<string, SharedArtwork>();
   private recordsByWall = new Map<string, SharedArtwork[]>();
@@ -88,14 +91,26 @@ export class ArtworkSync {
     this.applyOrder();
   }
   accept(message: Message): void {
-    const record = readArtwork(message.artwork ?? message);
-    if (!record) return;
-    const existing = this.records.get(record.id);
-    if (existing) {
-      if (existing.assetRef !== record.assetRef) { this.cancelLoad(existing.id); this.failed.delete(existing.id); }
-      this.unindex(existing); Object.assign(existing, record); this.index(existing);
-    } else { this.records.set(record.id, record); this.index(record); }
-    this.local.delete(record.id);
+    this.upsert([message.artwork ?? message]);
+  }
+  entries(): SharedArtwork[] { return [...this.records.values()]; }
+  meshFor(id: string): THREE.Object3D | null { return this.mounted.get(id)?.mesh ?? null; }
+  unloadArtwork(id: string): void { if (!this.local.has(id)) this.removeArtwork(id); }
+  upsert(values: readonly unknown[]): void {
+    const affected = new Set<string>();
+    for (const value of values) {
+      const record = readArtwork(value); if (!record) continue;
+      const existing = this.records.get(record.id);
+      if (existing) {
+        if (existing.assetRef !== record.assetRef || existing.surfaceId !== record.surfaceId || existing.width !== record.width || existing.height !== record.height || existing.position.some((v,i) => v !== record.position[i]) || existing.quaternion.some((v,i) => v !== record.quaternion[i])) {
+          this.cancelLoad(existing.id); this.failed.delete(existing.id); this.remove(existing.id);
+        }
+        this.unindex(existing);
+      }
+      this.records.set(record.id, record); this.index(record, false); this.local.delete(record.id);
+      const surface = decodeSurface(record.surfaceId); if (surface) affected.add(surface.wallId);
+    }
+    for (const id of affected) this.recordsByWall.get(id)?.sort((a,b) => (a.sequence ?? Infinity) - (b.sequence ?? Infinity));
     this.applyOrder();
   }
   refresh(walls: Map<string, PaintWall>): void {
