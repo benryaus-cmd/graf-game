@@ -1,0 +1,99 @@
+{
+  "version": "city-streaming-8oct2026",
+  "commit": "c8b994a32c733613ef2638cca03d96cc3d30ba88",
+  "baseUrl": "https://raw.githubusercontent.com/benryaus-cmd/graf-game/c8b994a32c733613ef2638cca03d96cc3d30ba88/",
+  "description": "Incremental Aippy-side city streaming pilot with GG live settings, local performance tests, fog/skyline and adjacent tree courtyard.",
+  "files": [
+    {
+      "source": "src/App.tsx",
+      "target": "src/games/importedGame/upstream/src/App.tsx"
+    },
+    {
+      "source": "src/components/DeveloperPanel.tsx",
+      "target": "src/games/importedGame/upstream/src/components/DeveloperPanel.tsx"
+    },
+    {
+      "source": "src/components/WorldScene.tsx",
+      "target": "src/games/importedGame/upstream/src/components/WorldScene.tsx"
+    },
+    {
+      "source": "src/game/architectureWalls.ts",
+      "target": "src/games/importedGame/upstream/src/game/architectureWalls.ts"
+    },
+    {
+      "source": "src/game/cityBlockLayout.ts",
+      "target": "src/games/importedGame/upstream/src/game/cityBlockLayout.ts"
+    },
+    {
+      "source": "src/game/cityChunkContent.ts",
+      "target": "src/games/importedGame/upstream/src/game/cityChunkContent.ts"
+    },
+    {
+      "source": "src/game/cityChunks.ts",
+      "target": "src/games/importedGame/upstream/src/game/cityChunks.ts"
+    },
+    {
+      "source": "src/game/cityHorizon.ts",
+      "target": "src/games/importedGame/upstream/src/game/cityHorizon.ts"
+    },
+    {
+      "source": "src/game/cityStreamPolicy.ts",
+      "target": "src/games/importedGame/upstream/src/game/cityStreamPolicy.ts"
+    },
+    {
+      "source": "src/game/createWorld.ts",
+      "target": "src/games/importedGame/upstream/src/game/createWorld.ts"
+    },
+    {
+      "source": "src/game/disposeWorld.ts",
+      "target": "src/games/importedGame/upstream/src/game/disposeWorld.ts"
+    },
+    {
+      "source": "src/game/liveStrokeDistance.ts",
+      "target": "src/games/importedGame/upstream/src/game/liveStrokeDistance.ts"
+    },
+    {
+      "source": "src/game/paintSurfaceLayer.ts",
+      "target": "src/games/importedGame/upstream/src/game/paintSurfaceLayer.ts"
+    },
+    {
+      "source": "src/game/performanceLog.ts",
+      "target": "src/games/importedGame/upstream/src/game/performanceLog.ts"
+    },
+    {
+      "source": "src/game/renderSettings.ts",
+      "target": "src/games/importedGame/upstream/src/game/renderSettings.ts"
+    },
+    {
+      "source": "src/game/urbanCourtyard.ts",
+      "target": "src/games/importedGame/upstream/src/game/urbanCourtyard.ts"
+    },
+    {
+      "source": "src/game/worldPerformance.ts",
+      "target": "src/games/importedGame/upstream/src/game/worldPerformance.ts"
+    },
+    {
+      "source": "src/index.css",
+      "target": "src/games/importedGame/upstream/src/index.css"
+    },
+    {
+      "source": "src/multiplayer/worldSession.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/worldSession.ts"
+    },
+    {
+      "source": "src/game/fixtureBuilding.ts",
+      "target": "src/games/importedGame/upstream/src/game/fixtureBuilding.ts"
+    },
+    {
+      "source": "src/game/fixtureBuildingGrain.ts",
+      "target": "src/games/importedGame/upstream/src/game/fixtureBuildingGrain.ts"
+    }
+  ],
+  "notes": [
+    "Stage all 21 raw-byte downloads before replacing persistent targets. Preserve every unlisted file.",
+    "No host wrapper, Vite configuration, dependency, server, endpoint, protocol or economy changes.",
+    "Tree assets load from a pinned GitHub asset commit; no new host asset copy step.",
+    "Includes the earlier permanent-building 80 m visibility / 20 m grain correction.",
+    "Last-three-run copy reports are device-local; run actual phone comparisons before tuning defaults."
+  ]
+}

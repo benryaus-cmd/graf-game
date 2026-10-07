@@ -1,0 +1,56 @@
+{
+  "version": "city-streaming-8oct2026-rollback",
+  "commit": "b832b3d3f053e77d6feaad6a47ed3d3f4d22496a",
+  "baseUrl": "https://raw.githubusercontent.com/benryaus-cmd/graf-game/b832b3d3f053e77d6feaad6a47ed3d3f4d22496a/",
+  "description": "Restore 12 existing runtime files from the prior main snapshot. New city modules can remain unused on disk. Artwork and server state are not altered.",
+  "files": [
+    {
+      "source": "src/App.tsx",
+      "target": "src/games/importedGame/upstream/src/App.tsx"
+    },
+    {
+      "source": "src/components/WorldScene.tsx",
+      "target": "src/games/importedGame/upstream/src/components/WorldScene.tsx"
+    },
+    {
+      "source": "src/game/architectureWalls.ts",
+      "target": "src/games/importedGame/upstream/src/game/architectureWalls.ts"
+    },
+    {
+      "source": "src/game/cityChunkContent.ts",
+      "target": "src/games/importedGame/upstream/src/game/cityChunkContent.ts"
+    },
+    {
+      "source": "src/game/cityChunks.ts",
+      "target": "src/games/importedGame/upstream/src/game/cityChunks.ts"
+    },
+    {
+      "source": "src/game/createWorld.ts",
+      "target": "src/games/importedGame/upstream/src/game/createWorld.ts"
+    },
+    {
+      "source": "src/game/disposeWorld.ts",
+      "target": "src/games/importedGame/upstream/src/game/disposeWorld.ts"
+    },
+    {
+      "source": "src/game/paintSurfaceLayer.ts",
+      "target": "src/games/importedGame/upstream/src/game/paintSurfaceLayer.ts"
+    },
+    {
+      "source": "src/index.css",
+      "target": "src/games/importedGame/upstream/src/index.css"
+    },
+    {
+      "source": "src/multiplayer/worldSession.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/worldSession.ts"
+    },
+    {
+      "source": "src/game/fixtureBuilding.ts",
+      "target": "src/games/importedGame/upstream/src/game/fixtureBuilding.ts"
+    },
+    {
+      "source": "src/game/fixtureBuildingGrain.ts",
+      "target": "src/games/importedGame/upstream/src/game/fixtureBuildingGrain.ts"
+    }
+  ]
+}

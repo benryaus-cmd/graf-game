@@ -1,0 +1,12 @@
+Apply this completed incremental update to the CURRENT existing GraffCiti Aippy project:
+https://raw.githubusercontent.com/benryaus-cmd/graf-game/main/updates/city-streaming-8oct2026.json
+
+Use Node 22 to read the manifest and download manifest.baseUrl + source as raw bytes for every files entry. Stage all 21 downloads first. Require every download to succeed and be nonempty; if any fails, stop and change nothing. Then replace only the 21 exact persistent target paths. Preserve all unlisted files.
+
+Do NOT do a full GitHub re-import. Do NOT modify the importer, Vite aliases, ImportedGame adapter, GameHostScreen, host wrapper, dependencies or server. Source paths such as src/App.tsx belong under src/games/importedGame/upstream/src/App.tsx, not the host src/ tree.
+
+Verify App.tsx contains LIVE GAME SETTINGS, DeveloperPanel.tsx contains COPY LAST 3 RUNS, cityHorizon.ts contains city-distant-skyline and urbanCourtyard.ts contains quaternius-courtyard-trees. Then run the normal production build. If it fails, report the first exact error without changing build/import infrastructure.
+
+Report version, downloads succeeded X/21, persistent targets replaced X/21, markers verified YES/NO and build PASS/FAIL.
+
+No server patch is needed. The existing Settings taps + gg now offers Project File Viewer or Live Game Settings. Rendering settings and test logs stay on-device. Do not redesign the imported runtime.
