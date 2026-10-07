@@ -1,0 +1,33 @@
+{
+  "version": "paint-fixes-rollback-7oct2026",
+  "baseUrl": "https://raw.githubusercontent.com/benryaus-cmd/graf-game/a1f06c03493cf2681139172466785ea04630024d/",
+  "files": [
+    {
+      "source": "src/App.tsx",
+      "target": "src/games/importedGame/upstream/src/App.tsx"
+    },
+    {
+      "source": "src/components/PaintDock.tsx",
+      "target": "src/games/importedGame/upstream/src/components/PaintDock.tsx"
+    },
+    {
+      "source": "src/components/WorldScene.tsx",
+      "target": "src/games/importedGame/upstream/src/components/WorldScene.tsx"
+    },
+    {
+      "source": "src/game/worldPainting.ts",
+      "target": "src/games/importedGame/upstream/src/game/worldPainting.ts"
+    },
+    {
+      "source": "src/game/worldTypes.ts",
+      "target": "src/games/importedGame/upstream/src/game/worldTypes.ts"
+    },
+    {
+      "source": "src/multiplayer/worldSession.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/worldSession.ts"
+    }
+  ],
+  "notes": [
+    "Restore only the six modified existing runtime files from the previous published client. New helper files may remain unused. Preserve all unlisted files."
+  ]
+}

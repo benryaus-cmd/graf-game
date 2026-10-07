@@ -1,0 +1,47 @@
+{
+  "version": "paint-fixes-7oct2026",
+  "baseUrl": "https://raw.githubusercontent.com/benryaus-cmd/graf-game/89ed8182fd09c69345bf0ff2aaacb414d1c71186/",
+  "files": [
+    {
+      "source": "src/App.tsx",
+      "target": "src/games/importedGame/upstream/src/App.tsx"
+    },
+    {
+      "source": "src/components/PaintDock.tsx",
+      "target": "src/games/importedGame/upstream/src/components/PaintDock.tsx"
+    },
+    {
+      "source": "src/components/WorldScene.tsx",
+      "target": "src/games/importedGame/upstream/src/components/WorldScene.tsx"
+    },
+    {
+      "source": "src/game/worldPainting.ts",
+      "target": "src/games/importedGame/upstream/src/game/worldPainting.ts"
+    },
+    {
+      "source": "src/game/worldTypes.ts",
+      "target": "src/games/importedGame/upstream/src/game/worldTypes.ts"
+    },
+    {
+      "source": "src/multiplayer/worldSession.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/worldSession.ts"
+    },
+    {
+      "source": "src/game/eraserGuide.ts",
+      "target": "src/games/importedGame/upstream/src/game/eraserGuide.ts"
+    },
+    {
+      "source": "src/game/soloPaintHistory.ts",
+      "target": "src/games/importedGame/upstream/src/game/soloPaintHistory.ts"
+    },
+    {
+      "source": "src/game/emoteViewReturn.ts",
+      "target": "src/games/importedGame/upstream/src/game/emoteViewReturn.ts"
+    }
+  ],
+  "notes": [
+    "Incremental client update: stage all nine files before replacing their exact persistent targets. Preserve unlisted files and importer/host infrastructure.",
+    "Round full-strength erasing, main-head switching, white eraser outline, bounded Solo Undo/Redo, multiplayer history UI refresh, and first-person return two seconds after the latest emote choice.",
+    "Existing head interpolation, flattening, session separation and server protocol remain unchanged. No server deployment needed."
+  ]
+}
