@@ -1,0 +1,114 @@
+{
+  "version": "batch7-client-7oct2026",
+  "baseUrl": "https://raw.githubusercontent.com/benryaus-cmd/graf-game/38115a39f51d51d274ef6c9c116c7ad604c5fffc/",
+  "files": [
+    {
+      "source": "src/App.tsx",
+      "target": "src/games/importedGame/upstream/src/App.tsx"
+    },
+    {
+      "source": "src/components/CanvasCredits.tsx",
+      "target": "src/games/importedGame/upstream/src/components/CanvasCredits.tsx"
+    },
+    {
+      "source": "src/components/GraffitiPieces.tsx",
+      "target": "src/games/importedGame/upstream/src/components/GraffitiPieces.tsx"
+    },
+    {
+      "source": "src/components/MultiplayerControls.tsx",
+      "target": "src/games/importedGame/upstream/src/components/MultiplayerControls.tsx"
+    },
+    {
+      "source": "src/components/PaintDock.tsx",
+      "target": "src/games/importedGame/upstream/src/components/PaintDock.tsx"
+    },
+    {
+      "source": "src/components/PaintWorkspaceHud.tsx",
+      "target": "src/games/importedGame/upstream/src/components/PaintWorkspaceHud.tsx"
+    },
+    {
+      "source": "src/components/PlayerInteractionCard.tsx",
+      "target": "src/games/importedGame/upstream/src/components/PlayerInteractionCard.tsx"
+    },
+    {
+      "source": "src/components/ReferenceSheet.tsx",
+      "target": "src/games/importedGame/upstream/src/components/ReferenceSheet.tsx"
+    },
+    {
+      "source": "src/components/WorldScene.tsx",
+      "target": "src/games/importedGame/upstream/src/components/WorldScene.tsx"
+    },
+    {
+      "source": "src/game/paintEyedropper.ts",
+      "target": "src/games/importedGame/upstream/src/game/paintEyedropper.ts"
+    },
+    {
+      "source": "src/game/referenceGuide.ts",
+      "target": "src/games/importedGame/upstream/src/game/referenceGuide.ts"
+    },
+    {
+      "source": "src/game/referenceLibrary.ts",
+      "target": "src/games/importedGame/upstream/src/game/referenceLibrary.ts"
+    },
+    {
+      "source": "src/game/worldControls.ts",
+      "target": "src/games/importedGame/upstream/src/game/worldControls.ts"
+    },
+    {
+      "source": "src/index.css",
+      "target": "src/games/importedGame/upstream/src/index.css"
+    },
+    {
+      "source": "src/multiplayer/adminActions.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/adminActions.ts"
+    },
+    {
+      "source": "src/multiplayer/adminArtRemoval.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/adminArtRemoval.ts"
+    },
+    {
+      "source": "src/multiplayer/artworkSync.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/artworkSync.ts"
+    },
+    {
+      "source": "src/multiplayer/connection.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/connection.ts"
+    },
+    {
+      "source": "src/multiplayer/ownerReferences.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/ownerReferences.ts"
+    },
+    {
+      "source": "src/multiplayer/paintReplay.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/paintReplay.ts"
+    },
+    {
+      "source": "src/multiplayer/paintSync.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/paintSync.ts"
+    },
+    {
+      "source": "src/multiplayer/piecePulse.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/piecePulse.ts"
+    },
+    {
+      "source": "src/multiplayer/pieceSync.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/pieceSync.ts"
+    },
+    {
+      "source": "src/multiplayer/protocol.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/protocol.ts"
+    },
+    {
+      "source": "src/multiplayer/spatialDirectory.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/spatialDirectory.ts"
+    },
+    {
+      "source": "src/multiplayer/spatialProtocol.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/spatialProtocol.ts"
+    },
+    {
+      "source": "src/multiplayer/worldSession.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/worldSession.ts"
+    }
+  ]
+}
