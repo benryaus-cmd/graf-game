@@ -1,0 +1,50 @@
+{
+  "version": "profile-credits-moderation-7oct2026",
+  "baseUrl": "https://raw.githubusercontent.com/benryaus-cmd/graf-game/174e1193de45a43c702c368ef777c55f74de5adc/",
+  "files": [
+    {
+      "source": "src/App.tsx",
+      "target": "src/games/importedGame/upstream/src/App.tsx"
+    },
+    {
+      "source": "src/components/CanvasCredits.tsx",
+      "target": "src/games/importedGame/upstream/src/components/CanvasCredits.tsx"
+    },
+    {
+      "source": "src/components/GraffitiPieces.tsx",
+      "target": "src/games/importedGame/upstream/src/components/GraffitiPieces.tsx"
+    },
+    {
+      "source": "src/components/MultiplayerChat.tsx",
+      "target": "src/games/importedGame/upstream/src/components/MultiplayerChat.tsx"
+    },
+    {
+      "source": "src/components/MultiplayerControls.tsx",
+      "target": "src/games/importedGame/upstream/src/components/MultiplayerControls.tsx"
+    },
+    {
+      "source": "src/components/PlayerInteractionCard.tsx",
+      "target": "src/games/importedGame/upstream/src/components/PlayerInteractionCard.tsx"
+    },
+    {
+      "source": "src/index.css",
+      "target": "src/games/importedGame/upstream/src/index.css"
+    },
+    {
+      "source": "src/multiplayer/adminActions.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/adminActions.ts"
+    },
+    {
+      "source": "src/multiplayer/chatMute.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/chatMute.ts"
+    },
+    {
+      "source": "src/multiplayer/protocol.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/protocol.ts"
+    },
+    {
+      "source": "src/multiplayer/worldSession.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/worldSession.ts"
+    }
+  ]
+}
