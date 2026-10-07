@@ -1,0 +1,24 @@
+{
+  "version": "fixture-distance-colour-7oct2026",
+  "baseUrl": "https://raw.githubusercontent.com/benryaus-cmd/graf-game/e5b16907df2cac0cee7eea6bae21e1b68412157d/",
+  "files": [
+    {
+      "source": "src/game/cityChunks.ts",
+      "target": "src/games/importedGame/upstream/src/game/cityChunks.ts"
+    },
+    {
+      "source": "src/game/fixtureBuilding.ts",
+      "target": "src/games/importedGame/upstream/src/game/fixtureBuilding.ts"
+    },
+    {
+      "source": "src/game/fixtureBuildingGrain.ts",
+      "target": "src/games/importedGame/upstream/src/game/fixtureBuildingGrain.ts"
+    }
+  ],
+  "notes": [
+    "Follow-up to fixture-building-7oct2026. Use Node22, stage all three downloads, then replace exact persistent targets. Preserve unlisted files and importer/host infrastructure.",
+    "Restores full80m camera visibility by retaining the building's owner chunk when the normal city neighborhood would unload it early. Grain samples only within20m.",
+    "Warm concrete tint follows the existing city material hue, retaining atlas luminance/shade differences and the brown door. Existing canvas IDs, painting and flattening unchanged.",
+    "Multiplayer Undo/Redo runtime is unchanged. Its client integration tests pass; suspected missing initial server history update needs the server-AI check documented in docs/fixture-distance-colour-7oct2026.md."
+  ]
+}

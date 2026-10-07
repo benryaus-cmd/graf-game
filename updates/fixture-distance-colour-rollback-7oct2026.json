@@ -1,0 +1,21 @@
+{
+  "version": "fixture-distance-colour-rollback-7oct2026",
+  "baseUrl": "https://raw.githubusercontent.com/benryaus-cmd/graf-game/89b9d3059f5e6c0cae1952e5e5fdbb33d1dcf61e/",
+  "files": [
+    {
+      "source": "src/game/cityChunks.ts",
+      "target": "src/games/importedGame/upstream/src/game/cityChunks.ts"
+    },
+    {
+      "source": "src/game/fixtureBuilding.ts",
+      "target": "src/games/importedGame/upstream/src/game/fixtureBuilding.ts"
+    },
+    {
+      "source": "src/game/fixtureBuildingGrain.ts",
+      "target": "src/games/importedGame/upstream/src/game/fixtureBuildingGrain.ts"
+    }
+  ],
+  "notes": [
+    "Stage all three downloads then restore exact targets. Reverts only the distance/colour correction. Preserve all unlisted files."
+  ]
+}
