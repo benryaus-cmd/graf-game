@@ -1,0 +1,32 @@
+{
+  "version": "asset-preview-7oct2026",
+  "baseUrl": "https://raw.githubusercontent.com/benryaus-cmd/graf-game/5a601c01ea0f7328afb8dc9e31047816ec74bbbf/",
+  "files": [
+    {
+      "source": "src/components/AvatarMenu.tsx",
+      "target": "src/games/importedGame/upstream/src/components/AvatarMenu.tsx"
+    },
+    {
+      "source": "src/components/WorldScene.tsx",
+      "target": "src/games/importedGame/upstream/src/components/WorldScene.tsx"
+    },
+    {
+      "source": "src/game/playerAvatarAppearance.ts",
+      "target": "src/games/importedGame/upstream/src/game/playerAvatarAppearance.ts"
+    },
+    {
+      "source": "src/game/assetPreview.ts",
+      "target": "src/games/importedGame/upstream/src/game/assetPreview.ts"
+    },
+    {
+      "source": "src/game/assetPreviewPreference.ts",
+      "target": "src/games/importedGame/upstream/src/game/assetPreviewPreference.ts"
+    }
+  ],
+  "notes": [
+    "Incremental client-only preview. Apply only these five persistent runtime targets.",
+    "GLB models load asynchronously from asset commit 77b8bb73af715da9dbd691dbddae109316e394fd; do not embed their bytes in HTML.",
+    "Select HOODIE CHARACTER or EXISTING CHARACTER in Settings > PROFILE & CLOSET. BUILDING PREVIEW toggles the building near spawn.",
+    "The character is a local device preview. Existing server cosmetics and all painting systems are preserved."
+  ]
+}

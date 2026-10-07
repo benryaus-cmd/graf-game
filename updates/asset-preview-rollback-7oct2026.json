@@ -1,0 +1,22 @@
+{
+  "version": "asset-preview-rollback-7oct2026",
+  "baseUrl": "https://raw.githubusercontent.com/benryaus-cmd/graf-game/f80ce00d7b066ad506b6f82e2404c125d58aad06/",
+  "files": [
+    {
+      "source": "src/components/AvatarMenu.tsx",
+      "target": "src/games/importedGame/upstream/src/components/AvatarMenu.tsx"
+    },
+    {
+      "source": "src/components/WorldScene.tsx",
+      "target": "src/games/importedGame/upstream/src/components/WorldScene.tsx"
+    },
+    {
+      "source": "src/game/playerAvatarAppearance.ts",
+      "target": "src/games/importedGame/upstream/src/game/playerAvatarAppearance.ts"
+    }
+  ],
+  "notes": [
+    "Restore only these three files. Leave all other Batch 7 runtime and server work intact.",
+    "The preview helpers and assets may remain as unused files. No data clearing required."
+  ]
+}

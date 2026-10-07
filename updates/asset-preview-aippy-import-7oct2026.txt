@@ -1,0 +1,20 @@
+Apply this small completed GraffCiti asset preview to the CURRENT existing Aippy project:
+
+https://raw.githubusercontent.com/benryaus-cmd/graf-game/main/updates/asset-preview-7oct2026.json
+
+This is an incremental update, not a full GitHub re-import.
+Use Node 22 to fetch the manifest, then download baseUrl + source for all five entries as raw bytes.
+Stage all five downloads first; require HTTP success for every download. If any fail, stop and change nothing.
+Only then replace the exact listed persistent targets in src/games/importedGame/upstream/src/.
+Preserve every unlisted file, host wrapper, adapter, Vite alias, importer and server/network configuration.
+Do not put source files in the host src/ tree.
+Do not embed GLB models as base64 or modify asset/build infrastructure. This patch loads its two immutable external GLB URLs itself.
+Verify src/game/assetPreview.ts at its upstream target contains the asset commit 77b8bb73af715da9dbd691dbddae109316e394fd.
+Verify the imported AvatarMenu.tsx contains HOODIE CHARACTER, EXISTING CHARACTER and BUILDING PREVIEW.
+Run the normal production build. If it fails, report the first exact error and stop without redesigning the importer.
+Report update version, downloads succeeded X/5, targets replaced X/5, markers verified and build PASS/FAIL.
+
+Test: enter the game; the visual building is about 12 metres straight ahead of spawn. Open Settings > PROFILE & CLOSET > HOODIE CHARACTER. Cycle FIRST PERSON to THIRD PERSON to see the model. EXISTING CHARACTER restores the current look; BUILDING PREVIEW turns the building off.
+This model preview is local to the device. It does not change multiplayer identity/cosmetics or make the building a new paint/collision surface.
+
+Rollback if needed: apply https://raw.githubusercontent.com/benryaus-cmd/graf-game/main/updates/asset-preview-rollback-7oct2026.json with the same atomic process (three exact files). Preserve all unlisted files.
