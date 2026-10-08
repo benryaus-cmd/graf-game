@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { getRenderSettings, type RenderSettings } from './renderSettings';
+import { getRenderSettings, MAX_STREET_LIGHTS, type RenderSettings } from './renderSettings';
 
 /** Visual reach only: no colliders, paint surfaces, texture requests or shadows. */
 export function fogVisualDistance(settings:RenderSettings,camera?:THREE.Camera):number {
@@ -14,7 +14,7 @@ export function lampActivation(distance:number,settings:RenderSettings):number {
 
 export class CityAtmosphere {
   readonly root=new THREE.Group();readonly ground:THREE.Mesh;
-  readonly lights=Array.from({length:4},()=>new THREE.PointLight('#ffd18a',0,18,2));
+  readonly lights:THREE.PointLight[]=[];
   readonly playerLight=new THREE.PointLight('#ffead0',0,10,2);
   private poles:THREE.InstancedMesh;private heads:THREE.InstancedMesh;private bulbs:THREE.InstancedMesh;private pools:THREE.InstancedMesh;
   private extra:THREE.Vector3[]=[];private signature='';private nextUpdate=0;
@@ -42,7 +42,7 @@ export class CityAtmosphere {
     const reach=settings.groundChunks*48;this.ground.visible=settings.groundExtension;this.ground.scale.set(reach*2,reach*2,1);this.ground.position.x=cx*48;this.ground.position.z=cz*48;
     (this.ground.material as THREE.MeshStandardMaterial).color.set(settings.groundColor);this.stats.groundReach=reach;
     const detailReach=settings.heightLod?Math.max(settings.shortDetailDistance,settings.tallDetailDistance):settings.detailDistance;
-    const limit=Math.min(this.layout?Math.max(detailReach,settings.lampActivationDistance):detailReach,fogVisualDistance(settings,camera));
+    const limit=Math.max(settings.lampActivationDistance,Math.min(detailReach,fogVisualDistance(settings,camera)));
     if(changed||now>=this.nextUpdate){
       this.signature=signature;this.nextUpdate=now+200;this.extra=[];const matrix=new THREE.Matrix4(),rotation=new THREE.Quaternion();let i=0;
       const positions=this.layout??Array.from({length:9},(_,k)=>[cx+Math.floor(k/3)-1,cz+k%3-1]).flatMap(([bx,bz])=>[[-8,0],[8,0],[0,-8],[0,8]].map(([ox,oz])=>[bx*48+ox,bz*48+oz]));
@@ -65,9 +65,15 @@ export class CityAtmosphere {
     positions.slice(0,128).forEach((p,i)=>{matrix.compose(new THREE.Vector3(p.x,this.layout?.02:.016,p.z),rotation,new THREE.Vector3(settings.lampRadius*2,settings.lampRadius*2,1));this.pools.setMatrixAt(i,matrix);(this.pools.geometry.getAttribute('lampFade') as THREE.InstancedBufferAttribute).setX(i,lampActivation(Math.hypot(p.x-x,p.z-z),settings));});
     this.pools.instanceMatrix.needsUpdate=true;(this.pools.geometry.getAttribute('lampFade') as THREE.InstancedBufferAttribute).needsUpdate=true;
     positions.sort((a,b)=>(a.x-x)**2+(a.z-z)**2-(b.x-x)**2-(b.z-z)**2);
+    // Grow only as requested and needed; reuse inactive slots when the count falls.
+    // Player distance controls activation. lampDistance only controls illumination reach.
+    const candidates=positions.filter(p=>lampActivation(Math.hypot(p.x-x,p.z-z),settings)>0);
+    const count=settings.streetLights?Math.min(MAX_STREET_LIGHTS,settings.lampCount,candidates.length):0;
+    while(this.lights.length<count){const light=new THREE.PointLight('#ffd18a',0,settings.lampDistance,2);light.castShadow=false;light.visible=false;this.scene.add(light);this.lights.push(light);}
     let real=0;
-    this.lights.forEach((light,i)=>{const p=positions[i];light.visible=settings.streetLights&&i<settings.lampCount;light.distance=settings.lampDistance;const near=p&&Math.hypot(p.x-x,p.z-z)<settings.lampDistance+6;
-      light.intensity=near?settings.lampIntensity*lampActivation(Math.hypot(p!.x-x,p!.z-z),settings):0;if(p)light.position.copy(p);if(light.visible&&light.intensity)real++;
+    this.lights.forEach((light,i)=>{const p=candidates[i];light.visible=i<count;light.distance=settings.lampDistance;
+      light.intensity=light.visible?settings.lampIntensity*lampActivation(Math.hypot(p.x-x,p.z-z),settings):0;
+      if(light.visible)light.position.copy(p);if(light.visible&&light.intensity)real++;
     });
     this.playerLight.visible=settings.playerLight;this.playerLight.intensity=settings.playerLightIntensity;this.playerLight.position.set(x,playerY+.5,z);
     this.stats.lamps=positions.length;this.stats.realLights=real+Number(settings.playerLight);

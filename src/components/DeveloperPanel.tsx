@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
-import { getRenderSettings, subscribeRenderSettings, setRenderSettings, resetRenderSettings, DEFAULT_RENDER_SETTINGS, type RenderSettings } from '@/game/renderSettings';
+import { getRenderSettings, subscribeRenderSettings, setRenderSettings, resetRenderSettings, DEFAULT_RENDER_SETTINGS, MAX_STREET_LIGHTS, type RenderSettings } from '@/game/renderSettings';
 import { performanceLog, savePerformanceRun, copyRunReport } from '@/game/performanceLog';
 import { elementPointerPoint } from '@/game/pointerCoordinates';
 
@@ -36,16 +36,16 @@ export default function DeveloperPanel({onClose,onFiles,onMorningPreset}:{onClos
       {number('GROUND REACH (chunks)','groundChunks',1,20,1)}{color('GROUND COLOUR','groundColor')}
       {number('SHARED IMAGES (m)','imageLoadDistance',3,240,1)}{number('IMAGE LOADS AT ONCE','imageConcurrency',1,7,1)}
       {number('AMBIENT LIGHT','ambientScale',0,5,.05)}{number('SUN / MOON LIGHT','sunScale',0,5,.05)}
-      {number('NEARBY REAL LIGHTS','lampCount',0,4,1)}{number('LAMP POWER','lampIntensity',0,150,1)}
-      {number('LAMP REACH (m)','lampDistance',2,40,1)}{number('GLOW POOL RADIUS (m)','lampRadius',1,12,.5)}
-      {number('LAMP ACTIVATION (m)','lampActivationDistance',2,120,1)}{number('LAMP FADE (m)','lampFadeDistance',0,30,1)}
+      {number('NEARBY REAL LIGHTS','lampCount',0,MAX_STREET_LIGHTS,1)}{number('LIGHTS ON WITHIN (m)','lampActivationDistance',2,120,1)}
+      {number('LAMP POWER','lampIntensity',0,150,1)}{number('LAMP REACH (m)','lampDistance',2,40,1)}
+      {number('GLOW POOL RADIUS (m)','lampRadius',1,12,.5)}{number('LAMP FADE (m)','lampFadeDistance',0,30,1)}
       {number('PLAYER LIGHT POWER','playerLightIntensity',0,50,.5)}{color('CUSTOM FOG COLOUR','fogColor')}
       {toggle('GROUND EXTENSION','groundExtension')}{toggle('FOG CULLING','fogCull')}
       {toggle('MATCH SKY TO HAZE','skyMatch')}{toggle('SOLID HAZE SKY','flatSky')}
       {toggle('CUSTOM FOG COLOUR','customFog')}{toggle('STREET LIGHTS','streetLights')}
       {toggle('CHEAP GLOW POOLS','lampPools')}{toggle('PLAYER LIGHT','playerLight')}
       {toggle('CITY PROXIES','horizon')}{toggle('FLAT SKYLINE','skyline')}{toggle('TREE DETAIL','scenery')}
-      </div><p className="ui-notice">Type a value, then Enter or tap away. ↺ resets that setting. Linear fog becomes solid at SOLID FOG distance; EXP uses HAZE. Shared-image range controls remote artwork downloads and display. Ground reach is visual only. Set nearby real lights to 0 for cheap glow only. With HEIGHT RANGES on, SHORT means below HEIGHT SPLIT and TALL means at or above it. Each gets detail, simple 3D and flat 2D ranges; otherwise the global ranges apply. Flat 2D overlaps the 3D cutoff by 2 m. Lamp activation is player distance; lamp reach is how far its light travels. Detailed range is limited to resident chunks. Lower haze reveals the distant skyline.</p>
+      </div><p className="ui-notice">Type a value, then Enter or tap away. ↺ resets that setting. Linear fog becomes solid at SOLID FOG distance; EXP uses HAZE. Shared-image range controls remote artwork downloads and display. Ground reach is visual only. Set nearby real lights to 0 for cheap glow only. With HEIGHT RANGES on, SHORT means below HEIGHT SPLIT and TALL means at or above it. Each gets detail, simple 3D and flat 2D ranges; otherwise the global ranges apply. Flat 2D overlaps the 3D cutoff by 2 m. LIGHTS ON WITHIN is distance from the player. The nearest lamps inside that distance receive real light, up to NEARBY REAL LIGHTS. LAMP REACH is how far illumination travels from each lamp. Detailed range is limited to resident chunks. Lower haze reveals the distant skyline.</p>
       <section className="tool-section"><h3>PERFORMANCE TEST</h3><label className="ui-field">RUN NAME<input value={label} onChange={e=>setLabel(e.target.value)} maxLength={60}/></label>
       <label className="ui-checkbox"><input type="checkbox" checked={baseline} disabled={performanceLog.active} onChange={e=>setBaseline(e.target.checked)}/>Include 5-second blank-scene baseline</label><div className="button-row"><button onClick={()=>{if(performanceLog.active)stop();else {performanceLog.start(label,settings,performance.now(),{baselineSeconds:baseline?5:0});setNotice(baseline?'City hidden for 5 seconds. Stand still; it returns automatically.':'Recording. Collapse this panel and walk around.');refresh(v=>v+1);}}}>{performanceLog.active?'STOP LOGGING':'START LOGGING'}</button><button onClick={async()=>{if(performanceLog.active)performanceLog.checkpoint();const text=copyRunReport(performanceLog.runs);try{await navigator.clipboard.writeText(text);setNotice('Current log copied.');}catch{setReport(text);setNotice('Select and copy the report below.');}}}>COPY LOG</button></div>
       {performanceLog.latest&&<p className="developer-stats">{performanceLog.liveFps} FPS · draws {performanceLog.latest.calls} · triangles {performanceLog.latest.triangles.toLocaleString()}<br/>Textures {performanceLog.latest.textures} · chunks {performanceLog.latest.chunks} · queued {performanceLog.latest.queued}</p>}

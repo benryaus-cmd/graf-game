@@ -11,10 +11,34 @@ test('atmosphere controls migrate old settings and validate fog, image and light
  assert.equal(defaults.groundChunks,6);assert.equal(defaults.imageLoadDistance,60);
  assert.equal(defaults.streetLights,true);assert.equal(defaults.playerLight,false);
  const input=normaliseRenderSettings({fogStyle:'linear',fogNear:80,fogFar:20,imageConcurrency:99,lampCount:9,skyMode:'invalid',fogColor:'bad'});
- assert.ok(input.fogFar>input.fogNear);assert.equal(input.imageConcurrency,7);assert.equal(input.lampCount,4);
+ assert.ok(input.fogFar>input.fogNear);assert.equal(input.imageConcurrency,7);assert.equal(input.lampCount,9);
  assert.equal(input.skyMode,'game');assert.equal(input.fogColor,DEFAULT_RENDER_SETTINGS.fogColor);
 });
 
+test('real street-light count and player activation distance apply live above four lights',()=>{
+ const scene=new THREE.Scene(),atmosphere=new CityAtmosphere(scene,Array.from({length:16},(_,i)=>[10+i,0] as [number,number]));
+ try {
+  const settings=normaliseRenderSettings({lampCount:12,lampActivationDistance:60,lampFadeDistance:0,lampDistance:2,streetLights:true,playerLight:false,detailDistance:4,fogCull:false});
+  atmosphere.update(0,0,[],settings,0);
+  const active=()=>atmosphere.lights.filter(l=>l.visible&&l.intensity>0);
+  assert.equal(active().length,12,'twelve nearest lamps must illuminate even when the player is outside their physical reach');
+  assert.deepEqual(active().map(l=>l.position.x),[10,11,12,13,14,15,16,17,18,19,20,21]);
+  atmosphere.update(0,0,[],{...settings,lampCount:16},1);assert.equal(active().length,16);
+  atmosphere.update(0,0,[],{...settings,lampCount:16,lampActivationDistance:14},2);assert.equal(active().length,5);
+  atmosphere.update(0,0,[],{...settings,lampCount:3},3);assert.equal(active().length,3);
+  atmosphere.update(0,0,[],{...settings,lampCount:0},4);assert.equal(active().length,0);
+  assert.ok(atmosphere.lights.every(l=>!l.castShadow));
+ }finally{atmosphere.dispose();assert.equal(scene.children.length,0);}
+});
+test('fresh lighting defaults activate twelve real lamps within sixty metres',()=>{
+ const scene=new THREE.Scene(),atmosphere=new CityAtmosphere(scene,Array.from({length:16},(_,i)=>[10+i,0] as [number,number]));
+ try {
+  atmosphere.update(0,0,[],normaliseRenderSettings({fogCull:false}),0);
+  assert.equal(atmosphere.stats.realLights,12);
+  assert.equal(normaliseRenderSettings({}).lampActivationDistance,60);
+  assert.equal(normaliseRenderSettings({lampCount:24}).lampCount,24);
+ }finally{atmosphere.dispose();}
+});
 test('ground extends beyond resident chunks and follows travel without replacing resources',()=>{
  const scene=new THREE.Scene(),atmosphere=new CityAtmosphere(scene),settings={...DEFAULT_RENDER_SETTINGS,groundChunks:8};
  try{

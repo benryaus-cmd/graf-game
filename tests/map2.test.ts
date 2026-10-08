@@ -150,13 +150,34 @@ test('night migration preserves the active Map 2 settings over an older map-swit
         assert.equal(getRenderSettings().renderScale,.8);assert.equal(getRenderSettings().fogDensity,.035);
     }finally{selectMap('original');globalThis.localStorage=original;setRenderSettings({...DEFAULT_RENDER_SETTINGS});}
 });
+test('existing Map 2 adopts twelve lights once while later count and range choices persist',()=>{
+ const original=globalThis.localStorage,values=new Map<string,string>([['graffciti.map2-night.v1','1'],['graffciti.map-sky.v1:map2','pastel'],['graffciti.map-render.v1:map2',JSON.stringify({lampCount:4,lampActivationDistance:77,renderScale:.7})]]);
+ globalThis.localStorage={getItem:(k:string)=>values.get(k)??null,setItem:(k:string,v:string)=>{values.set(k,v);},removeItem:(k:string)=>{values.delete(k);}} as Storage;
+ try {
+  selectMap('map2');assert.equal(getRenderSettings().lampCount,12);assert.equal(getRenderSettings().lampActivationDistance,77);assert.equal(getRenderSettings().renderScale,.7);assert.equal(readMapSky('map2'),'pastel');
+  setRenderSettings({lampCount:6,lampActivationDistance:88});readMapSky('map2');assert.equal(getRenderSettings().lampCount,6);
+  selectMap('original');selectMap('map2');assert.equal(getRenderSettings().lampCount,6);assert.equal(getRenderSettings().lampActivationDistance,88);
+ }finally{selectMap('original');globalThis.localStorage=original;setRenderSettings({...DEFAULT_RENDER_SETTINGS});}
+});
+test('light-count migration preserves the selected map snapshot when global settings are absent',()=>{
+ const original=globalThis.localStorage,values=new Map<string,string>();
+ globalThis.localStorage={getItem:(k:string)=>values.get(k)??null,setItem:(k:string,v:string)=>{values.set(k,v);},removeItem:(k:string)=>{values.delete(k);}} as Storage;
+ try {
+  selectMap('map2');setRenderSettings({...DEFAULT_RENDER_SETTINGS});
+  values.set('graffciti.map-render.v1:map2',JSON.stringify({lampCount:4,lampActivationDistance:77,renderScale:.7,skyMode:'pastel'}));
+  values.set('graffciti.map-sky.v1:map2','pastel');values.delete('graffciti.render-settings.v1');values.delete('graffciti.map2-light-count.v1');
+  assert.equal(readMapSky('map2'),'pastel');
+  const saved=JSON.parse(values.get('graffciti.map-render.v1:map2')!);
+  for(const settings of [saved,getRenderSettings()]){assert.equal(settings.lampCount,12);assert.equal(settings.lampActivationDistance,77);assert.equal(settings.renderScale,.7);assert.equal(settings.skyMode,'pastel');}
+ }finally{selectMap('original');globalThis.localStorage=original;setRenderSettings({...DEFAULT_RENDER_SETTINGS});}
+});
 test('fixed district lamps stay fully lit through 60m even with a shorter building detail range',()=>{
     const scene=new THREE.Scene(),lights=new CityAtmosphere(scene,[[59,0],[60,0],[61,0]]);
     try {
         const settings=normaliseRenderSettings({streetLights:true,lampPools:true,lampActivationDistance:60,lampFadeDistance:0,detailDistance:40,heightLod:false,fogCull:false});
         lights.update(0,0,[],settings,1000);
         const bulbs=lights.root.children.find(o=>o instanceof THREE.InstancedMesh&&o.geometry.getAttribute('lampFade')&&o.geometry.parameters?.width===.6) as THREE.InstancedMesh;
-        const fade=bulbs.geometry.getAttribute('lampFade');assert.deepEqual([fade.getX(0),fade.getX(1),fade.getX(2)],[1,1,0]);assert.equal(lights.stats.lamps,2);assert.equal(lights.lights.length,4);
+        const fade=bulbs.geometry.getAttribute('lampFade');assert.deepEqual([fade.getX(0),fade.getX(1),fade.getX(2)],[1,1,0]);assert.equal(lights.stats.lamps,2);assert.equal(lights.lights.length,2);
     } finally {lights.dispose();}
 });
 test('central building entrances face into the social square',()=>{
