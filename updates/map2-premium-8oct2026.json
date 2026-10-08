@@ -1,0 +1,46 @@
+{
+  "version": "map2-premium-8oct2026",
+  "commit": "93bd6424220e803ea745f65c38b8d70b2943b883",
+  "baseUrl": "https://raw.githubusercontent.com/benryaus-cmd/graf-game/93bd6424220e803ea745f65c38b8d70b2943b883/",
+  "description": "Premium imported Map 2 town streets, complete vertical brick surfaces, paintable seats, paved court and cheap warm night windows.",
+  "files": [
+    {
+      "source": "src/game/cityChunkResources.ts",
+      "target": "src/games/importedGame/upstream/src/game/cityChunkResources.ts"
+    },
+    {
+      "source": "src/game/morningQuarterAssets.ts",
+      "target": "src/games/importedGame/upstream/src/game/morningQuarterAssets.ts"
+    },
+    {
+      "source": "src/game/morningQuarterContent.ts",
+      "target": "src/games/importedGame/upstream/src/game/morningQuarterContent.ts"
+    },
+    {
+      "source": "src/game/morningQuarterLayout.ts",
+      "target": "src/games/importedGame/upstream/src/game/morningQuarterLayout.ts"
+    },
+    {
+      "source": "src/game/paintWorkspace.ts",
+      "target": "src/games/importedGame/upstream/src/game/paintWorkspace.ts"
+    },
+    {
+      "source": "src/game/quarterBuildingAssets.ts",
+      "target": "src/games/importedGame/upstream/src/game/quarterBuildingAssets.ts"
+    },
+    {
+      "source": "src/game/quarterPaintSurface.ts",
+      "target": "src/games/importedGame/upstream/src/game/quarterPaintSurface.ts"
+    }
+  ],
+  "notes": [
+    "Requires the installed map2-morning-quarter-8oct2026 update.",
+    "Fetch every listed file as raw bytes from baseUrl + source and replace its exact target. Preserve all unlisted files.",
+    "Keep the current importer, aliases, host wrapper, dependencies, server and saved art.",
+    "Five self-contained CC0 building assets load from pinned GitHub URLs in the runtime; no host public-asset copy is needed.",
+    "Open GAME MENU → MAP 2 · MORNING QUARTER. Return using MAP 1 · ORIGINAL.",
+    "Map 2 remains local solo with isolated paint, posters and piece names. Existing V1 Map 2 paint slots remain compatible.",
+    "CHANGE SKY → NIGHTFALL enables street lights. No new real-light count or shadows; warm windows use material emission.",
+    "Measure Android performance with a new City walk log."
+  ]
+}

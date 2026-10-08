@@ -1,0 +1,11 @@
+Apply this premium Map 2 update to the CURRENT GraffCiti Aippy project using Node 22:
+
+https://raw.githubusercontent.com/benryaus-cmd/graf-game/main/updates/map2-premium-8oct2026.json
+
+Use the existing incremental downloader. Fetch all 7 listed files as raw bytes from manifest.baseUrl + source and replace each exact target. This is an update to the installed Morning Quarter map.
+
+Keep the current importer, aliases, host wrapper, dependencies, server, all unlisted files and existing saved artwork. The five new building models load from pinned GitHub URLs; do not regenerate the map or copy assets into the host.
+
+Build and load GraffCiti. Open GAME MENU → MAP 2 · MORNING QUARTER. Check the premium buildings, paved court, individual brick and bench painting, saved-art reload and return to Map 1. Select CHANGE SKY → NIGHTFALL to check lamps and warm windows.
+
+Report version, downloads X/7, replacements X/7, and build PASS/FAIL.

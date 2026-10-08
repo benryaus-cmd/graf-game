@@ -40,4 +40,4 @@
 **Files:** docs/map2-premium-8oct2026.md, updates/map2-premium-8oct2026.json, updates/map2-premium-8oct2026-aippy-prompt.txt.
 - [x] Run tests, application typecheck, lint and standalone/Aippy host builds.
 - [x] Review resource ownership, collision, paint indexing and model failure paths.
-- [ ] Publish code/assets to GitHub, then a manifest pinned to that commit and a direct fetch/build/load prompt.
+- [x] Publish code/assets to GitHub, then a manifest pinned to that commit and a direct fetch/build/load prompt.

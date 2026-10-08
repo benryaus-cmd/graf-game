@@ -1,0 +1,31 @@
+{
+  "version": "map2-premium-8oct2026-rollback",
+  "commit": "3349f307b7b74a50887ce8282503e27eff80d750",
+  "baseUrl": "https://raw.githubusercontent.com/benryaus-cmd/graf-game/3349f307b7b74a50887ce8282503e27eff80d750/",
+  "description": "Restore the installed V1 Morning Quarter runtime without deleting saved art.",
+  "files": [
+    {
+      "source": "src/game/cityChunkResources.ts",
+      "target": "src/games/importedGame/upstream/src/game/cityChunkResources.ts"
+    },
+    {
+      "source": "src/game/morningQuarterAssets.ts",
+      "target": "src/games/importedGame/upstream/src/game/morningQuarterAssets.ts"
+    },
+    {
+      "source": "src/game/morningQuarterContent.ts",
+      "target": "src/games/importedGame/upstream/src/game/morningQuarterContent.ts"
+    },
+    {
+      "source": "src/game/morningQuarterLayout.ts",
+      "target": "src/games/importedGame/upstream/src/game/morningQuarterLayout.ts"
+    },
+    {
+      "source": "src/game/paintWorkspace.ts",
+      "target": "src/games/importedGame/upstream/src/game/paintWorkspace.ts"
+    }
+  ],
+  "notes": [
+    "Replace the five listed runtime files only; unused new helper files may remain. Preserve all saved paint and unlisted files."
+  ]
+}
