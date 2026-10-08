@@ -1,3 +1,5 @@
+import { getMapId, type MapId } from './mapPreference';
+import { QUARTER_SPAWN } from './morningQuarterLayout';
 import * as THREE from 'three';
 import { createArchitecture, WALL_TEXTURE_URL } from '@/game/architecture';
 import { createSkyDome } from '@/game/sky';
@@ -6,7 +8,7 @@ import { createPlayerAvatar } from '@/game/playerAvatar';
 import { createCityBots } from '@/game/cityBots';
 import type { WorldEngine } from '@/game/worldTypes';
 
-export function createWorld(container: HTMLElement, fogDensity: number): WorldEngine {
+export function createWorld(container: HTMLElement, fogDensity: number,map:MapId=getMapId()): WorldEngine {
   const scene = new THREE.Scene();
   scene.fog = new THREE.FogExp2('#b2bab5', fogDensity);
   const camera = new THREE.PerspectiveCamera(
@@ -58,7 +60,7 @@ export function createWorld(container: HTMLElement, fogDensity: number): WorldEn
 
   const atmosphere = createSkyDome();
   scene.add(atmosphere.mesh, atmosphere.cloudGroup, atmosphere.rain);
-  const architecture = createArchitecture(scene, wallTexture);
+  const architecture = createArchitecture(scene, wallTexture,map);
   const bunnyGroup = createBunnyCompanion(scene);
   const playerAvatar = createPlayerAvatar(scene);
   const bots = createCityBots(scene);
@@ -88,8 +90,8 @@ export function createWorld(container: HTMLElement, fogDensity: number): WorldEn
     bots,
     botRaycaster,
     botsEnabled: false,
-    playerPosition: new THREE.Vector3(0, 1.72, 0),
-    playerYaw: 0,
+    playerPosition: new THREE.Vector3(map==='map2'?QUARTER_SPAWN.x:0,1.72,map==='map2'?QUARTER_SPAWN.z:0),
+    playerYaw: map==='map2'?QUARTER_SPAWN.yaw:0,
     playerPitch: 0,
     cameraMode: 'first',
     equippedOutfit: 'street',
@@ -108,6 +110,7 @@ export function createWorld(container: HTMLElement, fogDensity: number): WorldEn
     velocityY: 0,
     jumpSignal: 0,
   };
+  scene.userData.mapId=map;
   architecture.setPaintPin(() => world.paintWorkspace?.selection?.wall);
   return world;
 }

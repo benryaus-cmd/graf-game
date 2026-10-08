@@ -1,3 +1,4 @@
+import type { MapId } from '@/game/mapPreference';
 import { getRenderSettings, subscribeRenderSettings } from '@/game/renderSettings';
 import { observeWorldPerformance } from '@/game/worldPerformance';
 import { performanceLog } from '@/game/performanceLog';
@@ -36,6 +37,7 @@ import type { PaintWorkspaceHistory } from '@/components/PaintWorkspaceHud';
 export interface MultiplayerRequest { action: 'join' | 'leave' | 'chat' | 'resync' | 'like' | 'inspect' | 'delete-piece' | 'set-role' | 'paint-over' | 'quote-protection' | 'buy-protection' | 'admin-action' | 'select-player' | 'keep-reference' | 'delete-reference' | 'creator-select' | 'inspect-artwork' | 'delete-artwork'; creator?: { playerId?: string; username: string; nickName: string }; text?: string; role?: ServerRole; colour?: string; protectionEnabled?: boolean; adminAction?: AdminAction; options?: AdminActionOptions; sequence: number }
 
 interface WorldSceneProps {
+  mapId:MapId;
   onSoloHistoryChange?: (history: PaintWorkspaceHistory) => void;
   reference?: ReferenceSettings | null;
   onReferenceMove?: (x: number, y: number) => void;
@@ -125,7 +127,7 @@ const WorldScene = (props: WorldSceneProps) => {
   useEffect(() => {
     const container = mountRef.current;
     if (!container) return;
-    const world = createWorld(container, liveRef.current.fogDensity);
+    const world = createWorld(container, liveRef.current.fogDensity,props.mapId);
     worldRef.current = world;
     const stopPerformance = observeWorldPerformance(world);
     const applyRenderSettings = () => {
@@ -225,7 +227,7 @@ const WorldScene = (props: WorldSceneProps) => {
   useEffect(() => {
     const request = props.multiplayerRequest;
     if (!request) return;
-    if (request.action === 'join') multiplayerRef.current?.join(props.displayName, undefined, { username: props.username, nickName: props.nickName });
+    if (request.action === 'join'&&props.mapId!=='map2') multiplayerRef.current?.join(props.displayName, undefined, { username: props.username, nickName: props.nickName });
     else if (request.action === 'leave') multiplayerRef.current?.leave();
     else if (request.action === 'chat') multiplayerRef.current?.sendChat(request.text ?? '');
     else if (request.action === 'inspect') multiplayerRef.current?.inspectPiece(request.text ?? '');
@@ -246,7 +248,7 @@ const WorldScene = (props: WorldSceneProps) => {
     else if (request.action === 'buy-protection') multiplayerRef.current?.purchaseProtection(request.protectionEnabled ?? false);
     else if (request.action === 'paint-over') multiplayerRef.current?.adminPaintOver(request.text ?? '', request.colour ?? props.color);
     else multiplayerRef.current?.resync();
-  }, [props.multiplayerRequest]);
+  }, [props.multiplayerRequest,props.mapId]);
 
   useEffect(() => {
     const world = worldRef.current, request = props.workspaceRequest;

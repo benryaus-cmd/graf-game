@@ -3,7 +3,7 @@ import type { PaintWall } from '../game/worldTypes';
 import type { StrokePoint } from './protocol';
 
 // Geometry identity, not array position or a random Three.js UUID. Version when city layout changes.
-export function assignSurfaceIds(chunkX: number, chunkZ: number, walls: PaintWall[]): void {
+export function assignSurfaceIds(chunkX: number, chunkZ: number, walls: PaintWall[], namespace?:string): void {
   const duplicates = new Map<string, number>();
   for (const wall of walls) {
     const mesh = wall.mesh;
@@ -20,7 +20,7 @@ export function assignSurfaceIds(chunkX: number, chunkZ: number, walls: PaintWal
     }
     const key = (a >>> 0).toString(36) + '-' + (b >>> 0).toString(36);
     const occurrence = duplicates.get(key) ?? 0; duplicates.set(key, occurrence + 1);
-    wall.surfaceId = 'ss1:' + chunkX + ':' + chunkZ + ':' + key + (occurrence ? ':' + occurrence : '');
+    wall.surfaceId = 'ss1:' + (namespace?namespace+':':'') + chunkX + ':' + chunkZ + ':' + key + (occurrence ? ':' + occurrence : '');
   }
 }
 export function encodeSurface(wallId: string, face: number, layer: number): string {

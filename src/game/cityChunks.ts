@@ -1,3 +1,8 @@
+import { paintChunkKey, type MapId } from './mapPreference';
+import { MorningQuarterAssets } from './morningQuarterAssets';
+import { prepareQuarterChunk, type DetailBuilding } from './morningQuarterContent';
+import { isQuarterChunk, QUARTER_LAMPS } from './morningQuarterLayout';
+import { distanceToBuilding, getBuildingRanges } from './buildingLod';
 import * as THREE from 'three';
 import type { PaintWall, Collider, Staircase, WalkSurface } from '@/game/worldTypes';
 import { FIXTURE_POSITION, FIXTURE_VISIBILITY_DISTANCE } from '@/game/fixtureBuilding';
@@ -20,7 +25,11 @@ function removeItems<T>(target: T[], items: T[]): void {
   }
 }
 
-export function createCityChunkStream(scene: THREE.Scene, cityMaterials: CityMaterials) {
+export function createCityChunkStream(scene: THREE.Scene, cityMaterials: CityMaterials,map:MapId='original') {
+  const assets=map==='map2'?new MorningQuarterAssets():null;
+  const prepare=(cx:number,cz:number)=>assets?prepareQuarterChunk(cx,cz,cityMaterials,assets):prepareCityChunk(cx,cz,cityMaterials);
+  const create=(cx:number,cz:number)=>{if(!assets)return createCityChunk(cx,cz,cityMaterials);const generator=prepare(cx,cz);let step=generator.next();while(!step.done)step=generator.next();return step.value;};
+  const filterKeys=(keys:Set<string>)=>new Set([...keys].filter(key=>{const[cx,cz]=key.split(':').map(Number);return map==='original'||isQuarterChunk(cx,cz);}));
   const walls: PaintWall[] = [];
   const colliders: Collider[] = [];
   const walkSurfaces: WalkSurface[] = [];
@@ -33,8 +42,8 @@ export function createCityChunkStream(scene: THREE.Scene, cityMaterials: CityMat
   let paintSession: 'solo' | 'multiplayer' = 'solo';
   let paintGeneration = 0;
   let retainedFixture = false;
-  const horizon = new CityHorizon(scene);
-  const atmosphere=new CityAtmosphere(scene);
+  const horizon = new CityHorizon(scene,map);
+  const atmosphere=new CityAtmosphere(scene,map==='map2'?QUARTER_LAMPS:undefined);
   const lastWanted = new Map<string, number>();
   const queued = new Map<string, { build: ReturnType<typeof prepareCityChunk>; partial?: CityChunk }>();
   let getPinnedWall: () => PaintWall | undefined = () => undefined;
@@ -53,18 +62,18 @@ export function createCityChunkStream(scene: THREE.Scene, cityMaterials: CityMat
 
   const saveOneChunk = (key: string, chunk: CityChunk): void => {
     if (paintSession !== 'solo') return;
-    performanceLog.measure('chunk.paintReadback',()=>saveChunkPaint(paintCache,key,chunk),key);
-    performanceLog.measure('chunk.paintEncodeAndStore',()=>savePersistentChunkPaint(paintCache,key,chunk,failedPaintSaves),key);
+    performanceLog.measure('chunk.paintReadback',()=>saveChunkPaint(paintCache,paintChunkKey(map,key),chunk),key);
+    performanceLog.measure('chunk.paintEncodeAndStore',()=>savePersistentChunkPaint(paintCache,paintChunkKey(map,key),chunk,failedPaintSaves),key);
     // An unfinished decode needs its encoded base plus current overlay, not a partial ImageData cache.
     chunk.walls.forEach((wall, index) => {
-      if (wall.pendingPaintImages?.size) paintCache.delete(`${key}:${index}`);
+      if (wall.pendingPaintImages?.size) paintCache.delete(`${paintChunkKey(map,key)}:${index}`);
     });
-    performanceLog.measure('chunk.posterStore',()=>savePersistentChunkPosters(key,chunk),key);
+    performanceLog.measure('chunk.posterStore',()=>savePersistentChunkPosters(paintChunkKey(map,key),chunk),key);
   };
 
   const restoreOneChunk = (key: string, chunk: CityChunk): void => {
     const generation = paintGeneration;
-    restoreChunkPaint(paintCache, key, chunk, layerVisibility, () =>
+    restoreChunkPaint(paintCache, paintChunkKey(map,key), chunk, layerVisibility, () =>
       !disposed && generation === paintGeneration && paintSession === 'solo' && active.get(key) === chunk,
       failedPaintSaves,
     );
@@ -84,18 +93,18 @@ export function createCityChunkStream(scene: THREE.Scene, cityMaterials: CityMat
   const updateAt = (x: number, z: number, playerY=1.7, camera?:THREE.Camera): void => {
     if (disposed) return;
     const now = performance.now(), settings = getRenderSettings();
-    retainedFixture = x * x + (z - FIXTURE_POSITION.z) ** 2 < (FIXTURE_VISIBILITY_DISTANCE + 8) ** 2;
-    const wanted = wantedChunkKeys(x, z);
+    retainedFixture = map==='original' && x * x + (z - FIXTURE_POSITION.z) ** 2 < (FIXTURE_VISIBILITY_DISTANCE + 8) ** 2;
+    const wanted = filterKeys(wantedChunkKeys(x, z));
     if (retainedFixture) wanted.add('0:-1');
     wanted.forEach(key => lastWanted.set(key, now));
     const dx = x - previousX, dz = z - previousZ;
     // Build neighbours before the next boundary instead of waiting until it is crossed.
     const magnitude = Math.hypot(dx, dz);
     const prefetch = magnitude > .001 ? wantedChunkKeys(x + dx / magnitude * settings.prefetchDistance, z + dz / magnitude * settings.prefetchDistance) : wanted;
-    const desired = new Set([...wanted, ...prefetch]);
+    const desired = filterKeys(new Set([...wanted, ...prefetch]));
     desired.forEach(key=>lastWanted.set(key,now));
     previousX = x; previousZ = z;
-    active.forEach(chunk => { chunk.group.userData.updateFixture?.(x, z); chunk.group.userData.updateScenery?.(); });
+    active.forEach(chunk => { chunk.group.userData.updateFixture?.(x, z); chunk.group.userData.updateScenery?.(scene.userData.currentSkyMode); });
     const pin = getPinnedWall();
     // Dispose at most one old chunk per update; dirty data is saved through the proven path first.
     for (const [key, chunk] of active) {
@@ -112,11 +121,11 @@ export function createCityChunkStream(scene: THREE.Scene, cityMaterials: CityMat
     }
     if (!bootstrapped) {
       // Keep collision-ready bootstrap compatible. Subsequent travel is staged.
-      wanted.forEach(key => { const [cx, cz] = key.split(':').map(Number); mount(key, createCityChunk(cx, cz, cityMaterials)); });
+      wanted.forEach(key => { const [cx, cz] = key.split(':').map(Number); mount(key, create(cx, cz)); });
       bootstrapped = true;
     } else {
       for (const key of desired) if (!active.has(key) && !queued.has(key)) {
-        const [cx, cz] = key.split(':').map(Number); queued.set(key, { build: prepareCityChunk(cx, cz, cityMaterials) });
+        const [cx, cz] = key.split(':').map(Number); queued.set(key, { build: prepare(cx, cz) });
       }
       // Prioritise missing current neighbours over speculative prefetch jobs.
       const entries = [...queued.entries()].sort(([a], [b]) => Number(wanted.has(b)) - Number(wanted.has(a)));
@@ -133,16 +142,23 @@ export function createCityChunkStream(scene: THREE.Scene, cityMaterials: CityMat
     }
     stats.active = active.size; stats.queued = queued.size;
     const visibleDetails=new Set<string>();
-    for(const[key,chunk]of active){const[cx,cz]=key.split(':').map(Number);chunk.group.visible=distanceToChunk(x,z,cx,cz)<=Math.min(settings.detailDistance,fogVisualDistance(settings,camera))||!!pin&&chunk.walls.includes(pin);if(chunk.group.visible)visibleDetails.add(key);}
+    let visibleChunks=0;
+    for(const[key,chunk]of active){const[cx,cz]=key.split(':').map(Number),pinned=!!pin&&chunk.walls.includes(pin);
+      const tierMode=map==='map2'||settings.heightLod,range=tierMode?Math.max(getBuildingRanges(0,settings).detail,getBuildingRanges(100,settings).detail):settings.detailDistance;
+      chunk.group.visible=distanceToChunk(x,z,cx,cz)<=Math.min(range,fogVisualDistance(settings,camera))||pinned;
+      if(chunk.group.visible)visibleChunks++;
+      for(const b of (chunk.group.userData.detailBuildings??[]) as DetailBuilding[]){const selected=!!pin&&b.root.getObjectById(pin.mesh.id)!==undefined;b.root.visible=!tierMode||distanceToBuilding(x,z,b.description)<=Math.min(getBuildingRanges(b.description.height,settings).detail,fogVisualDistance(settings,camera))||selected;if(tierMode&&chunk.group.visible&&b.root.visible)visibleDetails.add(b.description.id);}
+      if(!tierMode&&chunk.group.visible)visibleDetails.add(key);
+    }
     horizon.update(x,z,visibleDetails,camera);
     const anchors=[...active.values()].filter(chunk=>chunk.group.visible).flatMap(chunk=>chunk.group.userData.lampAnchors??[]);
     atmosphere.update(x,z,anchors,settings,now,playerY,camera);
-    scene.userData.cityStreamStats.visible=visibleDetails.size;
+    scene.userData.cityStreamStats.visible=visibleChunks;
   };
   const dispose = (): void => {
     if (disposed) return; disposed = true; paintGeneration++;
     queued.forEach(job => { if (job.partial) disposeChunk(job.partial, sharedMaterials); job.build.return(job.partial!); }); queued.clear();
-    horizon.dispose(); atmosphere.dispose(); scene.onBeforeRender = previousRender;
+    horizon.dispose(); atmosphere.dispose();assets?.dispose(); scene.onBeforeRender = previousRender;
     delete scene.userData.disposeCity; delete scene.userData.cityStreamStats;
   };
   scene.userData.disposeCity = dispose;

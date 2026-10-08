@@ -37,11 +37,13 @@ export function* prepareCityChunk(
 
   yield { group, walls, colliders, walkSurfaces, staircases };
   const { buildings, random } = createCityBlockLayout(chunkX, chunkZ);
-  for (const building of buildings) {
+  group.userData.detailBuildings=[];
+  for (const [index,building] of buildings.entries()) {
+    const detailRoot=new THREE.Group();group.add(detailRoot);group.userData.detailBuildings.push({root:detailRoot,description:{...building,id:`${chunkX}:${chunkZ}:${index}`}});
     if (building.tower) {
-      addSkyscraper(group, { walls, colliders, walkSurfaces, staircases }, materials, building.x, building.z, building.width, building.depth, building.height);
+      addSkyscraper(detailRoot, { walls, colliders, walkSurfaces, staircases }, materials, building.x, building.z, building.width, building.depth, building.height);
     } else {
-      addHouse(group, { walls, colliders, walkSurfaces, staircases }, materials, building.x, building.z, building.width, building.depth, building.stairs);
+      addHouse(detailRoot, { walls, colliders, walkSurfaces, staircases }, materials, building.x, building.z, building.width, building.depth, building.stairs);
     }
     yield { group, walls, colliders, walkSurfaces, staircases };
   }

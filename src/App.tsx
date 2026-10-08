@@ -1,3 +1,5 @@
+import { getMapId, selectMap, readMapSky, saveMapSky, MORNING_PRESET, type MapId } from '@/game/mapPreference';
+import { setRenderSettings } from '@/game/renderSettings';
 import { SheetCollapseContext } from '@/components/GameSheet';
 import PlayersSheet from '@/components/PlayersSheet';
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
@@ -57,12 +59,14 @@ interface EmoteSignal { emote: AvatarEmote; sequence: number }
 type PaintTool = 'paint' | 'eraser' | 'off' | 'admin';
 
 const App = () => {
+  const [mapId,setMapId]=useState<MapId>(getMapId);
   const aippyUser = useUserInfo();
   const displayName = aippyDisplayName(aippyUser);
   const [multiplayerStatus, setMultiplayerStatus] = useState<MultiplayerStatus>({ phase: 'solo', playerCount: 0 });
   const [multiplayerView, setMultiplayerView] = useState<MultiplayerView>({ chat: [], revision: 0, accountFeaturesAvailable: false, worldItemCount: 0 });
   const [multiplayerRequest, setMultiplayerRequest] = useState<MultiplayerRequest | null>(null);
   const requestMultiplayer = (action: MultiplayerRequest['action'], text?: string, role?: ServerRole, colour?: string, protectionEnabled?: boolean, creator?: MultiplayerRequest['creator']) => {
+    if(action==='join'&&mapId==='map2')return;
     if (action === 'inspect' || action === 'inspect-artwork') { setPaintMode(false); requestWorkspace('exit'); setViewMode('first'); }
     if (action === 'join' || action === 'leave') { setReference(null); poster.cancel(); requestWorkspace('clear'); }
     setMultiplayerRequest(previous => ({ action, text, role, colour, protectionEnabled, creator, sequence: (previous?.sequence ?? 0) + 1 }));
@@ -85,7 +89,7 @@ const App = () => {
   const [opacity, setOpacity] = useState(0.88);
   const [brushHead, setBrushHead] = useState<BrushHead>('soft');
   const { warmAudio, playSpray, playChime } = useSprayAudio();
-  const [sky, setSky] = useState<SkyMode>('day');
+  const [sky, setSky] = useState<SkyMode>(()=>readMapSky(getMapId()));
   const [paintMode, setPaintMode] = useState(false);
   const [adminPainting, setAdminPainting] = useState(false);
   const adminFreePaint = adminPainting && multiplayerStatus.phase === 'connected' && !!multiplayerStatus.canAdminPaint;
@@ -106,7 +110,7 @@ const App = () => {
   const [localPieceNames, setLocalPieceNames] = useState<Record<string, string>>(readLocalPieceNames);
   const [pieceTitleDraft, setPieceTitleDraft] = useState('');
   const [protectionEnabled, setProtectionEnabled] = useState(false);
-  const workspaceNameKey = workspaceView.bounds ? JSON.stringify(workspaceView.bounds) : '';
+  const workspaceNameKey = workspaceView.bounds ? (mapId==='map2'?'map2-v1:':'')+JSON.stringify(workspaceView.bounds) : '';
   useEffect(() => setPieceTitleDraft(workspaceNameKey ? localPieceNames[workspaceNameKey] ?? '' : ''), [workspaceNameKey]);
   const [workspaceRequest, setWorkspaceRequest] = useState<{ action: PaintWorkspaceAction; size?: number; height?: number; title?: string; protectionEnabled?: boolean; sequence: number } | null>(null);
   const activeProtectionQuote = multiplayerView.protection?.quotes?.[protectionEnabled ? 'protected' : 'unprotected'] ?? null;
@@ -136,7 +140,7 @@ const App = () => {
     setWorkspaceRequest(previous => ({ action, size, height, title, protectionEnabled: action === 'start' ? requestedProtectionEnabled ?? protectionEnabled : undefined, sequence: (previous?.sequence ?? 0) + 1 }));
     if (action === 'finish' && tutorialStep === 'finish' && workspaceView.hasPaint) { setTutorialReview(false); setTutorialStep('save'); closeMenu(); }
   };
-  const sizingKey = workspaceView.selected && workspaceView.bounds ? JSON.stringify(workspaceView.bounds) : '';
+  const sizingKey = workspaceView.selected && workspaceView.bounds ? (mapId==='map2'?'map2-v1:':'')+JSON.stringify(workspaceView.bounds) : '';
   useEffect(() => {
     if (multiplayerStatus.phase !== 'connected' || !sizingKey || workspaceView.hasPaint || multiplayerView.protection?.purchased || adminFreePaint) return;
     const timer = window.setTimeout(() => requestMultiplayer('quote-protection', undefined, undefined, undefined, protectionEnabled), 350);
@@ -226,7 +230,7 @@ const App = () => {
       setActiveMenu(null);
     }
     if (tutorialStep === 'move-canvas') {
-      tutorialMoveBoundsRef.current = workspaceView.bounds ? JSON.stringify(workspaceView.bounds) : '';
+      tutorialMoveBoundsRef.current = workspaceView.bounds ? (mapId==='map2'?'map2-v1:':'')+JSON.stringify(workspaceView.bounds) : '';
       tutorialMoveArmedRef.current = false;
       setActiveMenu(null);
     }
@@ -247,7 +251,7 @@ const App = () => {
   useEffect(() => {
     if (tutorialReview || tutorialStep !== 'move-canvas') return;
     if (workspaceView.moving) tutorialMoveArmedRef.current = true;
-    const bounds = workspaceView.bounds ? JSON.stringify(workspaceView.bounds) : '';
+    const bounds = workspaceView.bounds ? (mapId==='map2'?'map2-v1:':'')+JSON.stringify(workspaceView.bounds) : '';
     if (tutorialMoveArmedRef.current && bounds && bounds !== tutorialMoveBoundsRef.current && !workspaceView.moving) setTutorialStep('start-painting');
   }, [tutorialStep, tutorialReview, workspaceView.moving, workspaceView.bounds]);
   useEffect(() => {
@@ -331,7 +335,7 @@ const App = () => {
     setPaintMode(tool !== 'off');
     setEraseMode(tool === 'eraser');
   };
-  const selectSky = (mode: SkyMode) => { setSky(mode); closeMenu(); playChime(); };
+  const selectSky = (mode: SkyMode) => { saveMapSky(mapId,mode);setRenderSettings({skyMode:'game',...(mapId==='map2'&&mode==='night'?{streetLights:true}:{})});setSky(mode); closeMenu(); playChime(); };
   const startPosterPlacement = (dataUrl: string, size: number) => {
     if (workspaceView.active) requestWorkspace('exit');
     poster.start(dataUrl, size);
@@ -409,6 +413,11 @@ const App = () => {
               onQuote={() => requestMultiplayer('quote-protection', undefined, undefined, undefined, protectionEnabled)}
               onProtectionEnabledChange={setProtectionEnabled} /> : undefined} />;
 
+  const changeMap=(next:MapId)=>{
+    setMovement({x:0,y:0});setLookInput({x:0,y:0});setPaintMode(false);setEyedropperActive(false);setReference(null);poster.cancel();setWorkspaceRequest(null);setMultiplayerRequest(null);setEmoteSignal(null);setViewMode('first');
+    setWorkspaceView({selected:false,active:false,width:0,height:0,zoom:1,sizeLinked:true,started:false,moving:false,hasPaint:false});
+    selectMap(next);setMapId(next);setSky(readMapSky(next));closeMenu();
+  };
   return (
     <SheetCollapseContext.Provider value={setSheetCollapsed}><main
       ref={shellRef}
@@ -433,7 +442,7 @@ const App = () => {
         </section>
       ) : (
         <>
-          <WorldScene
+          <WorldScene key={mapId} mapId={mapId}
             onSoloHistoryChange={setSoloHistory}
             reference={reference} onReferenceMove={(x, y) => setReference(current => current ? { ...current, x, y } : null)}
             eyedropperActive={eyedropperActive} onColorPick={pickColour}
@@ -480,9 +489,9 @@ const App = () => {
               <div className="top-network-controls">
                 {multiplayerStatus.phase !== 'solo' ? <CanvasCredits online={multiplayerStatus.phase === 'connected'} balance={multiplayerView.protection?.creditBalance ?? null} /> : <span className="canvas-credit-status" aria-label="Solo coins">🪙 {progress.coins}</span>}
                 {<GraffitiPieces open={activeMenu === 'art'} onOpenChange={open => setActiveMenu(open ? 'art' : null)} canPaintOver={!!multiplayerStatus.canAdminPaint} paintColour={color} onPaintOver={(pieceId, colour) => { if (!multiplayerStatus.canAdminPaint) return false; requestMultiplayer('paint-over', pieceId, undefined, colour); return true; }} artworks={multiplayerView.artworks ?? []} selectedArtworkId={multiplayerView.selectedArtworkId} onViewArtwork={id => requestMultiplayer('inspect-artwork', id)} onDeleteArtwork={id => { if (multiplayerStatus.phase !== 'connected' || !multiplayerStatus.canDeletePieces) return false; requestMultiplayer('delete-artwork', id); return true; }} onCreatorSelect={creator => requestMultiplayer('creator-select', undefined, undefined, undefined, undefined, creator)} selectedPieceId={multiplayerView.selectedPieceId} piecePickSequence={multiplayerView.piecePickSequence} pieces={multiplayerView.pieces ?? []} connected={multiplayerStatus.phase === 'connected'} role={multiplayerStatus.role} canDeletePieces={multiplayerStatus.canDeletePieces} onDelete={pieceId => { if (multiplayerStatus.phase !== 'connected' || !multiplayerStatus.canDeletePieces) return false; requestMultiplayer('delete-piece', pieceId); return true; }} onLike={pieceId => { if (multiplayerStatus.phase !== 'connected') return false; requestMultiplayer('like', pieceId); return true; }} onResync={() => requestMultiplayer('resync')} onView={pieceId => requestMultiplayer('inspect', pieceId)} />}
-                <MultiplayerControls chatMute={multiplayerView.chatMute} chatOpen={activeMenu === 'chat'} onChatToggle={() => toggleMenu('chat')} onChatClose={closeMenu} onOpenMenu={() => toggleMenu('settings')} onPlayers={() => toggleMenu('players')} onPlayerSelect={id => requestMultiplayer('select-player', id)} status={multiplayerStatus} displayName={displayName} avatar={aippyUser.avatar} profileLoading={aippyUser.isLoading}
+                {mapId==='map2'?<span className="connection-pill phase-solo" aria-label="Map 2 local test"><i/>MAP 2</span>:<MultiplayerControls chatMute={multiplayerView.chatMute} chatOpen={activeMenu === 'chat'} onChatToggle={() => toggleMenu('chat')} onChatClose={closeMenu} onOpenMenu={() => toggleMenu('settings')} onPlayers={() => toggleMenu('players')} onPlayerSelect={id => requestMultiplayer('select-player', id)} status={multiplayerStatus} displayName={displayName} avatar={aippyUser.avatar} profileLoading={aippyUser.isLoading}
                   onJoin={() => requestMultiplayer('join')} onLeave={() => requestMultiplayer('leave')}
-                  messages={multiplayerView.chat} onChat={text => requestMultiplayer('chat', text)} onResync={() => requestMultiplayer('resync')} />
+                  messages={multiplayerView.chat} onChat={text => requestMultiplayer('chat', text)} onResync={() => requestMultiplayer('resync')} />}
               </div>
             </>}
           />
@@ -521,19 +530,20 @@ const App = () => {
                 <button type="button" onClick={() => { closeMenu(); openTutorial(); }}>{tutorialCompleted ? 'REPLAY TUTORIAL' : 'TUTORIAL'}</button>
                 <button type="button" onClick={changeView}>{CAMERA_LABELS[viewMode]}</button>
                 <button type="button" onClick={() => toggleMenu('sky')}>CHANGE SKY</button>
+                <button type="button" aria-pressed={mapId==='map2'} onClick={()=>changeMap(mapId==='map2'?'original':'map2')}>{mapId==='map2'?'MAP 1 · ORIGINAL':'MAP 2 · MORNING QUARTER'}</button>
                 <button type="button" aria-pressed={portrait} onClick={() => { setMovement({ x: 0, y: 0 }); setLookInput({ x: 0, y: 0 }); setPortrait(value => !value); closeMenu(); }}>{rotatedPortrait ? 'ROTATE TO LANDSCAPE' : 'ROTATE TO PORTRAIT'}</button>
                 {multiplayerStatus.canAdminPaint && <button type="button" aria-pressed={adminFreePaint} onClick={() => selectPaintTool(adminFreePaint ? 'off' : 'admin')}>ADMIN PAINT</button>}
               </div></section>
-              <section className="tool-section"><h3>MULTIPLAYER</h3><div className="button-row">
+              {mapId==='original'&&<section className="tool-section"><h3>MULTIPLAYER</h3><div className="button-row">
                 {multiplayerStatus.phase === 'solo' || multiplayerStatus.phase === 'disconnected' ? <button type="button" data-tutorial="multiplayer-join" disabled={aippyUser.isLoading} onClick={() => requestMultiplayer('join')}>{multiplayerStatus.phase === 'solo' ? 'JOIN MULTIPLAYER' : 'RECONNECT'}</button> : <button type="button" onClick={() => requestMultiplayer('leave')}>{multiplayerStatus.phase === 'connecting' ? 'CANCEL JOINING' : 'PLAY SOLO'}</button>}
                 <button type="button" onClick={() => toggleMenu('chat')}>ROOM CHAT</button>
                 {multiplayerStatus.phase === 'connected' && <button type="button" onClick={() => toggleMenu('players')}>ONLINE PLAYERS</button>}
-              </div>{multiplayerStatus.notice && <p className="ui-notice" role="status">{multiplayerStatus.notice}</p>}</section>
+              </div>{multiplayerStatus.notice && <p className="ui-notice" role="status">{multiplayerStatus.notice}</p>}</section>}
               <section className="tool-section"><h3>RADIO</h3>{radioController && <RadioControl controller={radioController} url={RADIO_STREAM_URL} initialVolume={musicVolume} onInteraction={() => { if (!tutorialReview && tutorialStep === 'radio') setTutorialStep('multiplayer'); }} />}</section>
             </SettingsModal>
           )}
           {developerChoice && <GameSheet title="DEVELOPER TOOLS" onClose={() => setDeveloperChoice(false)}><div className="menu-grid"><button onClick={() => { setDeveloperChoice(false); setDevViewerOpen(true); }}>PROJECT FILE VIEWER</button><button onClick={() => { setDeveloperChoice(false); setLiveSettingsOpen(true); }}>LIVE GAME SETTINGS</button></div></GameSheet>}
-          {liveSettingsOpen && <DeveloperPanel onClose={() => setLiveSettingsOpen(false)} onFiles={() => { setLiveSettingsOpen(false); setDevViewerOpen(true); }} />}
+          {liveSettingsOpen && <DeveloperPanel onClose={() => setLiveSettingsOpen(false)} onFiles={() => { setLiveSettingsOpen(false); setDevViewerOpen(true); }} onMorningPreset={()=>{setSky('pastel');saveMapSky(mapId,'pastel');setRenderSettings({...MORNING_PRESET});}} />}
           {devViewerOpen && (
             <Suspense fallback={(
               <div className="fixed inset-0 z-[60] flex items-center justify-center bg-neutral-950 font-mono text-xs text-neutral-500">

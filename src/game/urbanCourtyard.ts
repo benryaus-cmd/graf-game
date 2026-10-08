@@ -22,7 +22,8 @@ export function addUrbanCourtyard(parent:THREE.Group,colliders:Collider[],buildi
   buildings.forEach((b,i)=>{if(b.tower)return;const front=b.z+b.depth/2;box('#725d49',b.x,b.height+.1,b.z,b.width+1,.22,b.depth+1);box('#86654d',b.x,3.5,front+.6,3.2,.2,1.4);
     // Recolour the same canonical surfaces without moving or changing their IDs/UVs.
     const tint=new THREE.MeshStandardMaterial({color:facadeColors[i],roughness:1});let used=false;
-    for(const object of parent.children)if(object instanceof THREE.Mesh && Array.isArray(object.material) && Math.abs(object.position.x-b.x)<=b.width/2+.6&&Math.abs(object.position.z-b.z)<=b.depth/2+.6){const visual=object.userData.baseVisual as THREE.Mesh|undefined;if(visual){visual.material=tint;used=true;}}
+    const targets:THREE.Object3D[]=[];parent.traverse(o=>targets.push(o));
+    for(const object of targets)if(object instanceof THREE.Mesh && Array.isArray(object.material) && Math.abs(object.position.x-b.x)<=b.width/2+.6&&Math.abs(object.position.z-b.z)<=b.depth/2+.6){const visual=object.userData.baseVisual as THREE.Mesh|undefined;if(visual){visual.material=tint;used=true;}}
     if(!used)tint.dispose();
   });
   for(const [color,geometries]of batches){const merged=mergeGeometries(geometries,false)!;geometries.forEach(g=>g.dispose());root.add(new THREE.Mesh(merged,new THREE.MeshStandardMaterial({color,roughness:1})));}

@@ -16,7 +16,7 @@ export function createFixtureGrain(): THREE.DataTexture {
   return texture;
 }
 
-export function applyFixtureGrain(material: THREE.MeshStandardMaterial, grain: THREE.Texture, enabled: { value: number }): void {
+export function applyFixtureGrain(material: THREE.MeshStandardMaterial, grain: THREE.Texture, enabled: { value: number }, forceConcrete=false): void {
   material.onBeforeCompile = shader => {
     shader.uniforms.fixtureGrain = { value: grain };
     shader.uniforms.fixtureDetail = enabled;
@@ -29,14 +29,14 @@ export function applyFixtureGrain(material: THREE.MeshStandardMaterial, grain: T
     shader.fragmentShader = shader.fragmentShader.replace('#include <common>', '#include <common>\nuniform sampler2D fixtureGrain;\nuniform float fixtureDetail;\nuniform vec3 fixtureConcreteTint;\nvarying vec2 vFixtureGrainUv;\nvarying float vFixtureVertical;')
       .replace('#include <map_fragment>', `#include <map_fragment>
 float spread = max(diffuseColor.r, max(diffuseColor.g, diffuseColor.b)) - min(diffuseColor.r, min(diffuseColor.g, diffuseColor.b));
-float concrete = 1.0 - smoothstep(.06, .12, spread);
+float concrete = ${forceConcrete?'1.0':'1.0 - smoothstep(.06, .12, spread)'};
 float concreteLuminance = dot(diffuseColor.rgb, vec3(.2126, .7152, .0722));
-diffuseColor.rgb = mix(diffuseColor.rgb, concreteLuminance * fixtureConcreteTint, concrete * .85);
+diffuseColor.rgb = mix(diffuseColor.rgb, concreteLuminance * fixtureConcreteTint, concrete * ${forceConcrete?'0.0':'.85'});
 if (fixtureDetail > .5 && vFixtureVertical > .5) {
   float grain = texture2D(fixtureGrain, vFixtureGrainUv).r;
   diffuseColor.rgb *= mix(1.0, .75 + grain * .5, concrete);
 }`);
   };
-  material.customProgramCacheKey = () => 'graffciti-fixture-grain-v2';
+  material.customProgramCacheKey = () => 'graffciti-fixture-grain-v2'+(forceConcrete?'-concrete':'');
   material.needsUpdate = true;
 }

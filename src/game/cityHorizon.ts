@@ -1,3 +1,5 @@
+import type { MapId } from './mapPreference';
+import { BuildingHorizon } from './buildingHorizon';
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { createCityBlockLayout } from './cityBlockLayout';
@@ -15,7 +17,9 @@ export class CityHorizon {
   private origin={value:new THREE.Vector2()};
   private materials=['#a69f8e','#908f87','#c0b6a0','#7d837b','#858377'].map(color=>new THREE.MeshBasicMaterial({color}));
   private flatMaterial=new THREE.MeshBasicMaterial({color:'#87938b',side:THREE.DoubleSide});
-  constructor(private scene:THREE.Scene){
+  private tiers:BuildingHorizon;
+  constructor(private scene:THREE.Scene,private map:MapId='original'){
+    this.tiers=new BuildingHorizon(map);this.root.add(this.tiers.root);
     this.root.name='city-distant-skyline';scene.add(this.root);scene.userData.cityHorizonStats=this.stats;
     this.flatMaterial.onBeforeCompile=shader=>{
       shader.uniforms.cityOrigin=this.origin;shader.uniforms.skylineFar=this.uniforms.far;shader.uniforms.skylineWidth=this.uniforms.width;
@@ -35,7 +39,9 @@ export class CityHorizon {
     this.flatMaterial.customProgramCacheKey=()=> 'graffciti-city-billboard-v2';
   }
   update(x:number,z:number,active:Set<string>,camera?:THREE.Camera){
-    const settings=getRenderSettings();this.root.visible=settings.horizon;this.origin.value.set(x,z);this.uniforms.far.value=Math.min(settings.skylineDistance,fogVisualDistance(settings,camera));this.uniforms.width.value=settings.skylineWidth;
+    const settings=getRenderSettings();
+    if(this.map==='map2'||settings.heightLod){for(const root of this.blocks.values())root.visible=false;if(this.flat)this.flat.visible=false;this.root.visible=settings.horizon;this.tiers.root.visible=settings.horizon;this.tiers.update(x,z,active,camera);Object.assign(this.stats,this.tiers.stats);return;}
+    this.tiers.root.visible=false;this.root.visible=settings.horizon;this.origin.value.set(x,z);this.uniforms.far.value=Math.min(settings.skylineDistance,fogVisualDistance(settings,camera));this.uniforms.width.value=settings.skylineWidth;
     if(!settings.horizon){this.stats.plain=0;this.stats.flat=0;return;}
     const cx=Math.floor(x/48+.5),cz=Math.floor(z/48+.5),radius=Math.ceil(settings.horizonDistance/48)+1;
     const signature=`${cx}:${cz}:${settings.horizonDistance}`;
@@ -91,5 +97,5 @@ export class CityHorizon {
     const ground=new THREE.BoxGeometry(48,.04,48);ground.translate(cx*48,-.03,cz*48);ground.clearGroups();geometry.push(ground);
     const merged=mergeGeometries(geometry,false)!;geometry.forEach(g=>g.dispose());root.add(new THREE.Mesh(merged,this.materials[Math.abs(cx*3+cz*7)%this.materials.length]));return root;
   }
-  dispose(){for(const block of this.blocks.values())block.traverse(o=>{if(o instanceof THREE.Mesh)o.geometry.dispose();});this.blocks.clear();this.queue=[];this.flat?.dispose();this.flat?.geometry.dispose();this.flatMaterial.dispose();this.materials.forEach(m=>m.dispose());this.root.removeFromParent();delete this.scene.userData.cityHorizonStats;}
+  dispose(){this.tiers.dispose();for(const block of this.blocks.values())block.traverse(o=>{if(o instanceof THREE.Mesh)o.geometry.dispose();});this.blocks.clear();this.queue=[];this.flat?.dispose();this.flat?.geometry.dispose();this.flatMaterial.dispose();this.materials.forEach(m=>m.dispose());this.root.removeFromParent();delete this.scene.userData.cityHorizonStats;}
 }

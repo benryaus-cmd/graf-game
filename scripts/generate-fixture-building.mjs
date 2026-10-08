@@ -1,5 +1,6 @@
 // Offline extraction only. Runtime uses the fixed table, never traverses model triangles.
 import fs from 'node:fs';
+import console from 'node:console';
 import * as THREE from 'three';
 const bytes = fs.readFileSync('public/assets/preview/building.glb');
 const jsonLength = bytes.readUInt32LE(12), gltf = JSON.parse(bytes.subarray(20, 20 + jsonLength).toString()), binaryStart = 28 + jsonLength;

@@ -1,3 +1,4 @@
+import type { MapId } from './mapPreference';
 import assetsData from '@/config/assets';
 import * as THREE from 'three';
 import { createCityChunkStream } from '@/game/cityChunks';
@@ -5,7 +6,7 @@ import type { CityMaterials } from '@/game/cityStructures';
 
 export const WALL_TEXTURE_URL = assetsData.IMAGE_YNIR;
 
-export function createArchitecture(scene: THREE.Scene, wallTexture: THREE.Texture) {
+export function createArchitecture(scene: THREE.Scene, wallTexture: THREE.Texture,map:MapId='original') {
   wallTexture.colorSpace = THREE.SRGBColorSpace;
   wallTexture.wrapS = THREE.RepeatWrapping;
   wallTexture.wrapT = THREE.RepeatWrapping;
@@ -41,7 +42,7 @@ export function createArchitecture(scene: THREE.Scene, wallTexture: THREE.Textur
       metalness: 0.18,
     }),
   };
-  const city = createCityChunkStream(scene, materials);
+  const city = createCityChunkStream(scene, materials,map);
   city.updateAt(0, 0);
   return city;
 }
