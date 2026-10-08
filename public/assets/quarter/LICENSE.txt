@@ -1,0 +1,7 @@
+Quaternius Ultimate Textured Buildings Pack (December 2019)
+CC0 1.0 Universal / Public Domain Dedication
+https://creativecommons.org/publicdomain/zero/1.0/
+Official pack: https://quaternius.com/packs/ultimatetexturedbuildings.html
+Source mirror: https://github.com/alexsanfiz/shooty-game/tree/7d41cbc9f4fb61a6b042116e439a1dba793a3238/OBJ-20250610T141224Z-1-001/OBJ
+Models: 1Story_Sign, 2Story_Balcony, 2Story_Wide, 3Story_Small, 2Story_GableRoof.
+Converted offline using Three.js OBJLoader and GLTFExporter; embedded 32x32 grey palette from original pack. No runtime OBJ parsing.
