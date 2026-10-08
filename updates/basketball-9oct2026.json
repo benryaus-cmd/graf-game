@@ -1,0 +1,75 @@
+{
+  "version": "basketball-9oct2026",
+  "commit": "4919631540f49f4df1d4bf7f644552bd515cf5c5",
+  "baseUrl": "https://raw.githubusercontent.com/benryaus-cmd/graf-game/4919631540f49f4df1d4bf7f644552bd515cf5c5/",
+  "description": "Map 2 solo five-spot flick basketball with pooled balls, swish feedback and the solo painting readback fix.",
+  "files": [
+    {
+      "source": "src/App.tsx",
+      "target": "src/games/importedGame/upstream/src/App.tsx"
+    },
+    {
+      "source": "src/components/WorldScene.tsx",
+      "target": "src/games/importedGame/upstream/src/components/WorldScene.tsx"
+    },
+    {
+      "source": "src/components/useSprayAudio.ts",
+      "target": "src/games/importedGame/upstream/src/components/useSprayAudio.ts"
+    },
+    {
+      "source": "src/components/BasketballControls.tsx",
+      "target": "src/games/importedGame/upstream/src/components/BasketballControls.tsx"
+    },
+    {
+      "source": "src/components/basketball.css",
+      "target": "src/games/importedGame/upstream/src/components/basketball.css"
+    },
+    {
+      "source": "src/game/basketballCourt.ts",
+      "target": "src/games/importedGame/upstream/src/game/basketballCourt.ts"
+    },
+    {
+      "source": "src/game/basketballPhysics.ts",
+      "target": "src/games/importedGame/upstream/src/game/basketballPhysics.ts"
+    },
+    {
+      "source": "src/game/basketballGame.ts",
+      "target": "src/games/importedGame/upstream/src/game/basketballGame.ts"
+    },
+    {
+      "source": "src/game/basketballSession.ts",
+      "target": "src/games/importedGame/upstream/src/game/basketballSession.ts"
+    },
+    {
+      "source": "src/game/morningQuarterContent.ts",
+      "target": "src/games/importedGame/upstream/src/game/morningQuarterContent.ts"
+    },
+    {
+      "source": "src/game/worldControls.ts",
+      "target": "src/games/importedGame/upstream/src/game/worldControls.ts"
+    },
+    {
+      "source": "src/game/worldKeyboard.ts",
+      "target": "src/games/importedGame/upstream/src/game/worldKeyboard.ts"
+    },
+    {
+      "source": "src/game/worldMovement.ts",
+      "target": "src/games/importedGame/upstream/src/game/worldMovement.ts"
+    },
+    {
+      "source": "src/game/worldTypes.ts",
+      "target": "src/games/importedGame/upstream/src/game/worldTypes.ts"
+    },
+    {
+      "source": "src/game/soloPaintHistory.ts",
+      "target": "src/games/importedGame/upstream/src/game/soloPaintHistory.ts"
+    }
+  ],
+  "notes": [
+    "Use the existing incremental downloader. Download all 15 files as raw bytes before replacing their exact targets.",
+    "Preserve settings, saves, artwork, all unlisted files, importer, aliases, host wrapper, dependencies and server. No full re-import.",
+    "Solo basketball is playable. Shared seats and HORSE are tested groundwork pending the existing server adapter; Map 2 remains local.",
+    "Solo world Undo/Redo is disabled to remove live-canvas painting readbacks. Multiplayer server Undo/Redo and manual tag library remain unchanged.",
+    "Build, load and fully reload GraffCiti to recreate previously affected paint canvases."
+  ]
+}

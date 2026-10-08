@@ -1,0 +1,49 @@
+{
+  "version": "basketball-9oct2026-rollback",
+  "commit": "a8726dbe0000f54d62db6622164213e50e426bc3",
+  "baseUrl": "https://raw.githubusercontent.com/benryaus-cmd/graf-game/a8726dbe0000f54d62db6622164213e50e426bc3/",
+  "description": "Restore the nine existing runtime targets to the pre-basketball release; retain the urgent painting fix.",
+  "files": [
+    {
+      "source": "src/App.tsx",
+      "target": "src/games/importedGame/upstream/src/App.tsx"
+    },
+    {
+      "source": "src/components/WorldScene.tsx",
+      "target": "src/games/importedGame/upstream/src/components/WorldScene.tsx"
+    },
+    {
+      "source": "src/components/useSprayAudio.ts",
+      "target": "src/games/importedGame/upstream/src/components/useSprayAudio.ts"
+    },
+    {
+      "source": "src/game/morningQuarterContent.ts",
+      "target": "src/games/importedGame/upstream/src/game/morningQuarterContent.ts"
+    },
+    {
+      "source": "src/game/worldControls.ts",
+      "target": "src/games/importedGame/upstream/src/game/worldControls.ts"
+    },
+    {
+      "source": "src/game/worldKeyboard.ts",
+      "target": "src/games/importedGame/upstream/src/game/worldKeyboard.ts"
+    },
+    {
+      "source": "src/game/worldMovement.ts",
+      "target": "src/games/importedGame/upstream/src/game/worldMovement.ts"
+    },
+    {
+      "source": "src/game/worldTypes.ts",
+      "target": "src/games/importedGame/upstream/src/game/worldTypes.ts"
+    },
+    {
+      "source": "src/game/soloPaintHistory.ts",
+      "target": "src/games/importedGame/upstream/src/game/soloPaintHistory.ts"
+    }
+  ],
+  "notes": [
+    "Stage all 9 raw files, then replace only these exact paths. Build and fully reload.",
+    "Preserve unlisted files and saved artwork. The six added basketball modules/styles may remain unused after rollback; do not delete saves.",
+    "Pre-release solo Undo readback fix remains in place."
+  ]
+}
