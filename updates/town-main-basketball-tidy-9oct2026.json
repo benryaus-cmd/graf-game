@@ -1,0 +1,61 @@
+{
+  "version": "town-main-basketball-tidy-9oct2026",
+  "commit": "51af6fbe2200cba9cf6c710f1d93b130f3a7b0bb",
+  "baseUrl": "https://raw.githubusercontent.com/benryaus-cmd/graf-game/51af6fbe2200cba9cf6c710f1d93b130f3a7b0bb/",
+  "description": "Every grabbed-ball normal release throws; softer 8.1 m/s flicks, approved night defaults, town main world and isolated existing-server multiplayer handover.",
+  "files": [
+    {
+      "source": "src/App.tsx",
+      "target": "src/games/importedGame/upstream/src/App.tsx"
+    },
+    {
+      "source": "src/components/BasketballControls.tsx",
+      "target": "src/games/importedGame/upstream/src/components/BasketballControls.tsx"
+    },
+    {
+      "source": "src/components/WorldScene.tsx",
+      "target": "src/games/importedGame/upstream/src/components/WorldScene.tsx"
+    },
+    {
+      "source": "src/game/basketballGesture.ts",
+      "target": "src/games/importedGame/upstream/src/game/basketballGesture.ts"
+    },
+    {
+      "source": "src/game/basketballPhysics.ts",
+      "target": "src/games/importedGame/upstream/src/game/basketballPhysics.ts"
+    },
+    {
+      "source": "src/game/basketballSession.ts",
+      "target": "src/games/importedGame/upstream/src/game/basketballSession.ts"
+    },
+    {
+      "source": "src/game/mapPreference.ts",
+      "target": "src/games/importedGame/upstream/src/game/mapPreference.ts"
+    },
+    {
+      "source": "src/game/renderSettings.ts",
+      "target": "src/games/importedGame/upstream/src/game/renderSettings.ts"
+    },
+    {
+      "source": "src/multiplayer/config.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/config.ts"
+    },
+    {
+      "source": "src/multiplayer/connection.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/connection.ts"
+    },
+    {
+      "source": "src/multiplayer/worldSession.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/worldSession.ts"
+    }
+  ],
+  "notes": [
+    "Use the existing Node 22 incremental downloader. Download all 11 files as raw bytes before exact-path replacement.",
+    "Preserve settings, saves, artwork, unlisted files, importer, aliases, host wrapper and dependencies. No full re-import or server changes.",
+    "Fresh/reset rendering defaults match the approved screenshots. Saved device customisations and explicit world choices remain intact.",
+    "Town is the fresh main world and sole multiplayer option; Original is local only. Internal map2/map2-v1 and original artwork addresses are unchanged.",
+    "Town Join requires protocol 2, room morning-quarter-v1 and snapshot worldId map2-v1. Existing server deployment is pending; no fallback to old public art. Solo remains available.",
+    "Shared basketball seats/HORSE remain pending. Server AI handover: docs/main-world-server-handoff-9oct2026.md.",
+    "Build, load and fully reload GraffCiti."
+  ]
+}

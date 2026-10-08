@@ -1,0 +1,56 @@
+{
+  "version": "rollback-town-main-basketball-tidy-9oct2026",
+  "commit": "abd0aa8db73c7c756478a929c275b95377df8c88",
+  "baseUrl": "https://raw.githubusercontent.com/benryaus-cmd/graf-game/abd0aa8db73c7c756478a929c275b95377df8c88/",
+  "description": "Restore the 11 previous runtime files without changing saved art or user settings.",
+  "files": [
+    {
+      "source": "src/App.tsx",
+      "target": "src/games/importedGame/upstream/src/App.tsx"
+    },
+    {
+      "source": "src/components/BasketballControls.tsx",
+      "target": "src/games/importedGame/upstream/src/components/BasketballControls.tsx"
+    },
+    {
+      "source": "src/components/WorldScene.tsx",
+      "target": "src/games/importedGame/upstream/src/components/WorldScene.tsx"
+    },
+    {
+      "source": "src/game/basketballGesture.ts",
+      "target": "src/games/importedGame/upstream/src/game/basketballGesture.ts"
+    },
+    {
+      "source": "src/game/basketballPhysics.ts",
+      "target": "src/games/importedGame/upstream/src/game/basketballPhysics.ts"
+    },
+    {
+      "source": "src/game/basketballSession.ts",
+      "target": "src/games/importedGame/upstream/src/game/basketballSession.ts"
+    },
+    {
+      "source": "src/game/mapPreference.ts",
+      "target": "src/games/importedGame/upstream/src/game/mapPreference.ts"
+    },
+    {
+      "source": "src/game/renderSettings.ts",
+      "target": "src/games/importedGame/upstream/src/game/renderSettings.ts"
+    },
+    {
+      "source": "src/multiplayer/config.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/config.ts"
+    },
+    {
+      "source": "src/multiplayer/connection.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/connection.ts"
+    },
+    {
+      "source": "src/multiplayer/worldSession.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/worldSession.ts"
+    }
+  ],
+  "notes": [
+    "Use only to restore the previous basketball-grab update runtime.",
+    "Preserve saves, artwork, settings and all unlisted files. No full re-import or server changes."
+  ]
+}

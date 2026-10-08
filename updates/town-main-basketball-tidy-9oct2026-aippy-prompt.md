@@ -1,0 +1,9 @@
+Use Node 22 to apply this update to the CURRENT GraffCiti project:
+
+"Update manifest" (https://raw.githubusercontent.com/benryaus-cmd/graf-game/main/updates/town-main-basketball-tidy-9oct2026.json)
+
+Use the existing incremental downloader. Download the 11 listed files using manifest.baseUrl + source as raw bytes, then replace their exact target paths.
+
+Preserve settings, saves, all unlisted files, importer, aliases, host wrapper and dependencies. No full re-import or server changes.
+
+Build and load GraffCiti. Report version, downloads X/11, replacements X/11 and build PASS/FAIL.
