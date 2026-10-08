@@ -98,7 +98,7 @@ export function createWorld(container: HTMLElement, fogDensity: number): WorldEn
     colliders: architecture.colliders,
     walkSurfaces: architecture.walkSurfaces,
     staircases: architecture.staircases,
-    updateChunks: architecture.updateAt,
+    updateChunks: (x,z)=>architecture.updateAt(x,z,world.playerPosition.y,world.cameraMode==='map'?world.mapCamera:world.camera),
     setPaintVisibility: architecture.setLayerVisibility,
     savePaint: architecture.savePaint,
     clearPaintCache: architecture.clearPaintCache,

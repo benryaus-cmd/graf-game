@@ -135,7 +135,7 @@ const WorldScene = (props: WorldSceneProps) => {
         const ratio=Math.min(window.devicePixelRatio,settings.renderScale);
         if(world.renderer.getPixelRatio()!==ratio){world.renderer.setPixelRatio(ratio);world.renderer.setSize(container.clientWidth,container.clientHeight);}
         world.renderer.toneMappingExposure=settings.exposure;
-        if(world.scene.fog instanceof THREE.FogExp2)world.scene.fog.density=settings.fogDensity;
+        applySkyLighting(world,world.scene.userData.gameSkyMode??props.sky);
         world.updateChunks(world.playerPosition.x,world.playerPosition.z);
       });
     };

@@ -94,6 +94,7 @@ export class ArtworkSync {
     this.upsert([message.artwork ?? message]);
   }
   entries(): SharedArtwork[] { return [...this.records.values()]; }
+  imageStats(){return {loading:this.loading.size,mounted:this.mounted.size,records:this.records.size};}
   meshFor(id: string): THREE.Object3D | null { return this.mounted.get(id)?.mesh ?? null; }
   unloadArtwork(id: string): void { if (!this.local.has(id)) this.removeArtwork(id); }
   upsert(values: readonly unknown[]): void {
@@ -113,14 +114,19 @@ export class ArtworkSync {
     for (const id of affected) this.recordsByWall.get(id)?.sort((a,b) => (a.sequence ?? Infinity) - (b.sequence ?? Infinity));
     this.applyOrder();
   }
-  refresh(walls: Map<string, PaintWall>): void {
+  refresh(walls: Map<string, PaintWall>, demand?: {canLoad:(wall:PaintWall,record:SharedArtwork)=>boolean;maxConcurrent:number}): void {
+    const allowed=(wall:PaintWall,record:SharedArtwork)=>this.local.has(record.id)||!demand||demand.canLoad(wall,record);
+    const maxConcurrent=Math.max(1,Math.min(7,Math.round(demand?.maxConcurrent??ArtworkSync.MAX_CONCURRENT_IMAGE_LOADS)));
+    for(const[id,mounted]of this.mounted){const record=this.records.get(id);if(record)mounted.mesh.visible=allowed(mounted.wall,record);}
+    for(const[id,load]of this.loading){const record=this.records.get(id);if(record&&!allowed(load.wall,record))this.cancelLoad(id,load);}
     for (const [id, mounted] of this.mounted) if (walls.get(mounted.wall.surfaceId!) !== mounted.wall) this.remove(id);
     for (const [id, load] of this.loading) if (walls.get(load.wall.surfaceId!) !== load.wall) this.cancelLoad(id, load);
     for (const [wallId, wall] of walls) {
       const records = this.recordsByWall.get(wallId);
       if (!records) continue;
       for (const record of records) {
-        if (this.activeLoads.size >= ArtworkSync.MAX_CONCURRENT_IMAGE_LOADS) return;
+        if (this.activeLoads.size >= maxConcurrent) return;
+        if(!allowed(wall,record))continue;
         if (this.mounted.has(record.id) || this.loading.has(record.id) || this.failed.has(record.id)) continue;
         const generation = this.generation; const image = this.image(); const loadToken = {};
         image.decoding = 'async';

@@ -736,7 +736,7 @@ export class WorldMultiplayerSession {
       this.artworks.upsert(spatialDelta.upsertArtworks);
       this.artworks.upsert(spatialDelta.upsertPieces.map(flattenedPieceArtworkMessage).filter((v): v is Message => !!v));
       for (const piece of spatialDelta.upsertPieces) if (piece.protectedUntil !== undefined) this.protection.protections.set(piece.pieceId, { pieceId: piece.pieceId, protectedUntil: piece.protectedUntil });
-      this.artworks.refresh(this.walls); this.emitView(); return;
+      this.refreshArtworkImages(); this.emitView(); return;
     }
     const history = readStrokeHistory(message);
     if (history) { if (history.pieceId === this.selectedPieceId) { this.strokeHistory = history; this.historyBusy = false; this.emitView(); } return; }
@@ -829,7 +829,7 @@ export class WorldMultiplayerSession {
       this.syncOwnerAccess();
       this.ownerReferences.snapshot(Array.isArray(message.ownerReferences) ? message.ownerReferences : []);
       this.accounts.snapshotWorldItems(Array.isArray(message.worldItems) ? message.worldItems : []);
-      this.artworks.refresh(this.walls); this.playerSync.reset(); this.emitView();
+      this.refreshArtworkImages(); this.playerSync.reset(); this.emitView();
       return;
     }
     const ordered = message.type !== 'stroke_history_state' && (message.type.startsWith('piece_') || message.type.startsWith('stroke_') || message.type.startsWith('artwork_') || message.type.startsWith('item_') || message.type === 'chat_message');
@@ -862,7 +862,7 @@ export class WorldMultiplayerSession {
     else if (message.type === 'artwork_removed' && typeof message.artworkId === 'string') {
       this.artworks.removeArtwork(message.artworkId); if (this.selectedArtworkId === message.artworkId) { this.selectedArtworkId = null; this.piecePulseStop?.(); this.piecePulseStop = null; }
     }
-    else if (message.type === 'artwork_place' || message.type === 'artwork_placed') { this.artworks.accept(message); this.artworks.refresh(this.walls); }
+    else if (message.type === 'artwork_place' || message.type === 'artwork_placed') { this.artworks.accept(message); this.refreshArtworkImages(); }
     else if (message.type.startsWith('piece_')) {
       if (message.type === 'piece_removed' && typeof message.pieceId === 'string') {
         for (const surfaceId of this.paint.rejectPiece(message.pieceId)) { const surface = decodeSurface(surfaceId); if (surface) this.removalWalls.add(surface.wallId); }
@@ -884,7 +884,7 @@ export class WorldMultiplayerSession {
 
         if (artwork) {
           this.artworks.accept(artwork);
-          this.artworks.refresh(this.walls);
+          this.refreshArtworkImages();
         }
       }
       const current = this.selectedPieceId ? this.pieces.pieces.get(this.selectedPieceId) : undefined;
@@ -911,6 +911,11 @@ export class WorldMultiplayerSession {
   private shouldReplayWall(wall: PaintWall): boolean {
     return withinLiveStrokeDistance(wall, this.world.playerPosition, getRenderSettings().liveStrokeDistance, this.world.paintWorkspace?.selection?.wall);
   }
+  private refreshArtworkImages():void {
+    const settings=getRenderSettings();
+    this.artworks.refresh(this.walls,{maxConcurrent:settings.imageConcurrency,canLoad:wall=>withinLiveStrokeDistance(wall,this.world.playerPosition,settings.imageLoadDistance,this.world.paintWorkspace?.selection?.wall)});
+    this.world.scene.userData.cityImageStats=this.artworks.imageStats();
+  }
   private refreshWalls(): void {
     if (!this.multiplayer) return;
     const next = new Map(this.world.walls.filter(w => w.surfaceId).map(w => [w.surfaceId!, w]));
@@ -922,7 +927,7 @@ export class WorldMultiplayerSession {
       else this.recompose.add(id);
     }
     this.walls = next;
-    this.artworks.refresh(next);
+    this.refreshArtworkImages();
   }
   private update(delta: number, settings: LiveSettings): void {
     this.visibility = settings.layerVisibility;

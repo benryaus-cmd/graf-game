@@ -644,6 +644,18 @@ test('poster image decoding starts in a bounded queue and advances as loads sett
   sync.clear();
 });
 
+test('image distance defers remote downloads, limits concurrency and preserves cached images outside range',()=>{
+  const images:any[]=[];const sync=new ArtworkSync(()=>true,()=>{},()=>{const image:any={};images.push(image);return image;});
+  const wall=createCityChunk(0,0,materials()).walls[0],walls=new Map([[wall.surfaceId!,wall]]);
+  sync.snapshot(['one','two'].map(id=>({id,assetRef:`https://example.test/${id}.png`,surfaceId:encodeSurface(wall.surfaceId!,0,0),position:[0,0,0],rotation:[0,0,0,1],width:1,height:1})));
+  let nearby=false;const demand={canLoad:()=>nearby,maxConcurrent:1};
+  sync.refresh(walls,demand);assert.equal(images.length,0);
+  nearby=true;sync.refresh(walls,demand);assert.equal(images.length,1);images[0].onload();
+  const mesh=sync.meshFor('one')!;assert.ok(mesh);nearby=false;sync.refresh(walls,demand);assert.equal(mesh.visible,false);assert.equal(images.length,1);
+  nearby=true;sync.refresh(walls,demand);assert.equal(mesh.visible,true);assert.equal(images.length,2);
+  sync.clear();
+});
+
 test('artwork indexed for an unloaded wall mounts when that wall becomes available', () => {
   const images: any[] = [];
   const sync = new ArtworkSync(() => true, () => {}, () => { const image: any = {}; images.push(image); return image; });

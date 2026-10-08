@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import type { SkyMode, WorldEngine } from '@/game/worldTypes';
+import { getRenderSettings } from './renderSettings';
 import { drawSky } from '@/game/skyBackdrop';
 
 const LIGHTING: Record<SkyMode, {
@@ -35,19 +36,33 @@ const LIGHTING: Record<SkyMode, {
 };
 
 export function applySkyLighting(world: WorldEngine, mode: SkyMode): void {
+  world.scene.userData.gameSkyMode=mode;
+  const settings=getRenderSettings();mode=settings.skyMode==='game'?mode:settings.skyMode;
+  world.scene.userData.currentSkyMode=mode;
   const lighting = LIGHTING[mode];
-  drawSky(world.skyCanvas, mode);
+  const fogColor=settings.customFog?settings.fogColor:lighting.fog;
+  if(settings.flatSky){const context=world.skyCanvas.getContext('2d');if(context){context.fillStyle=fogColor;context.fillRect(0,0,world.skyCanvas.width,world.skyCanvas.height);}}
+  else drawSky(world.skyCanvas, mode,settings.skyMatch?fogColor:undefined);
+  const skyMaterial=world.skyDome.material as THREE.MeshBasicMaterial;
+  // Fog is mixed after tone mapping, so its matching sky pixels must stay literal.
+  if(skyMaterial.toneMapped){skyMaterial.toneMapped=false;skyMaterial.needsUpdate=true;}
   world.skyTexture.needsUpdate = true;
   world.hemisphereLight.color.set(lighting.hemisphere);
   world.hemisphereLight.groundColor.set(lighting.ground);
-  world.hemisphereLight.intensity = lighting.hemispherePower;
+  world.hemisphereLight.intensity = lighting.hemispherePower*settings.ambientScale;
   world.sunLight.color.set(lighting.sun);
-  world.sunLight.intensity = lighting.sunPower;
+  world.sunLight.intensity = lighting.sunPower*settings.sunScale;
   world.cloudMesh.material.color.set(lighting.clouds);
-  world.cloudGroup.visible = mode !== 'night';
+  world.cloudGroup.visible = mode !== 'night'&&!settings.flatSky;
   world.rain.visible = mode === 'rain';
   world.rain.material.opacity = lighting.rainOpacity;
-  if (world.scene.fog instanceof THREE.FogExp2) world.scene.fog.color.set(lighting.fog);
+  if(settings.fogStyle==='linear'){
+    if(!(world.scene.fog instanceof THREE.Fog))world.scene.fog=new THREE.Fog(fogColor,settings.fogNear,settings.fogFar);
+    world.scene.fog.color.set(fogColor);world.scene.fog.near=settings.fogNear;world.scene.fog.far=settings.fogFar;
+  }else {
+    if(!(world.scene.fog instanceof THREE.FogExp2))world.scene.fog=new THREE.FogExp2(fogColor,settings.fogDensity);
+    world.scene.fog.color.set(fogColor);world.scene.fog.density=settings.fogDensity;
+  }
 }
 
 export function advanceWeather(world: WorldEngine, delta: number): void {

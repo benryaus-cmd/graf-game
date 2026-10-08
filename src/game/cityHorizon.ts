@@ -3,6 +3,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { createCityBlockLayout } from './cityBlockLayout';
 import { distanceToChunk } from './cityStreamPolicy';
 import { getRenderSettings } from './renderSettings';
+import { fogVisualDistance } from './cityAtmosphere';
 import { performanceLog } from './performanceLog';
 
 /** Independent visual tiers. These meshes never own paint, collisions or multiplayer state. */
@@ -32,8 +33,8 @@ export class CityHorizon {
     };
     this.flatMaterial.customProgramCacheKey=()=> 'graffciti-city-billboard-v1';
   }
-  update(x:number,z:number,active:Set<string>){
-    const settings=getRenderSettings();this.root.visible=settings.horizon;this.uniforms.near.value=settings.horizonDistance;this.uniforms.far.value=settings.skylineDistance;this.uniforms.width.value=settings.skylineWidth;
+  update(x:number,z:number,active:Set<string>,camera?:THREE.Camera){
+    const settings=getRenderSettings();this.root.visible=settings.horizon;this.uniforms.near.value=settings.horizonDistance;this.uniforms.far.value=Math.min(settings.skylineDistance,fogVisualDistance(settings,camera));this.uniforms.width.value=settings.skylineWidth;
     if(!settings.horizon){this.stats.plain=0;this.stats.flat=0;return;}
     const cx=Math.floor(x/48+.5),cz=Math.floor(z/48+.5),radius=Math.ceil(settings.horizonDistance/48)+1;
     const signature=`${cx}:${cz}:${settings.horizonDistance}`;
@@ -49,9 +50,9 @@ export class CityHorizon {
     while(this.queue.length&&built<6){const key=this.queue.shift()!;if(!this.wanted.has(key))continue;const[bx,bz]=key.split(':').map(Number);const root=performanceLog.measure('horizon.buildBlock',()=>this.build(bx,bz),key);this.blocks.set(key,root);this.root.add(root);built++;if(performance.now()-started>=settings.streamBudgetMs)break;}
     const skylineSignature=`${cx}:${cz}:${settings.skylineDistance}:${settings.skylineMinHeight}`;
     if(settings.skyline&&skylineSignature!==this.skylineSignature){this.skylineSignature=skylineSignature;performanceLog.measure('horizon.buildFlatRing',()=>this.buildFlat(cx,cz,settings.skylineDistance,settings.skylineMinHeight));}
-    if(this.flat){this.flat.visible=settings.skyline&&settings.skylineDistance>settings.horizonDistance;let changed=false;for(let i=0;i<this.flatKeys.length;i++){const hidden=active.has(this.flatKeys[i])?1:0;if(this.flatMasks!.getX(i)!==hidden){this.flatMasks!.setX(i,hidden);changed=true;}}if(changed)this.flatMasks!.needsUpdate=true;}
+    if(this.flat){this.flat.visible=settings.skyline&&Math.min(settings.skylineDistance,fogVisualDistance(settings,camera))>settings.horizonDistance;let changed=false;for(let i=0;i<this.flatKeys.length;i++){const hidden=active.has(this.flatKeys[i])?1:0;if(this.flatMasks!.getX(i)!==hidden){this.flatMasks!.setX(i,hidden);changed=true;}}if(changed)this.flatMasks!.needsUpdate=true;}
     let visible=0;
-    for(const[key,root]of this.blocks){const[bx,bz]=key.split(':').map(Number);root.visible=!active.has(key)&&distanceToChunk(x,z,bx,bz)<settings.horizonDistance;if(root.visible)visible++;}
+    for(const[key,root]of this.blocks){const[bx,bz]=key.split(':').map(Number);root.visible=!active.has(key)&&distanceToChunk(x,z,bx,bz)<Math.min(settings.horizonDistance,fogVisualDistance(settings,camera));if(root.visible)visible++;}
     this.stats.plain=visible;this.stats.flat=this.flat?.visible?this.flat.count:0;this.stats.queued=this.queue.length;
   }
   private buildFlat(cx:number,cz:number,distance:number,minHeight:number){

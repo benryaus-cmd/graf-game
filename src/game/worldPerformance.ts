@@ -7,7 +7,7 @@ import { getRenderSettings, subscribeRenderSettings } from './renderSettings';
 export function observeWorldPerformance(world:WorldEngine):()=>void {
   const log=performanceLog,renderer=world.renderer,original=renderer.render;
   const previousEnvironment=log.describeEnvironment;
-  log.describeEnvironment=()=>`${navigator.userAgent}; game viewport ${renderer.domElement.clientWidth}x${renderer.domElement.clientHeight}; drawing buffer ${renderer.domElement.width}x${renderer.domElement.height}; render pixel ratio ${renderer.getPixelRatio()}; performance-logger-8oct2026`;
+  log.describeEnvironment=()=>`${navigator.userAgent}; game viewport ${renderer.domElement.clientWidth}x${renderer.domElement.clientHeight}; drawing buffer ${renderer.domElement.width}x${renderer.domElement.height}; render pixel ratio ${renderer.getPixelRatio()}; atmosphere-controls-8oct2026`;
   const blank=new THREE.Scene();blank.background=new THREE.Color('#111510');
   renderer.render=function(scene,camera){
     if(this.getRenderTarget()!==null){original.call(this,scene,camera);return;}
@@ -19,7 +19,7 @@ export function observeWorldPerformance(world:WorldEngine):()=>void {
       log.recordOverhead('frameCollection',performance.now()-now);
     }
   };
-  const context=():SampleContext=>({position:[world.playerPosition.x,world.playerPosition.y,world.playerPosition.z].map(v=>Math.round(v*10)/10) as [number,number,number],view:world.cameraMode,painting:!!world.paintWorkspace?.active,surface:world.paintWorkspace?.selection?.wall.surfaceId,viewport:[renderer.domElement.clientWidth,renderer.domElement.clientHeight],pixelRatio:renderer.getPixelRatio(),horizon:world.scene.userData.cityHorizonStats?{...world.scene.userData.cityHorizonStats}:undefined});
+  const context=():SampleContext=>({position:[world.playerPosition.x,world.playerPosition.y,world.playerPosition.z].map(v=>Math.round(v*10)/10) as [number,number,number],view:world.cameraMode,painting:!!world.paintWorkspace?.active,look:[Math.round(world.playerYaw*100)/100,Math.round(world.playerPitch*100)/100],sky:world.scene.userData.currentSkyMode,visibleChunks:world.scene.userData.cityStreamStats?.visible,atmosphere:world.scene.userData.cityAtmosphereStats?{...world.scene.userData.cityAtmosphereStats}:undefined,images:world.scene.userData.cityImageStats?{...world.scene.userData.cityImageStats}:undefined,surface:world.paintWorkspace?.selection?.wall.surfaceId,viewport:[renderer.domElement.clientWidth,renderer.domElement.clientHeight],pixelRatio:renderer.getPixelRatio(),horizon:world.scene.userData.cityHorizonStats?{...world.scene.userData.cityHorizonStats}:undefined});
   let endRecording=()=>{};
   const configure=()=>{
     endRecording();if(!log.active)return;

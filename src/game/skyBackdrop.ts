@@ -8,7 +8,7 @@ const SKY_COLORS: Record<SkyMode, { top: string; horizon: string; cloud: string 
   night: { top: '#091324', horizon: '#25364d', cloud: '#8a96b3' },
 };
 
-export function drawSky(canvas: HTMLCanvasElement, mode: SkyMode): void {
+export function drawSky(canvas: HTMLCanvasElement, mode: SkyMode, horizonColor?:string): void {
   const context = canvas.getContext('2d');
   if (!context) return;
   const colors = SKY_COLORS[mode];
@@ -39,6 +39,11 @@ export function drawSky(canvas: HTMLCanvasElement, mode: SkyMode): void {
     context.fill();
   }
   if (mode === 'night') drawNightDetails(context, canvas);
+  if(horizonColor){
+    const blend=context.createLinearGradient(0,0,0,canvas.height);
+    blend.addColorStop(0,horizonColor+'00');blend.addColorStop(.35,horizonColor+'00');blend.addColorStop(.5,horizonColor);blend.addColorStop(1,horizonColor);
+    context.fillStyle=blend;context.fillRect(0,0,canvas.width,canvas.height);
+  }
 }
 
 function drawNightDetails(context: CanvasRenderingContext2D, canvas: HTMLCanvasElement): void {

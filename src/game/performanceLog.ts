@@ -5,7 +5,7 @@ export interface RunEvent { at:number; message:string }
 type Phase = 'baseline' | 'world';
 type Status = 'recording' | 'completed' | 'interrupted';
 interface Cost { count:number; totalMs:number; maxMs:number }
-export interface SampleContext { position:[number,number,number]; view:string; painting:boolean; surface?:string; viewport?:[number,number]; pixelRatio?:number; horizon?:{plain:number;flat:number;queued:number} }
+export interface SampleContext { position:[number,number,number]; view:string; painting:boolean; look?:[number,number]; sky?:string; visibleChunks?:number; atmosphere?:{lamps:number;realLights:number;groundReach:number}; images?:{loading:number;mounted:number;records:number}; surface?:string; viewport?:[number,number]; pixelRatio?:number; horizon?:{plain:number;flat:number;queued:number} }
 interface Summary { frames:number; fps:number; frameMs:{p50:number;p95:number;p99:number;max:number}; render:Record<keyof FrameMetrics,{average:number;max:number}> }
 interface TimeSample { from:number; to:number; phase:Phase; settingsFrom:number; settingsTo:number; frames:number; measuredMs:number; fps:number; maxFrameMs:number; renderSamples:number; render:FrameMetrics; renderMax:FrameMetrics; context:SampleContext }
 export interface PerformanceRun extends Summary {

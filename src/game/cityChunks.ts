@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { PaintWall, Collider, Staircase, WalkSurface } from '@/game/worldTypes';
 import { FIXTURE_POSITION, FIXTURE_VISIBILITY_DISTANCE } from '@/game/fixtureBuilding';
 import { createCityChunk, prepareCityChunk } from '@/game/cityChunkContent';
+import { CityAtmosphere, fogVisualDistance } from './cityAtmosphere';
 import { CityHorizon } from '@/game/cityHorizon';
 import { wantedChunkKeys, keepChunk, distanceToChunk } from '@/game/cityStreamPolicy';
 import { getRenderSettings } from '@/game/renderSettings';
@@ -33,6 +34,7 @@ export function createCityChunkStream(scene: THREE.Scene, cityMaterials: CityMat
   let paintGeneration = 0;
   let retainedFixture = false;
   const horizon = new CityHorizon(scene);
+  const atmosphere=new CityAtmosphere(scene);
   const lastWanted = new Map<string, number>();
   const queued = new Map<string, { build: ReturnType<typeof prepareCityChunk>; partial?: CityChunk }>();
   let getPinnedWall: () => PaintWall | undefined = () => undefined;
@@ -79,7 +81,7 @@ export function createCityChunkStream(scene: THREE.Scene, cityMaterials: CityMat
     walkSurfaces.push(...chunk.walkSurfaces); staircases.push(...chunk.staircases);
     performanceLog.event('Chunk ready: ' + key);
   }
-  const updateAt = (x: number, z: number): void => {
+  const updateAt = (x: number, z: number, playerY=1.7, camera?:THREE.Camera): void => {
     if (disposed) return;
     const now = performance.now(), settings = getRenderSettings();
     retainedFixture = x * x + (z - FIXTURE_POSITION.z) ** 2 < (FIXTURE_VISIBILITY_DISTANCE + 8) ** 2;
@@ -89,8 +91,9 @@ export function createCityChunkStream(scene: THREE.Scene, cityMaterials: CityMat
     const dx = x - previousX, dz = z - previousZ;
     // Build neighbours before the next boundary instead of waiting until it is crossed.
     const magnitude = Math.hypot(dx, dz);
-    const prefetch = magnitude > .001 ? wantedChunkKeys(x + dx / magnitude * 16, z + dz / magnitude * 16) : wanted;
+    const prefetch = magnitude > .001 ? wantedChunkKeys(x + dx / magnitude * settings.prefetchDistance, z + dz / magnitude * settings.prefetchDistance) : wanted;
     const desired = new Set([...wanted, ...prefetch]);
+    desired.forEach(key=>lastWanted.set(key,now));
     previousX = x; previousZ = z;
     active.forEach(chunk => { chunk.group.userData.updateFixture?.(x, z); chunk.group.userData.updateScenery?.(); });
     const pin = getPinnedWall();
@@ -130,13 +133,16 @@ export function createCityChunkStream(scene: THREE.Scene, cityMaterials: CityMat
     }
     stats.active = active.size; stats.queued = queued.size;
     const visibleDetails=new Set<string>();
-    for(const[key,chunk]of active){const[cx,cz]=key.split(':').map(Number);chunk.group.visible=distanceToChunk(x,z,cx,cz)<=settings.detailDistance||!!pin&&chunk.walls.includes(pin);if(chunk.group.visible)visibleDetails.add(key);}
-    horizon.update(x,z,visibleDetails);
+    for(const[key,chunk]of active){const[cx,cz]=key.split(':').map(Number);chunk.group.visible=distanceToChunk(x,z,cx,cz)<=Math.min(settings.detailDistance,fogVisualDistance(settings,camera))||!!pin&&chunk.walls.includes(pin);if(chunk.group.visible)visibleDetails.add(key);}
+    horizon.update(x,z,visibleDetails,camera);
+    const anchors=[...active.values()].filter(chunk=>chunk.group.visible).flatMap(chunk=>chunk.group.userData.lampAnchors??[]);
+    atmosphere.update(x,z,anchors,settings,now,playerY,camera);
+    scene.userData.cityStreamStats.visible=visibleDetails.size;
   };
   const dispose = (): void => {
     if (disposed) return; disposed = true; paintGeneration++;
     queued.forEach(job => { if (job.partial) disposeChunk(job.partial, sharedMaterials); job.build.return(job.partial!); }); queued.clear();
-    horizon.dispose(); scene.onBeforeRender = previousRender;
+    horizon.dispose(); atmosphere.dispose(); scene.onBeforeRender = previousRender;
     delete scene.userData.disposeCity; delete scene.userData.cityStreamStats;
   };
   scene.userData.disposeCity = dispose;
