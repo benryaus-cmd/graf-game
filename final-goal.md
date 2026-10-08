@@ -1,6 +1,6 @@
 # Final goal: GraffCiti — a premium graffiti world
 
-Updated: 6 October 2026 (Australia/Sydney).
+Updated: 8 October 2026 (Australia/Sydney).
 
 Repository: https://github.com/benryaus-cmd/graf-game  
 Live reference: https://aippy.ai/@PinkYyyy/street-art-canvas-aV7b
@@ -279,3 +279,46 @@ Nearby art discovery must remain available within its spatial range independentl
 Both unprotected and protected multiplayer canvases require server purchase approval before spraying. Prices are ceil(area × 3.75) and ceil(area × 7.5), respectively, for 0.5–8 m sides. Protected purchase includes four hours. Server account balances start at 1,000 credits, accrue 24 per full connected minute, and award 24 per qualifying like; active protected art gains an additional hour per qualifying like. Solo painting remains free.
 
 Canvas sizing/Back to Wall controls can collapse to a compact button while zoom remains available. The area preview uses a thin raised border rendered above paint/poster layers; visual edging never changes purchased bounds.
+
+## Social minigames: basketball first
+
+Owner direction, 8 October: add small optional games to places in the city, starting at the Map 2 basketball hoop. They should give people something to do together between painting and chatting. Keep the graffiti world and phone performance central. These are requirements and a proposed design, not delivered gameplay.
+
+### Basketball interaction and shot feel
+
+- Show a compact **PLAY BASKETBALL** button only near the court while exploring. Entering places the player at an available shooting mark on the three-point arc, facing the hoop. Leave is always available and restores normal controls immediately.
+- Use five fixed shooting marks across the arc, each with a stable spot ID. Fit them to the existing playable court without placing players inside walls, props or the hoop support. Markings should look like ordinary court markings, not a large minigame menu.
+- Flick upward on a small shooting area to launch a ball. Flick length/speed controls power and horizontal movement controls aim. Give readable feedback before release, so improvement comes from learning the shot rather than random outcomes. Mouse drag/release uses the same gesture; cancelled gestures do not shoot.
+- Provide unlimited balls without inventory or credit charges. A fresh held ball appears after release. Each thrown ball lasts three seconds from launch, fading near the end and then returning to its reusable pool. Leaving the game, changing maps or disposing the world cleans up balls and effects.
+- Use a deterministic ballistic calculation with gravity and lightweight court/backboard/rim bounces. A basket scores only when the ball crosses the rim plane downward through the opening with room for its radius. Upward crossings, nearby passes and repeated crossings by the same ball must not score.
+- A made shot gets a brief rim/net response, a satisfying swish, a restrained burst and a small **BUCKET!** / streak indicator. Give a clean extra response for a swish without overwhelming chat or the view. Respect existing sound controls. Avoid bloom, shadows, new lights or an added physics dependency.
+- Keep movement/look/spray pointers separate from the shooting gesture. Stop spraying when entering, suppress normal movement while occupying a mark, and never let shooting-area taps paint a wall. Menu entry, lost focus and pointer cancellation release held actions. Do not discard any paint draft.
+
+The existing Map 2 rim is at `[-53, 3.05, -40.08]` in `morningQuarterContent.ts`. Extract its dimensions and placement into one shared court definition for both rendered geometry and gameplay. Preserve existing paint surface IDs and the paintable backboard.
+
+### Multiplayer seats, shots and HORSE
+
+Recommended first playable scope: solo practice plus shared free shooting from five spots. Add organised HORSE on the same shot/session foundation afterwards; do not make players wait for a turn during free shooting.
+
+- In multiplayer, joining requests one free mark from the existing server. All clients receive the same assignment. If all five marks are occupied, show **COURT FULL** and allow watching; never stack players or silently move another player. Release the mark on Leave, disconnect or map change. A pending request must not lock movement indefinitely.
+- Keep local input and ball launch immediate. Broadcast one bounded shot description containing court ID, player ID, shot ID, spot ID, origin, velocity, shot version and time. Remote clients animate the same trajectory locally; never send every ball position per frame. Dedupe echoes and repeated shots. Late arrivals see occupied spots and only balls still within their three-second lifetime.
+- Keep every activity scoped by map and court. Original-map users must not reserve Map 2 seats or see its balls. Ball state is temporary and never enters artwork persistence or the credit economy.
+- Separate launch calculation, simulation, score detection and presentation. Emit a shot-result event with the shot/spot IDs and make/miss outcome so free shooting, streak challenges and HORSE can use the same rules.
+- HORSE requires an explicit invite/accept, participants, turn order and authoritative session state. Start with two players. A player sets a made shot from a mark; the other player must make a basket from that same mark, without needing to copy the exact flick velocity. Failure earns the next letter of HORSE; five letters loses the match. A missed setting shot passes the setting turn. Invite only when the challenge mark can be reserved; its current shooter releases it before the next participant takes it. Free shooters keep their own marks. Leaving/disconnecting releases the mark and ends the match cleanly.
+- Shared seat assignment, verified shot outcomes and HORSE turns belong on the existing multiplayer service. Do not create another backend, socket, account system or VM service. Confirm the actual server contract before enabling shared play or claiming multiplayer works. Current `PlayerState` / `readPlayerState` only carry movement, appearance and related fields; arbitrary basketball fields would be discarded. A held basketball cosmetic is not a shot protocol.
+
+### Other fitting minigames to develop later
+
+| Game | Place and interaction | Reuse and scope |
+| --- | --- | --- |
+| Around the court | Make a basket from each of the five marks in order; solo or a friendly race. | Reuses basketball shots and spot IDs; no new physics or props. |
+| Wall target toss | Toss a soft ball at painted targets in a small alley, scoring centre hits. | Reuses throw simulation; targets remain separate from players' saved graffiti. |
+| Hopscotch / plaza steps | Jump through a short painted sequence; a clean run improves personal time. | Reuses walking/jumping; floor markings stay clear of main paths. |
+| Graffiti prompt jam | Friends accept one word/theme, paint nearby, then admire and vote. | Reuses existing paint and chat; player work remains normal persistent artwork. No AI judging or invented rewards. |
+| Neighbourhood photo hunt | Find a small set of landmarks or colours and check them off by proximity. | Reuses existing locations; no new downloads, NPCs or forced map expansion. |
+
+Do not build all five at once. Basketball establishes the small nearby-activity button, enter/leave flow and optional session hooks; add the next game only after playing and tuning the first.
+
+### Evidence required before release
+
+Verify flick strength and aim on a phone; cancellation and simultaneous pointer ownership; made/missed/duplicate rim crossings; three-second expiry under slow frames; repeated entry/exit and map changes without leaks; and restored painting controls. Exercise two real clients for simultaneous joins, five occupied spots, full-court handling, shot echoes, late joins, disconnect and reconnect. Compare the same court walk with gameplay idle and several balls active using the performance logger. An unavailable server must leave solo practice usable. Deliver through the existing exact-file incremental manifest without changing importer, aliases, host wrapper, dependencies or artwork saves.
