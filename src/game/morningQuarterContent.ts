@@ -11,6 +11,7 @@ import { getRenderSettings } from './renderSettings';
 import { FIXTURE_FACES, FIXTURE_POSITION } from './fixtureBuildingFaces';
 import { QUARTER_ASSETS } from './quarterBuildingAssets';
 import type { PaintWall } from './worldTypes';
+import { BASKETBALL_COURT } from './basketballCourt';
 export interface DetailBuilding {
     description: QuarterBuilding;
     root: THREE.Group;
@@ -215,11 +216,12 @@ export function* prepareQuarterChunk(cx: number, cz: number, materials: CityMate
     if (hasHoop) {
         box('#586265',-53,1.8,-41,.18,3.6,.18);
         box('#586265',-53,3.3,-40.75,.16,.16,.65);
-        box('#e6e4d6',-53,3.35,-40.45,1.8,1.1,.08);
+        const { backboard, rim: rimDefinition } = BASKETBALL_COURT;
+        box('#e6e4d6',...backboard.center,backboard.width,backboard.height,backboard.depth);
         for(const x of [-53.3,-52.7]) box('#586265',x,3.23,-40.4,.045,.42,.01);
         for(const y of [3.02,3.44]) box('#586265',-53,y,-40.4,.64,.045,.01);
-        const rim=new THREE.Mesh(new THREE.TorusGeometry(.28,.035,5,12),new THREE.MeshStandardMaterial({color:'#cf7748',roughness:.9}));
-        rim.name='quarter-basketball-rim'; rim.rotation.x=Math.PI/2; rim.position.set(-53,3.05,-40.08); scenery.add(rim);
+        const rim=new THREE.Mesh(new THREE.TorusGeometry(rimDefinition.radius,rimDefinition.tubeRadius,5,12),new THREE.MeshStandardMaterial({color:'#cf7748',roughness:.9}));
+        rim.name='quarter-basketball-rim'; rim.rotation.x=Math.PI/2; rim.position.set(...rimDefinition.center); scenery.add(rim);
         collider(-53,-41,.22,.22,3.6);
     }
     for (const [color, geometries] of batches) {
@@ -231,7 +233,10 @@ export function* prepareQuarterChunk(cx: number, cz: number, materials: CityMate
     content.walls.push(...extras);
     for(const build of extraBuilders){let count=0;for(const wall of build()){content.walls.push(wall);if(++count%32===0)yield content;}}
     // Append new targets after all existing slots so saved building and bench art stays aligned.
-    if (hasHoop) content.walls.push(assets.paint.plane(group,[-53,3.35,-40.408,1.8,1.1,0,0,0,1],new THREE.Matrix4(),'quarter-basketball-backboard'));
+    if (hasHoop) {
+        const board = BASKETBALL_COURT.backboard;
+        content.walls.push(assets.paint.plane(group,[board.center[0],board.center[1],board.paintZ,board.width,board.height,0,0,0,1],new THREE.Matrix4(),'quarter-basketball-backboard'));
+    }
     assignSurfaceIds(cx, cz, content.walls, 'map2-v1');
     // Rotate whole buildings after assigning their existing paint addresses. The local
     // surfaces and saved wall indices stay stable, including individual bricks.

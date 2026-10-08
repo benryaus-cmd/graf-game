@@ -156,6 +156,9 @@ export interface WorldEngine {
   onPiecePick?: (event: PointerEvent) => boolean;
   onColorPick?: (colour: string | null) => void;
   onPaintEnd?: () => void;
+  activityLocked?: boolean;
+  cancelWorldInput?: () => void;
+  onBasketballFrame?: (nowMs: number, delta: number) => void;
   onMultiplayerFrame?: (delta: number, settings: LiveSettings) => void;
   multiplayerActive?: boolean;
   adminFreePaint?: boolean;

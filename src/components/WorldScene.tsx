@@ -2,7 +2,10 @@ import type { MapId } from '@/game/mapPreference';
 import { getRenderSettings, subscribeRenderSettings } from '@/game/renderSettings';
 import { observeWorldPerformance } from '@/game/worldPerformance';
 import { performanceLog } from '@/game/performanceLog';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { BasketballGame, type BasketballView } from '@/game/basketballGame';
+import { BasketballControls } from '@/components/BasketballControls';
+import './basketball.css';
 import * as THREE from 'three';
 import { createWorld } from '@/game/createWorld';
 import { disposeWorld } from '@/game/disposeWorld';
@@ -38,6 +41,9 @@ export interface MultiplayerRequest { action: 'join' | 'leave' | 'chat' | 'resyn
 
 interface WorldSceneProps {
   mapId:MapId;
+  paused?: boolean;
+  onBasketballActiveChange?: (active: boolean) => void;
+  onBasketballScore?: () => void;
   onSoloHistoryChange?: (history: PaintWorkspaceHistory) => void;
   reference?: ReferenceSettings | null;
   onReferenceMove?: (x: number, y: number) => void;
@@ -62,6 +68,10 @@ interface WorldSceneProps {
 }
 
 const WorldScene = (props: WorldSceneProps) => {
+  const [basketballView, setBasketballView] = useState<BasketballView | null>(null);
+  const basketballRef = useRef<BasketballGame | null>(null);
+  const basketballCallbacks = useRef({active: props.onBasketballActiveChange, score: props.onBasketballScore});
+  basketballCallbacks.current = {active: props.onBasketballActiveChange, score: props.onBasketballScore};
   const previewPreference = useAssetPreviewPreference();
   const assetPreviewRef = useRef<AssetPreview | null>(null);
   const eraserGuideRef = useRef<EraserGuide | null>(null);
@@ -175,6 +185,15 @@ const WorldScene = (props: WorldSceneProps) => {
       world, liveRef, () => sprayRef.current(), () => paintRef.current(), posterRef,
       valid => posterValidityRef.current(valid), (sequence, placed) => posterPlacedRef.current(sequence, placed),
     );
+    const basketball = props.mapId === 'map2' ? new BasketballGame(world, view => {
+      setBasketballView(view);
+      basketballCallbacks.current.active?.(view.active);
+    }) : null;
+    basketballRef.current = basketball;
+    if (basketball) {
+      basketball.onResult = result => { if (result.outcome === 'make') basketballCallbacks.current.score?.(); };
+      world.onBasketballFrame = nowMs => basketball.update(nowMs);
+    }
     const savePaint = () => world.savePaint();
     const saveWhenHidden = () => { if (document.visibilityState === 'hidden') savePaint(); };
     window.addEventListener('pagehide', savePaint);
@@ -200,6 +219,10 @@ const WorldScene = (props: WorldSceneProps) => {
     resize();
     return () => {
       editGrace.current.resume();
+      basketball?.dispose();
+      basketballRef.current = null;
+      world.onBasketballFrame = undefined;
+      basketballCallbacks.current.active?.(false);
       stopControls();
       stopPerformance(); stopRenderSettings();
       multiplayer.dispose();
@@ -252,7 +275,7 @@ const WorldScene = (props: WorldSceneProps) => {
 
   useEffect(() => {
     const world = worldRef.current, request = props.workspaceRequest;
-    if (!world || !request) return;
+    if (!world || !request || world.activityLocked) return;
     if (request.action === 'undo') { if (!world.multiplayerActive) soloHistoryRef.current?.undo(); else multiplayerRef.current?.undoStroke(); return; }
     if (request.action === 'redo') { if (!world.multiplayerActive) soloHistoryRef.current?.redo(); else multiplayerRef.current?.redoStroke(); return; }
     editGrace.current.resume();
@@ -339,8 +362,8 @@ const WorldScene = (props: WorldSceneProps) => {
     const world = worldRef.current;
     if (!world) return;
     applySkyLighting(world, props.sky);
-    world.cameraMode = props.viewMode;
-    world.playerAvatar.visible = props.viewMode !== 'first';
+    if (!world.activityLocked) world.cameraMode = props.viewMode;
+    if (!world.activityLocked) world.playerAvatar.visible = props.viewMode !== 'first';
     world.mapCamera.zoom = props.mapZoom;
     world.mapCamera.updateProjectionMatrix();
     world.botsEnabled = props.botsEnabled;
@@ -361,7 +384,13 @@ const WorldScene = (props: WorldSceneProps) => {
   useEffect(() => { referenceRef.current?.set(props.reference ?? null); }, [props.reference]);
 
   return <><div ref={mountRef} className="world-mount" />
-    {props.reference?.moving && <div className="reference-move-surface" aria-label="Drag to position reference image"
+    <BasketballControls view={basketballView} paused={!!props.paused}
+      exploring={!props.paintMode && !props.eyedropperActive && !props.posterPlacement && !props.reference?.moving && !worldRef.current?.paintWorkspace?.active}
+      onEnter={() => basketballRef.current?.enter()}
+      onLeave={() => basketballRef.current?.leave()}
+      onSpot={id => basketballRef.current?.enter(id)}
+      onShoot={gesture => basketballRef.current?.shoot(gesture)} />
+    {props.reference?.moving && !basketballView?.active && <div className="reference-move-surface" aria-label="Drag to position reference image"
       onPointerDown={event => {
         if (dragRef.current || (event.pointerType === 'mouse' && event.button !== 0)) return;
         const start = referenceRef.current?.point(event, event.currentTarget);

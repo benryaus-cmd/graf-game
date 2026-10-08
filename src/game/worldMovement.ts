@@ -1,10 +1,14 @@
 import type { LiveSettings, WorldEngine } from '@/game/worldTypes';
 import { updateBunnyCompanion } from '@/game/bunnyMovement';
 import { updatePlayerAvatar } from '@/game/playerAvatarAppearance';
-import { EYE_HEIGHT, getGroundHeight, jumpWorld, movePlayer } from '@/game/playerPhysics';
+import { EYE_HEIGHT, getGroundHeight, jumpWorld as physicsJumpWorld, movePlayer } from '@/game/playerPhysics';
 import { advanceCityBots } from '@/game/cityBots';
 
-export { getGroundHeight, jumpWorld };
+export { getGroundHeight };
+
+export function jumpWorld(world: WorldEngine, power: number): void {
+  if (!world.activityLocked) physicsJumpWorld(world, power);
+}
 
 function updateCameras(world: WorldEngine): void {
   const position = world.playerPosition;
@@ -34,6 +38,7 @@ export function advanceWorld(
   settings: LiveSettings,
   keys: Set<string>,
 ): void {
+  if (world.activityLocked) return;
   let forward = settings.movement.y + Number(keys.has('KeyW') || keys.has('ArrowUp'));
   forward -= Number(keys.has('KeyS') || keys.has('ArrowDown'));
   let side = settings.movement.x + Number(keys.has('KeyD') || keys.has('ArrowRight'));

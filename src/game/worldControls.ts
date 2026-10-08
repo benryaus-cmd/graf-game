@@ -62,7 +62,7 @@ export function attachWorldControls(
     });
   };
   const paint = (event: PointerEvent) => {
-    if (world.paintWorkspace?.selection?.moving) return;
+    if (world.activityLocked || world.paintWorkspace?.selection?.moving) return;
     if (!world.paintWorkspace?.selection && !adminFreePaint()) return;
     const selection = world.paintWorkspace?.selection;
     if (!adminFreePaint() && (!selection?.started || (world.multiplayerActive && !selection.purchaseApproved))) return;
@@ -120,7 +120,7 @@ export function attachWorldControls(
     }
   };
   const onPointerDown = (event: PointerEvent) => {
-    if (pointerId !== null || (event.pointerType === 'mouse' && (!event.isPrimary || event.button !== 0))) return;
+    if (world.activityLocked || pointerId !== null || (event.pointerType === 'mouse' && (!event.isPrimary || event.button !== 0))) return;
     if (settings.current.eyedropperActive) {
       endStroke();
       world.onColorPick?.(sampleVisibleWorldColour(world, event));
@@ -149,7 +149,7 @@ export function attachWorldControls(
     }
   };
   const onPointerMove = (event: PointerEvent) => {
-    if (pointerId !== event.pointerId) return;
+    if (world.activityLocked || pointerId !== event.pointerId) return;
     if (settings.current.eyedropperActive) { endStroke(); return; }
     if (settings.current.paintMode && !posterState.current) {
       if (world.paintWorkspace?.selection?.moving) { moveWorkspaceAtPointer(event); return; }
@@ -185,11 +185,11 @@ export function attachWorldControls(
     timer.update(time);
     const delta = Math.min(timer.getDelta(), 0.045);
     const workspaceActive = !!world.paintWorkspace?.active;
-    if (heldPaintPointer && pointerId !== null && settings.current.paintMode && !settings.current.eyedropperActive && !posterState.current && !selectingWorkspace && time - lastHeldPaintAt >= 1000 / 30) {
+    if (!world.activityLocked && heldPaintPointer && pointerId !== null && settings.current.paintMode && !settings.current.eyedropperActive && !posterState.current && !selectingWorkspace && time - lastHeldPaintAt >= 1000 / 30) {
       lastHeldPaintAt = time;
       paint(heldPaintPointer);
     }
-    if (!workspaceActive) {
+    if (!workspaceActive && !world.activityLocked) {
       const look = settings.current.lookInput;
       if (look && world.cameraMode !== 'map') {
         const turn = settings.current.lookSensitivity * 480 * delta;
@@ -203,10 +203,11 @@ export function attachWorldControls(
       advanceWorld(world, delta, settings.current, keys);
     }
     if (!settings.current.paintMode || settings.current.eyedropperActive || posterState.current) endStroke();
+    world.onBasketballFrame?.(time, delta);
     world.onMultiplayerFrame?.(delta, settings.current);
     advanceWeather(world, delta);
     const poster = posterState.current;
-    if (poster) {
+    if (poster && !world.activityLocked) {
       refreshWalls();
       const valid = updatePosterPreview(world, poster, wallMeshes, wallLookup, raycaster, pointer);
       if (valid !== poster.lastReportedValid) {
@@ -224,7 +225,7 @@ export function attachWorldControls(
         return;
       }
       const look = settings.current.lookInput;
-      if (look && workspace.selection) {
+      if (!world.activityLocked && look && workspace.selection) {
         workspace.pan ??= new THREE.Vector2();
         workspace.pan.x = THREE.MathUtils.clamp(workspace.pan.x + look.x * delta, -workspace.selection.width / 2, workspace.selection.width / 2);
         workspace.pan.y = THREE.MathUtils.clamp(workspace.pan.y + look.y * delta, -workspace.selection.height / 2, workspace.selection.height / 2);
@@ -247,6 +248,7 @@ export function attachWorldControls(
     keys.clear();
     endStroke();
   };
+  world.cancelWorldInput = onBlur;
   canvas.addEventListener('lostpointercapture', onPointerUp);
   window.addEventListener('blur', onBlur);
 
@@ -255,6 +257,7 @@ export function attachWorldControls(
     clearPaintWorkspace(world);
     world.renderer.setAnimationLoop(null);
     stopKeyboardControls();
+    if (world.cancelWorldInput === onBlur) world.cancelWorldInput = undefined;
     canvas.removeEventListener('pointerdown', onPointerDown);
     canvas.removeEventListener('pointermove', onPointerMove);
     canvas.removeEventListener('pointerup', onPointerUp);

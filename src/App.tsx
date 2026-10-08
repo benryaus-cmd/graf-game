@@ -60,6 +60,7 @@ type PaintTool = 'paint' | 'eraser' | 'off' | 'admin';
 
 const App = () => {
   const [mapId,setMapId]=useState<MapId>(getMapId);
+  const [basketballActive,setBasketballActive]=useState(false);
   const aippyUser = useUserInfo();
   const displayName = aippyDisplayName(aippyUser);
   const [multiplayerStatus, setMultiplayerStatus] = useState<MultiplayerStatus>({ phase: 'solo', playerCount: 0 });
@@ -88,7 +89,7 @@ const App = () => {
   const brushSize = brushSelection?.source === initialBrushSize ? brushSelection.value : Math.max(.1, Math.min(10, initialBrushSize / 3));
   const [opacity, setOpacity] = useState(0.88);
   const [brushHead, setBrushHead] = useState<BrushHead>('soft');
-  const { warmAudio, playSpray, playChime } = useSprayAudio();
+  const { warmAudio, playSpray, playChime, playBasketSwish } = useSprayAudio();
   const [sky, setSky] = useState<SkyMode>(()=>readMapSky(getMapId()));
   const [paintMode, setPaintMode] = useState(false);
   const [adminPainting, setAdminPainting] = useState(false);
@@ -382,11 +383,13 @@ const App = () => {
     itemIndex === index ? { ...layer, visible: !layer.visible } : layer
   )));
   const changeView = () => {
+    if (basketballActive) return;
     emoteViewReturn.current.cancel();
     const modes: CameraMode[] = ['first', 'third', 'map'];
     setViewMode(current => modes[(modes.indexOf(current) + 1) % modes.length]);
   };
   const playEmote = (emote: AvatarEmote) => {
+    if (basketballActive) return;
     closeMenu();
     emoteViewReturn.current.choose(viewMode, setViewMode);
     setEmoteSignal(current => ({ emote, sequence: (current?.sequence ?? 0) + 1 }));
@@ -414,6 +417,7 @@ const App = () => {
               onProtectionEnabledChange={setProtectionEnabled} /> : undefined} />;
 
   const changeMap=(next:MapId)=>{
+    setBasketballActive(false);
     setMovement({x:0,y:0});setLookInput({x:0,y:0});setPaintMode(false);setEyedropperActive(false);setReference(null);poster.cancel();setWorkspaceRequest(null);setMultiplayerRequest(null);setEmoteSignal(null);setViewMode('first');
     setWorkspaceView({selected:false,active:false,width:0,height:0,zoom:1,sizeLinked:true,started:false,moving:false,hasPaint:false});
     selectMap(next);setMapId(next);setSky(readMapSky(next));closeMenu();
@@ -443,6 +447,8 @@ const App = () => {
       ) : (
         <>
           <WorldScene key={mapId} mapId={mapId}
+            paused={menuBlocking || developerChoice || devViewerOpen || liveSettingsOpen}
+            onBasketballActiveChange={active => { if (active) emoteViewReturn.current.cancel(); setBasketballActive(active); }} onBasketballScore={() => playBasketSwish(radioVolume)}
             onSoloHistoryChange={setSoloHistory}
             reference={reference} onReferenceMove={(x, y) => setReference(current => current ? { ...current, x, y } : null)}
             eyedropperActive={eyedropperActive} onColorPick={pickColour}
@@ -465,7 +471,7 @@ const App = () => {
           <GameHud
             eyedropperActive={eyedropperActive} onEyedropper={() => { setMovement({ x: 0, y: 0 }); setLookInput({ x: 0, y: 0 }); setEyedropperNotice('Tap existing paint to pick its colour.'); setEyedropperActive(true); }}
             brushHead={brushHead} onBrushHeadChange={setBrushHead}
-            menuCollapsed={sheetCollapsed} hideTouchControls={workspaceView.active || menuBlocking || eyedropperActive || !!reference?.moving}
+            menuCollapsed={sheetCollapsed} hideTouchControls={basketballActive || workspaceView.active || menuBlocking || eyedropperActive || !!reference?.moving}
             panelColor={panelColor} accentColor={accentColor} sky={sky} activeMenu={activeMenu}
             canAdminPaint={!!multiplayerStatus.canAdminPaint} adminFreePaint={adminFreePaint} musicReady={false} radioController={radioController} radioUrl={radioController ? RADIO_STREAM_URL : undefined} radioVolume={musicVolume} paintMode={paintMode} eraseMode={eraseMode}
             showCrosshair={showCrosshair} color={color} brushSize={brushSize * 3} opacity={opacity}
@@ -495,8 +501,8 @@ const App = () => {
               </div>
             </>}
           />
-          {!menuBlocking && !reference?.moving && <LookJoystick onLook={setLookInput} canvasMode={workspaceView.active} />}
-          <div hidden={menuBlocking || !!reference?.moving}>{workspaceHud}</div>
+          {!basketballActive && !menuBlocking && !reference?.moving && <LookJoystick onLook={setLookInput} canvasMode={workspaceView.active} />}
+          <div hidden={basketballActive || menuBlocking || !!reference?.moving}>{workspaceHud}</div>
           {workspaceView.selected && !menuBlocking && reference && (reference.moving || canvasCollapsed) && <ReferenceControls guide={reference} onChange={setReference} onOpen={() => toggleMenu('reference')} />}
           {activeMenu === 'players' && <PlayersSheet players={multiplayerView.onlinePlayers ?? []} ownPlayerId={multiplayerView.ownPlayerId} onSelect={id => requestMultiplayer('select-player', id)} onChat={() => toggleMenu('chat')} onClose={closeMenu} />}
           {activeMenu === 'reference' && <ReferenceSheet selected={workspaceView.selected} guide={reference} onChange={setReference} onClose={closeMenu}

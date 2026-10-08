@@ -282,7 +282,7 @@ Canvas sizing/Back to Wall controls can collapse to a compact button while zoom 
 
 ## Social minigames: basketball first
 
-Owner direction, 8 October: add small optional games to places in the city, starting at the Map 2 basketball hoop. They should give people something to do together between painting and chatting. Keep the graffiti world and phone performance central. These are requirements and a proposed design, not delivered gameplay.
+Owner direction, 8 October: add small optional games to places in the city, starting at the Map 2 basketball hoop. They should give people something to do together between painting and chatting. Keep the graffiti world and phone performance central. The requirements below remain the target; the delivered scope is recorded at the end of this section.
 
 ### Basketball interaction and shot feel
 
@@ -322,3 +322,11 @@ Do not build all five at once. Basketball establishes the small nearby-activity 
 ### Evidence required before release
 
 Verify flick strength and aim on a phone; cancellation and simultaneous pointer ownership; made/missed/duplicate rim crossings; three-second expiry under slow frames; repeated entry/exit and map changes without leaks; and restored painting controls. Exercise two real clients for simultaneous joins, five occupied spots, full-court handling, shot echoes, late joins, disconnect and reconnect. Compare the same court walk with gameplay idle and several balls active using the performance logger. An unavailable server must leave solo practice usable. Deliver through the existing exact-file incremental manifest without changing importer, aliases, host wrapper, dependencies or artwork saves.
+
+### 9 October basketball delivery and painting recovery
+
+Map 2 now offers local solo basketball near its existing hoop: five selectable shooting marks, upward flick power and lateral aim feedback, unlimited pooled balls, gravity and lightweight court/backboard/rim contacts, three-second flight lifetime, made-shot rim/net response, swish and streak feedback. Enter/Leave owns controls without deleting a paint draft; map changes dispose gameplay resources. Existing backboard paint addresses stay unchanged. No added real lights, shadows, physics dependency or downloaded game assets.
+
+Court seat allocation, bounded shot commands, deterministic server-side outcomes and two-player HORSE rules are implemented and unit tested as reusable groundwork. Shared free shooting and HORSE are **not enabled**: the existing server source/room contract is unavailable in this workspace, and Map 2 remains local. `docs/basketball-server-handoff.md` specifies the integration needed on that existing service. The other minigames above remain ideas.
+
+The urgent painting regression was traced to solo Undo reading the live 2048×2048 paint canvas, making subsequent texture updates slow in the browser benchmark. Solo world Undo/Redo is disabled, with no pixel readback or history allocation; multiplayer server Undo/Redo and the manual tag library are unchanged. Fully reload after applying the update to recreate previously affected canvases. Phone FPS must still be verified on the device.
