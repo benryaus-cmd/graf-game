@@ -1,0 +1,9 @@
+Use Node 22 to apply this update to the CURRENT GraffCiti project:
+
+https://raw.githubusercontent.com/benryaus-cmd/graf-game/main/updates/performance-logger-8oct2026.json
+
+Use the existing incremental downloader. Download all 9 files using manifest.baseUrl + source as raw bytes. Stage all successfully before replacing their exact target paths.
+
+Preserve every unlisted file and the existing importer, aliases, host wrapper and dependencies. No full re-import or server changes.
+
+Run the production build. Report version, downloads X/9, replacements X/9 and build PASS/FAIL. If it fails, report the first exact error.

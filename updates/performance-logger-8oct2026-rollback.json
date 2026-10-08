@@ -1,0 +1,50 @@
+{
+  "version": "performance-logger-8oct2026-rollback",
+  "commit": "c0e94616553041fa87a4f630f9ed331da5c522a1",
+  "baseUrl": "https://raw.githubusercontent.com/benryaus-cmd/graf-game/c0e94616553041fa87a4f630f9ed331da5c522a1/",
+  "description": "Restore the nine runtime files to the previously published city streaming update.",
+  "files": [
+    {
+      "source": "src/components/DeveloperPanel.tsx",
+      "target": "src/games/importedGame/upstream/src/components/DeveloperPanel.tsx"
+    },
+    {
+      "source": "src/components/WorldScene.tsx",
+      "target": "src/games/importedGame/upstream/src/components/WorldScene.tsx"
+    },
+    {
+      "source": "src/game/cityChunks.ts",
+      "target": "src/games/importedGame/upstream/src/game/cityChunks.ts"
+    },
+    {
+      "source": "src/game/cityHorizon.ts",
+      "target": "src/games/importedGame/upstream/src/game/cityHorizon.ts"
+    },
+    {
+      "source": "src/game/paintPersistence.ts",
+      "target": "src/games/importedGame/upstream/src/game/paintPersistence.ts"
+    },
+    {
+      "source": "src/game/performanceLog.ts",
+      "target": "src/games/importedGame/upstream/src/game/performanceLog.ts"
+    },
+    {
+      "source": "src/game/renderSettings.ts",
+      "target": "src/games/importedGame/upstream/src/game/renderSettings.ts"
+    },
+    {
+      "source": "src/game/worldPerformance.ts",
+      "target": "src/games/importedGame/upstream/src/game/worldPerformance.ts"
+    },
+    {
+      "source": "src/index.css",
+      "target": "src/games/importedGame/upstream/src/index.css"
+    }
+  ],
+  "notes": [
+    "Requires city-streaming-8oct2026 already imported.",
+    "Stage all nine files before replacing only listed persistent targets.",
+    "No server, importer, Vite alias, host wrapper or dependency changes.",
+    "One current log with periodic checkpoints and settings timeline. Optional five-second blank-scene baseline."
+  ]
+}
