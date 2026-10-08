@@ -1,0 +1,31 @@
+{
+  "version": "map2-night-polish-8oct2026-rollback",
+  "commit": "238cd11a3d6fb2939f41da074dfc82b762c9058d",
+  "baseUrl": "https://raw.githubusercontent.com/benryaus-cmd/graf-game/238cd11a3d6fb2939f41da074dfc82b762c9058d/",
+  "description": "Restore the preceding Map 2 premium runtime without removing saved art.",
+  "files": [
+    {
+      "source": "src/game/cityAtmosphere.ts",
+      "target": "src/games/importedGame/upstream/src/game/cityAtmosphere.ts"
+    },
+    {
+      "source": "src/game/mapPreference.ts",
+      "target": "src/games/importedGame/upstream/src/game/mapPreference.ts"
+    },
+    {
+      "source": "src/game/morningQuarterAssets.ts",
+      "target": "src/games/importedGame/upstream/src/game/morningQuarterAssets.ts"
+    },
+    {
+      "source": "src/game/morningQuarterContent.ts",
+      "target": "src/games/importedGame/upstream/src/game/morningQuarterContent.ts"
+    },
+    {
+      "source": "src/game/morningQuarterLayout.ts",
+      "target": "src/games/importedGame/upstream/src/game/morningQuarterLayout.ts"
+    }
+  ],
+  "notes": [
+    "Replace only these same five runtime files. Preserve settings, saves and all unlisted files."
+  ]
+}

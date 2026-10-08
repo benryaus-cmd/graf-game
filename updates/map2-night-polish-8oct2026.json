@@ -1,0 +1,37 @@
+{
+  "version": "map2-night-polish-8oct2026",
+  "commit": "ca255cb88af5e7a3fc5769968ba4f8595b0b04ae",
+  "baseUrl": "https://raw.githubusercontent.com/benryaus-cmd/graf-game/ca255cb88af5e7a3fc5769968ba4f8595b0b04ae/",
+  "description": "Map 2 night default, lamps active through 60m, inward-facing entrances, fitted shop signs, grass, shrubs and a small basketball area.",
+  "files": [
+    {
+      "source": "src/game/cityAtmosphere.ts",
+      "target": "src/games/importedGame/upstream/src/game/cityAtmosphere.ts"
+    },
+    {
+      "source": "src/game/mapPreference.ts",
+      "target": "src/games/importedGame/upstream/src/game/mapPreference.ts"
+    },
+    {
+      "source": "src/game/morningQuarterAssets.ts",
+      "target": "src/games/importedGame/upstream/src/game/morningQuarterAssets.ts"
+    },
+    {
+      "source": "src/game/morningQuarterContent.ts",
+      "target": "src/games/importedGame/upstream/src/game/morningQuarterContent.ts"
+    },
+    {
+      "source": "src/game/morningQuarterLayout.ts",
+      "target": "src/games/importedGame/upstream/src/game/morningQuarterLayout.ts"
+    }
+  ],
+  "notes": [
+    "Requires the installed map2-premium-8oct2026 update.",
+    "Fetch all five listed files as raw bytes from baseUrl + source and replace their exact target paths. Preserve all unlisted files.",
+    "Keep importer, aliases, host wrapper, dependencies, server and saved art.",
+    "Map 2 adopts night and 60m lamp activation once, then remembers later choices. Other active device settings are preserved.",
+    "Open GAME MENU → MAP 2 · MORNING QUARTER. Map 1 remains unchanged and Map 2 artwork remains separate.",
+    "Existing brick and bench paint slots remain stable; the backboard paint target appends last.",
+    "Lamps and pools use the existing instancing and four real-light pool plus player light. No extra models or shadows."
+  ]
+}
