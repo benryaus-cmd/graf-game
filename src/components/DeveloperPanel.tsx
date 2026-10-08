@@ -1,30 +1,44 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
-import { getRenderSettings, subscribeRenderSettings, setRenderSettings, resetRenderSettings, type RenderSettings } from '@/game/renderSettings';
+import { getRenderSettings, subscribeRenderSettings, setRenderSettings, resetRenderSettings, DEFAULT_RENDER_SETTINGS, type RenderSettings } from '@/game/renderSettings';
 import { performanceLog, savePerformanceRun, copyRunReport } from '@/game/performanceLog';
 import { elementPointerPoint } from '@/game/pointerCoordinates';
 
 export default function DeveloperPanel({onClose,onFiles}:{onClose:()=>void;onFiles:()=>void}) {
   const settings=useSyncExternalStore(subscribeRenderSettings,getRenderSettings);const panel=useRef<HTMLElement>(null);
-  const [collapsed,setCollapsed]=useState(false),[label,setLabel]=useState('City walk'),[notice,setNotice]=useState(''),[,refresh]=useState(0),[report,setReport]=useState('');
+  const [collapsed,setCollapsed]=useState(false),[label,setLabel]=useState('City walk'),[notice,setNotice]=useState(''),[,refresh]=useState(0),[report,setReport]=useState(''),[baseline,setBaseline]=useState(true);
   const drag=useRef<{id:number;x:number;y:number;left:number;top:number}|null>(null);
-  useEffect(()=>{const timer=setInterval(()=>refresh(v=>v+1),1000);return()=>clearInterval(timer);},[]);
-  const change=(patch:Partial<RenderSettings>)=>{setRenderSettings(patch);performanceLog.event('Settings: '+JSON.stringify(patch));};
-  const range=(name:string,key:keyof RenderSettings,min:number,max:number,step:number)=> <label className="paint-range"><span><b>{name}</b><i>{settings[key]}</i></span><input aria-label={name} type="range" min={min} max={max} step={step} value={settings[key] as number} onChange={e=>change({[key]:Number(e.target.value)})}/></label>;
+  useEffect(()=>{performanceLog.showFps(true);const timer=setInterval(()=>refresh(v=>v+1),1000);return()=>{clearInterval(timer);performanceLog.showFps(false);};},[]);
+  const change=(patch:Partial<RenderSettings>)=>setRenderSettings(patch);
+  const number=(name:string,key:keyof RenderSettings,min:number,max:number,step:number)=> <NumberSetting key={key} name={name} field={key} value={settings[key] as number} min={min} max={max} step={step} onChange={change}/>;
+  const toggle=(name:string,key:'horizon'|'scenery'|'skyline')=><div className="developer-toggle"><button aria-pressed={settings[key]} onClick={()=>change({[key]:!settings[key]})}>{name} {settings[key]?'ON':'OFF'}</button><button aria-label={'Reset '+name} onClick={()=>change({[key]:DEFAULT_RENDER_SETTINGS[key]})}>↺</button></div>;
   const stop=()=>{const result=savePerformanceRun();setNotice(result.saved?'Test saved on this device.':'Test kept for this session; device storage unavailable.');refresh(v=>v+1);};
   return <section ref={panel} className={'developer-live-panel'+(collapsed?' is-collapsed':'')} aria-label="Live game settings" onPointerDown={e=>e.stopPropagation()}>
     <header onPointerDown={e=>{if((e.target as HTMLElement).closest('button'))return;const p=panel.current!,shell=p.closest<HTMLElement>('.game-shell')!;const point=elementPointerPoint(shell,e);drag.current={id:e.pointerId,x:point.x*shell.clientWidth,y:point.y*shell.clientHeight,left:p.offsetLeft,top:p.offsetTop};e.currentTarget.setPointerCapture(e.pointerId);}} onPointerMove={e=>{const d=drag.current,p=panel.current;if(!d||!p||d.id!==e.pointerId)return;const shell=p.closest<HTMLElement>('.game-shell')!,point=elementPointerPoint(shell,e);p.style.left=Math.max(0,Math.min(shell.clientWidth-p.offsetWidth,d.left+point.x*shell.clientWidth-d.x))+'px';p.style.top=Math.max(0,Math.min(shell.clientHeight-48,d.top+point.y*shell.clientHeight-d.y))+'px';p.style.maxHeight=`calc(100% - ${p.offsetTop}px)`;}} onPointerUp={()=>{drag.current=null;}} onPointerCancel={()=>{drag.current=null;}}>
-      <strong>{performanceLog.active?'● TESTING':'LIVE SETTINGS'}</strong><button aria-label={collapsed?'Expand live settings':'Collapse live settings'} onClick={()=>setCollapsed(v=>!v)}>{collapsed?'▾':'−'}</button><button aria-label="Close live settings" onClick={onClose}>×</button>
+      <strong>{performanceLog.active?(performanceLog.phase==='baseline'?`BASELINE ${performanceLog.baselineRemaining()}s`:'● RECORDING'):'LIVE SETTINGS'} · {performanceLog.liveFps} FPS</strong><button aria-label={collapsed?'Expand live settings':'Collapse live settings'} onClick={()=>setCollapsed(v=>!v)}>{collapsed?'▾':'−'}</button><button aria-label="Close live settings" onClick={onClose}>×</button>
     </header>
     {!collapsed&&<div className="developer-live-body">
       <p className="ui-notice">Drag the header to move this panel. Changes apply immediately and stay on this device.</p>
-      {range('RENDER SCALE','renderScale',.65,1.5,.05)}{range('HAZE','fogDensity',.001,.025,.001)}{range('CITY HORIZON (m)','horizonDistance',120,288,24)}{range('LIVE STROKES (m)','liveStrokeDistance',10,120,5)}{range('LOAD BUDGET (ms)','streamBudgetMs',.5,8,.5)}{range('KEEP CHUNKS (s)','retentionSeconds',0,15,1)}
-      <div className="button-row"><button aria-pressed={settings.horizon} onClick={()=>change({horizon:!settings.horizon})}>SKYLINE {settings.horizon?'ON':'OFF'}</button><button aria-pressed={settings.scenery} onClick={()=>change({scenery:!settings.scenery})}>TREE DETAIL {settings.scenery?'ON':'OFF'}</button></div>
+      <div className="developer-settings-grid">
+      {number('RENDER SCALE','renderScale',.35,3,.05)}{number('HAZE','fogDensity',0,.2,.001)}
+      {number('DETAIL RANGE (m)','detailDistance',4,144,4)}{number('3D BLOCKS (m)','horizonDistance',48,768,24)}
+      {number('FLAT SKYLINE (m)','skylineDistance',48,1152,24)}{number('LANDMARK HEIGHT (m)','skylineMinHeight',5,56,1)}
+      {number('SILHOUETTE WIDTH','skylineWidth',.5,3,.05)}{number('EXPOSURE','exposure',.1,3,.05)}
+      {number('LIVE STROKES (m)','liveStrokeDistance',5,240,5)}{number('LOAD BUDGET (ms)','streamBudgetMs',.25,12,.25)}
+      {number('KEEP CHUNKS (s)','retentionSeconds',0,30,1)}
+      {toggle('CITY PROXIES','horizon')}{toggle('FLAT SKYLINE','skyline')}{toggle('TREE DETAIL','scenery')}
+      </div><p className="ui-notice">Type a value, then Enter or tap away. ↺ resets that setting. Flat skyline starts beyond the 3D range. Detailed range is limited to resident chunks. Lower haze reveals the distant skyline.</p>
       <section className="tool-section"><h3>PERFORMANCE TEST</h3><label className="ui-field">RUN NAME<input value={label} onChange={e=>setLabel(e.target.value)} maxLength={60}/></label>
-      <div className="button-row"><button onClick={()=>{if(performanceLog.active)stop();else {performanceLog.start(label,settings);setNotice('Recording. Collapse this panel and walk around.');refresh(v=>v+1);}}}>{performanceLog.active?'STOP & SAVE':'START TEST'}</button><button onClick={async()=>{const text=copyRunReport(performanceLog.runs);try{await navigator.clipboard.writeText(text);setNotice('Last 3 runs copied.');}catch{setReport(text);setNotice('Select and copy the report below.');}}}>COPY LAST 3 RUNS</button></div>
+      <label className="ui-checkbox"><input type="checkbox" checked={baseline} disabled={performanceLog.active} onChange={e=>setBaseline(e.target.checked)}/>Include 5-second blank-scene baseline</label><div className="button-row"><button onClick={()=>{if(performanceLog.active)stop();else {performanceLog.start(label,settings,performance.now(),{baselineSeconds:baseline?5:0});setNotice(baseline?'City hidden for 5 seconds. Stand still; it returns automatically.':'Recording. Collapse this panel and walk around.');refresh(v=>v+1);}}}>{performanceLog.active?'STOP LOGGING':'START LOGGING'}</button><button onClick={async()=>{if(performanceLog.active)performanceLog.checkpoint();const text=copyRunReport(performanceLog.runs);try{await navigator.clipboard.writeText(text);setNotice('Current log copied.');}catch{setReport(text);setNotice('Select and copy the report below.');}}}>COPY LOG</button></div>
       {performanceLog.latest&&<p className="developer-stats">{performanceLog.liveFps} FPS · draws {performanceLog.latest.calls} · triangles {performanceLog.latest.triangles.toLocaleString()}<br/>Textures {performanceLog.latest.textures} · chunks {performanceLog.latest.chunks} · queued {performanceLog.latest.queued}</p>}
-      {performanceLog.runs.slice(-3).reverse().map((run,i)=><p className="ui-notice" key={run.startedAt+i}>{run.label}: {run.fps} FPS · p95 {run.frameMs.p95} ms · max {run.render.calls.max} draws</p>)}
+      {!performanceLog.active&&performanceLog.lastRun&&<p className="ui-notice">{performanceLog.lastRun.label}: {performanceLog.lastRun.fps} FPS · p95 {performanceLog.lastRun.frameMs.p95} ms · {performanceLog.lastRun.status==='interrupted'?'RECOVERED UNFINISHED LOG':'SAVED LOG'}</p>}<p className="ui-notice">Only the latest test is kept. Recording checkpoints locally about every {performanceLog.checkpointIntervalMs/1000}s. A hard crash may lose the tail since the last checkpoint.</p>
       {notice&&<p role="status" className="ui-notice">{notice}</p>}{report&&<textarea aria-label="Performance report to copy" readOnly value={report} onFocus={e=>e.target.select()}/>}
-      </section><div className="button-row"><button onClick={()=>{resetRenderSettings();performanceLog.event('Reset rendering defaults');}}>RESET SETTINGS</button><button onClick={onFiles}>PROJECT FILE VIEWER</button></div>
+      </section><div className="button-row"><button onClick={()=>{resetRenderSettings();}}>RESET SETTINGS</button><button onClick={onFiles}>PROJECT FILE VIEWER</button></div>
     </div>}
   </section>;
+}
+
+function NumberSetting({name,field,value,min,max,step,onChange}:{name:string;field:keyof RenderSettings;value:number;min:number;max:number;step:number;onChange:(patch:Partial<RenderSettings>)=>void}){
+ const [draft,setDraft]=useState(String(value));useEffect(()=>setDraft(String(value)),[value]);
+ const commit=()=>{const parsed=draft.trim()?Number(draft):NaN;const next=Number.isFinite(parsed)?Math.max(min,Math.min(max,parsed)):value;setDraft(String(next));onChange({[field]:next});};
+ return <div className="developer-number"><label htmlFor={'dev-'+field}>{name}</label><div><input id={'dev-'+field} aria-label={name} type="number" inputMode="decimal" min={min} max={max} step={step} value={draft} onChange={e=>setDraft(e.target.value)} onBlur={commit} onKeyDown={e=>{if(e.key==='Enter')e.currentTarget.blur();}}/><button aria-label={'Reset '+name} onClick={()=>{const next=DEFAULT_RENDER_SETTINGS[field] as number;setDraft(String(next));onChange({[field]:next});}}>↺</button></div></div>;
 }

@@ -1,3 +1,4 @@
+import { performanceLog } from './performanceLog';
 import type { CityChunk, PaintCache } from '@/game/cityChunkTypes';
 import type { PosterArtwork } from '@/game/worldTypes';
 import { addPosterOverlay } from '@/game/posterOverlay';
@@ -110,7 +111,7 @@ export function restorePersistentChunkPaint(
         wall.pendingPaintImages.set(faceKey, sources);
         const decoded: Array<HTMLImageElement | null> = Array(sources.length).fill(null);
         let remaining = sources.length;
-        const finish = () => {
+        const finish = () => performanceLog.measure('paint.restoreImage',()=>{
           remaining--;
           if (remaining > 0 || wall.pendingPaintImages?.get(faceKey) !== sources) return;
           if (!chunk.group.parent || !shouldRestore()) return;
@@ -128,7 +129,7 @@ export function restorePersistentChunkPaint(
           context.restore();
           wall.pendingPaintImages.delete(faceKey);
           layer.textures[faceIndex].needsUpdate = true; wall.dirty = true;
-        };
+        },key);
         sources.forEach((source, index) => {
           const image = new Image();
           image.onload = () => { decoded[index] = image; finish(); };

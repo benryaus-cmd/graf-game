@@ -3,7 +3,7 @@ import type { PaintWall, Collider, Staircase, WalkSurface } from '@/game/worldTy
 import { FIXTURE_POSITION, FIXTURE_VISIBILITY_DISTANCE } from '@/game/fixtureBuilding';
 import { createCityChunk, prepareCityChunk } from '@/game/cityChunkContent';
 import { CityHorizon } from '@/game/cityHorizon';
-import { wantedChunkKeys, keepChunk } from '@/game/cityStreamPolicy';
+import { wantedChunkKeys, keepChunk, distanceToChunk } from '@/game/cityStreamPolicy';
 import { getRenderSettings } from '@/game/renderSettings';
 import { performanceLog } from '@/game/performanceLog';
 import type { CityMaterials } from '@/game/cityStructures';
@@ -51,13 +51,13 @@ export function createCityChunkStream(scene: THREE.Scene, cityMaterials: CityMat
 
   const saveOneChunk = (key: string, chunk: CityChunk): void => {
     if (paintSession !== 'solo') return;
-    saveChunkPaint(paintCache, key, chunk);
-    savePersistentChunkPaint(paintCache, key, chunk, failedPaintSaves);
+    performanceLog.measure('chunk.paintReadback',()=>saveChunkPaint(paintCache,key,chunk),key);
+    performanceLog.measure('chunk.paintEncodeAndStore',()=>savePersistentChunkPaint(paintCache,key,chunk,failedPaintSaves),key);
     // An unfinished decode needs its encoded base plus current overlay, not a partial ImageData cache.
     chunk.walls.forEach((wall, index) => {
       if (wall.pendingPaintImages?.size) paintCache.delete(`${key}:${index}`);
     });
-    savePersistentChunkPosters(key, chunk);
+    performanceLog.measure('chunk.posterStore',()=>savePersistentChunkPosters(key,chunk),key);
   };
 
   const restoreOneChunk = (key: string, chunk: CityChunk): void => {
@@ -73,7 +73,7 @@ export function createCityChunkStream(scene: THREE.Scene, cityMaterials: CityMat
     active.set(key, chunk);
     chunk.group.userData.updateFixture?.(previousX, previousZ);
     lastWanted.set(key, performance.now());
-    if (paintSession === 'solo') restoreOneChunk(key, chunk);
+    if (paintSession === 'solo') performanceLog.measure('chunk.restoreSync',()=>restoreOneChunk(key,chunk),key);
     scene.add(chunk.group);
     walls.push(...chunk.walls); colliders.push(...chunk.colliders);
     walkSurfaces.push(...chunk.walkSurfaces); staircases.push(...chunk.staircases);
@@ -100,7 +100,7 @@ export function createCityChunkStream(scene: THREE.Scene, cityMaterials: CityMat
       saveOneChunk(key, chunk); scene.remove(chunk.group);
       removeItems(walls, chunk.walls); removeItems(colliders, chunk.colliders);
       removeItems(walkSurfaces, chunk.walkSurfaces); removeItems(staircases, chunk.staircases);
-      disposeChunk(chunk, sharedMaterials); active.delete(key); lastWanted.delete(key);
+      performanceLog.measure('chunk.dispose',()=>disposeChunk(chunk,sharedMaterials),key); active.delete(key); lastWanted.delete(key);
       performanceLog.event('Chunk released: ' + key); break;
     }
     for (const [key, job] of queued) if (!desired.has(key)) {
@@ -120,7 +120,7 @@ export function createCityChunkStream(scene: THREE.Scene, cityMaterials: CityMat
       const start = performance.now();
       for (const [key, job] of entries) {
         do {
-          const step = job.build.next(); job.partial = step.value;
+          const step = performanceLog.measure('chunk.buildStep',()=>job.build.next(),key); job.partial = step.value;
           if (step.done) { mount(key, step.value); step.value.group.userData.updateFixture?.(x, z); queued.delete(key); break; }
         } while (performance.now() - start < settings.streamBudgetMs);
         if (performance.now() - start >= settings.streamBudgetMs) break;
@@ -129,7 +129,9 @@ export function createCityChunkStream(scene: THREE.Scene, cityMaterials: CityMat
       if (stats.lastBuildMs > 12) performanceLog.event('Chunk preparation spike: ' + Math.round(stats.lastBuildMs) + ' ms');
     }
     stats.active = active.size; stats.queued = queued.size;
-    horizon.update(x, z, new Set(active.keys()));
+    const visibleDetails=new Set<string>();
+    for(const[key,chunk]of active){const[cx,cz]=key.split(':').map(Number);chunk.group.visible=distanceToChunk(x,z,cx,cz)<=settings.detailDistance||!!pin&&chunk.walls.includes(pin);if(chunk.group.visible)visibleDetails.add(key);}
+    horizon.update(x,z,visibleDetails);
   };
   const dispose = (): void => {
     if (disposed) return; disposed = true; paintGeneration++;

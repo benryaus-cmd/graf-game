@@ -1,5 +1,6 @@
 import { getRenderSettings, subscribeRenderSettings } from '@/game/renderSettings';
 import { observeWorldPerformance } from '@/game/worldPerformance';
+import { performanceLog } from '@/game/performanceLog';
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { createWorld } from '@/game/createWorld';
@@ -129,9 +130,14 @@ const WorldScene = (props: WorldSceneProps) => {
     const stopPerformance = observeWorldPerformance(world);
     const applyRenderSettings = () => {
       const settings = getRenderSettings();
-      world.renderer.setPixelRatio(Math.min(window.devicePixelRatio, settings.renderScale));
-      world.renderer.setSize(container.clientWidth, container.clientHeight);
-      if (world.scene.fog instanceof THREE.FogExp2) world.scene.fog.density = settings.fogDensity;
+      performanceLog.settingsChanged(settings);
+      performanceLog.measure('settings.apply',()=>{
+        const ratio=Math.min(window.devicePixelRatio,settings.renderScale);
+        if(world.renderer.getPixelRatio()!==ratio){world.renderer.setPixelRatio(ratio);world.renderer.setSize(container.clientWidth,container.clientHeight);}
+        world.renderer.toneMappingExposure=settings.exposure;
+        if(world.scene.fog instanceof THREE.FogExp2)world.scene.fog.density=settings.fogDensity;
+        world.updateChunks(world.playerPosition.x,world.playerPosition.z);
+      });
     };
     applyRenderSettings();
     const stopRenderSettings = subscribeRenderSettings(applyRenderSettings);
