@@ -1,0 +1,11 @@
+Apply this update to the CURRENT GraffCiti Aippy project using Node 22:
+
+https://raw.githubusercontent.com/benryaus-cmd/graf-game/main/updates/map2-morning-quarter-8oct2026.json
+
+Use the existing incremental downloader. Fetch all 21 listed files as raw bytes from manifest.baseUrl + source and replace each exact target.
+
+Keep the current importer, aliases, host wrapper, dependencies, server, all unlisted files and existing saved art.
+
+Build and load GraffCiti. Open GAME MENU → MAP 2 · MORNING QUARTER. Verify the cotton-candy sky, separate local painting, return to Map 1, and Nightfall lighting.
+
+Report version, downloads X/21, replacements X/21, and build PASS/FAIL.

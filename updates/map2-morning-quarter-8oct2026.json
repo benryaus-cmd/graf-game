@@ -1,0 +1,101 @@
+{
+  "version": "map2-morning-quarter-8oct2026",
+  "commit": "97c2755f30543b0fbf84523fbac4b20802284d57",
+  "baseUrl": "https://raw.githubusercontent.com/benryaus-cmd/graf-game/97c2755f30543b0fbf84523fbac4b20802284d57/",
+  "description": "Local Morning Quarter map with isolated art,80 permanent lamps, cotton-candy preset and independent short/tall detail,3D and2D ranges.",
+  "files": [
+    {
+      "source": "src/App.tsx",
+      "target": "src/games/importedGame/upstream/src/App.tsx"
+    },
+    {
+      "source": "src/components/DeveloperPanel.tsx",
+      "target": "src/games/importedGame/upstream/src/components/DeveloperPanel.tsx"
+    },
+    {
+      "source": "src/components/WorldScene.tsx",
+      "target": "src/games/importedGame/upstream/src/components/WorldScene.tsx"
+    },
+    {
+      "source": "src/game/architecture.ts",
+      "target": "src/games/importedGame/upstream/src/game/architecture.ts"
+    },
+    {
+      "source": "src/game/buildingHorizon.ts",
+      "target": "src/games/importedGame/upstream/src/game/buildingHorizon.ts"
+    },
+    {
+      "source": "src/game/buildingLod.ts",
+      "target": "src/games/importedGame/upstream/src/game/buildingLod.ts"
+    },
+    {
+      "source": "src/game/cityAtmosphere.ts",
+      "target": "src/games/importedGame/upstream/src/game/cityAtmosphere.ts"
+    },
+    {
+      "source": "src/game/cityBlockLayout.ts",
+      "target": "src/games/importedGame/upstream/src/game/cityBlockLayout.ts"
+    },
+    {
+      "source": "src/game/cityChunkContent.ts",
+      "target": "src/games/importedGame/upstream/src/game/cityChunkContent.ts"
+    },
+    {
+      "source": "src/game/cityChunkResources.ts",
+      "target": "src/games/importedGame/upstream/src/game/cityChunkResources.ts"
+    },
+    {
+      "source": "src/game/cityChunks.ts",
+      "target": "src/games/importedGame/upstream/src/game/cityChunks.ts"
+    },
+    {
+      "source": "src/game/cityHorizon.ts",
+      "target": "src/games/importedGame/upstream/src/game/cityHorizon.ts"
+    },
+    {
+      "source": "src/game/createWorld.ts",
+      "target": "src/games/importedGame/upstream/src/game/createWorld.ts"
+    },
+    {
+      "source": "src/game/fixtureBuildingGrain.ts",
+      "target": "src/games/importedGame/upstream/src/game/fixtureBuildingGrain.ts"
+    },
+    {
+      "source": "src/game/mapPreference.ts",
+      "target": "src/games/importedGame/upstream/src/game/mapPreference.ts"
+    },
+    {
+      "source": "src/game/morningQuarterAssets.ts",
+      "target": "src/games/importedGame/upstream/src/game/morningQuarterAssets.ts"
+    },
+    {
+      "source": "src/game/morningQuarterContent.ts",
+      "target": "src/games/importedGame/upstream/src/game/morningQuarterContent.ts"
+    },
+    {
+      "source": "src/game/morningQuarterLayout.ts",
+      "target": "src/games/importedGame/upstream/src/game/morningQuarterLayout.ts"
+    },
+    {
+      "source": "src/game/renderSettings.ts",
+      "target": "src/games/importedGame/upstream/src/game/renderSettings.ts"
+    },
+    {
+      "source": "src/game/urbanCourtyard.ts",
+      "target": "src/games/importedGame/upstream/src/game/urbanCourtyard.ts"
+    },
+    {
+      "source": "src/multiplayer/surfaces.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/surfaces.ts"
+    }
+  ],
+  "notes": [
+    "Requires the current GraffCiti atmosphere-controls and skyline-handoff updates.",
+    "Fetch every listed source as raw bytes and replace the exact target; preserve all unlisted files.",
+    "Retain the existing importer, aliases, host wrapper, server and dependencies.",
+    "Map 2 is local solo. Its paint, posters and piece names are separate from Map 1.",
+    "Use GAME MENU \u2192 MAP 2 \u00b7 MORNING QUARTER; select Nightfall to enable lamps.",
+    "80 fixed lamp positions; four real street lights maximum plus the player light; no lamp shadows.",
+    "Phone FPS must be measured with a new City walk log."
+  ]
+}
