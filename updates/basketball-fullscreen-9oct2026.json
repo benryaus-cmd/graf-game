@@ -1,0 +1,38 @@
+{
+  "version": "basketball-fullscreen-9oct2026",
+  "commit": "edddbd20ed8b9beb0a1e62e8c1f77fa85d6b9bdf",
+  "baseUrl": "https://raw.githubusercontent.com/benryaus-cmd/graf-game/edddbd20ed8b9beb0a1e62e8c1f77fa85d6b9bdf/",
+  "description": "Compact edge basketball controls, full-screen flicks, 30% larger rim opening and swept rim/backboard bounces.",
+  "files": [
+    {
+      "source": "src/App.tsx",
+      "target": "src/games/importedGame/upstream/src/App.tsx"
+    },
+    {
+      "source": "src/components/BasketballControls.tsx",
+      "target": "src/games/importedGame/upstream/src/components/BasketballControls.tsx"
+    },
+    {
+      "source": "src/components/basketball.css",
+      "target": "src/games/importedGame/upstream/src/components/basketball.css"
+    },
+    {
+      "source": "src/game/basketballCourt.ts",
+      "target": "src/games/importedGame/upstream/src/game/basketballCourt.ts"
+    },
+    {
+      "source": "src/game/basketballPhysics.ts",
+      "target": "src/games/importedGame/upstream/src/game/basketballPhysics.ts"
+    },
+    {
+      "source": "src/game/basketballGame.ts",
+      "target": "src/games/importedGame/upstream/src/game/basketballGame.ts"
+    }
+  ],
+  "notes": [
+    "Apply to the current basketball-enabled GraffCiti project using its existing Node 22 incremental downloader.",
+    "Download all 6 files as raw bytes before replacing their exact target paths.",
+    "Preserve settings, saves, artwork, all unlisted files, importer, aliases, host wrapper, dependencies and server. No full re-import.",
+    "Build, load and fully reload GraffCiti. Shared seats and HORSE remain pending the existing server adapter."
+  ]
+}

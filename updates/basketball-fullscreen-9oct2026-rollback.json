@@ -1,0 +1,35 @@
+{
+  "version": "basketball-fullscreen-9oct2026-rollback",
+  "commit": "2509c92eed20755e4d6ad4ca6da04dec8d54c5bb",
+  "baseUrl": "https://raw.githubusercontent.com/benryaus-cmd/graf-game/2509c92eed20755e4d6ad4ca6da04dec8d54c5bb/",
+  "description": "Restore the six basketball paths to the preceding basketball release.",
+  "files": [
+    {
+      "source": "src/App.tsx",
+      "target": "src/games/importedGame/upstream/src/App.tsx"
+    },
+    {
+      "source": "src/components/BasketballControls.tsx",
+      "target": "src/games/importedGame/upstream/src/components/BasketballControls.tsx"
+    },
+    {
+      "source": "src/components/basketball.css",
+      "target": "src/games/importedGame/upstream/src/components/basketball.css"
+    },
+    {
+      "source": "src/game/basketballCourt.ts",
+      "target": "src/games/importedGame/upstream/src/game/basketballCourt.ts"
+    },
+    {
+      "source": "src/game/basketballPhysics.ts",
+      "target": "src/games/importedGame/upstream/src/game/basketballPhysics.ts"
+    },
+    {
+      "source": "src/game/basketballGame.ts",
+      "target": "src/games/importedGame/upstream/src/game/basketballGame.ts"
+    }
+  ],
+  "notes": [
+    "Use the existing exact-file incremental downloader. Preserve all unlisted files, settings, saves, dependencies and server."
+  ]
+}
