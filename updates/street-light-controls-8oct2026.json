@@ -1,0 +1,32 @@
+{
+  "version": "street-light-controls-8oct2026",
+  "commit": "48b3f02f874fd17f3e9ff740db781bd04d7454a4",
+  "baseUrl": "https://raw.githubusercontent.com/benryaus-cmd/graf-game/48b3f02f874fd17f3e9ff740db781bd04d7454a4/",
+  "description": "Twelve default real street lights, editable count and player activation distance, independent lamp illumination reach.",
+  "files": [
+    {
+      "source": "src/components/DeveloperPanel.tsx",
+      "target": "src/games/importedGame/upstream/src/components/DeveloperPanel.tsx"
+    },
+    {
+      "source": "src/game/cityAtmosphere.ts",
+      "target": "src/games/importedGame/upstream/src/game/cityAtmosphere.ts"
+    },
+    {
+      "source": "src/game/mapPreference.ts",
+      "target": "src/games/importedGame/upstream/src/game/mapPreference.ts"
+    },
+    {
+      "source": "src/game/renderSettings.ts",
+      "target": "src/games/importedGame/upstream/src/game/renderSettings.ts"
+    }
+  ],
+  "notes": [
+    "Requires the installed map2-night-polish-8oct2026 update.",
+    "Download all four files as raw bytes from baseUrl + source; replace their exact target paths. Preserve all unlisted files, importer, aliases, host wrapper, dependencies, server and saved artwork.",
+    "Live Settings: NEARBY REAL LIGHTS defaults to 12 (0–32); LIGHTS ON WITHIN (m) defaults to 60 (2–120). Nearest eligible lamps receive real light up to the selected count; player light is separate.",
+    "LAMP REACH controls illumination radius independently of player activation distance. Count and range apply live and persist.",
+    "Existing Map 2 adopts twelve lights once; sky, distance and other preferences remain preserved. Later user choices persist.",
+    "Pooled real lights do not cast shadows. No new assets, geometry or paint addresses."
+  ]
+}

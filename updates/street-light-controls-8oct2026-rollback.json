@@ -1,0 +1,27 @@
+{
+  "version": "street-light-controls-8oct2026-rollback",
+  "commit": "cfdc1d46d609e115ac714b5f3510de4ea4d8284d",
+  "baseUrl": "https://raw.githubusercontent.com/benryaus-cmd/graf-game/cfdc1d46d609e115ac714b5f3510de4ea4d8284d/",
+  "description": "Restore the four prior runtime files from before the street light controls update.",
+  "files": [
+    {
+      "source": "src/components/DeveloperPanel.tsx",
+      "target": "src/games/importedGame/upstream/src/components/DeveloperPanel.tsx"
+    },
+    {
+      "source": "src/game/cityAtmosphere.ts",
+      "target": "src/games/importedGame/upstream/src/game/cityAtmosphere.ts"
+    },
+    {
+      "source": "src/game/mapPreference.ts",
+      "target": "src/games/importedGame/upstream/src/game/mapPreference.ts"
+    },
+    {
+      "source": "src/game/renderSettings.ts",
+      "target": "src/games/importedGame/upstream/src/game/renderSettings.ts"
+    }
+  ],
+  "notes": [
+    "Download raw bytes and replace only these exact paths. Preserve all other files, saved settings and artwork."
+  ]
+}

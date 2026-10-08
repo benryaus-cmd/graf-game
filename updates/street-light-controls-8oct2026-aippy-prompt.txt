@@ -1,0 +1,9 @@
+Use Node 22 to apply this update to the CURRENT GraffCiti project:
+
+"Update manifest" (https://raw.githubusercontent.com/benryaus-cmd/graf-game/main/updates/street-light-controls-8oct2026.json)
+
+Use the existing incremental downloader. Download the 4 listed files using manifest.baseUrl + source as raw bytes, then replace their exact target paths.
+
+Preserve settings, saves, all unlisted files, importer, aliases, host wrapper and dependencies. No full re-import or server changes.
+
+Build and load GraffCiti. Report version, downloads X/4, replacements X/4 and build PASS/FAIL.
