@@ -1,0 +1,17 @@
+{
+  "version": "paint-readback-fix-8oct2026",
+  "commit": "33f49066dba10995d57f5d53db0b1bfe7c2f4c77",
+  "baseUrl": "https://raw.githubusercontent.com/benryaus-cmd/graf-game/33f49066dba10995d57f5d53db0b1bfe7c2f4c77/",
+  "description": "Disable solo Undo live-canvas readbacks that cause severe painting stalls.",
+  "files": [
+    {
+      "source": "src/game/soloPaintHistory.ts",
+      "target": "src/games/importedGame/upstream/src/game/soloPaintHistory.ts"
+    }
+  ],
+  "notes": [
+    "Download this one file as raw bytes and replace its exact target. Preserve all other files, settings, saves, art, importer, aliases, host wrapper, dependencies and server.",
+    "Solo Undo/Redo is unavailable; multiplayer server Undo/Redo stays unchanged.",
+    "Build, load and fully reload the game to recreate paint canvases affected by earlier readbacks."
+  ]
+}

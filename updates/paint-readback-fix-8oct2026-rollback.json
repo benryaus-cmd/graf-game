@@ -1,0 +1,12 @@
+{
+  "version": "paint-readback-fix-8oct2026-rollback",
+  "commit": "b50406d7744903abca3d8d9da742555d4aa44a0e",
+  "baseUrl": "https://raw.githubusercontent.com/benryaus-cmd/graf-game/b50406d7744903abca3d8d9da742555d4aa44a0e/",
+  "description": "Restore previous solo history helper; restores the expensive painting readback behavior.",
+  "files": [
+    {
+      "source": "src/game/soloPaintHistory.ts",
+      "target": "src/games/importedGame/upstream/src/game/soloPaintHistory.ts"
+    }
+  ]
+}
