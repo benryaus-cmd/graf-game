@@ -1,0 +1,17 @@
+# Map 2 premium street pass
+
+Open **GAME MENU → MAP 2 · MORNING QUARTER**. This updates the existing local test map and keeps its approved nine-chunk layout, cotton-candy morning preset, surrounding backdrop and separate artwork storage.
+
+All 20 former inner-town box houses now use five additional Quaternius styles: shopfront, balcony house, wide apartment, small three-storey and gabled house. The four original favourites remain. Buildings share downloaded models, palette textures and concrete-grain materials; facade colours distinguish the rows. Door recesses, balconies, roof trim and readable signs give the streets more character. Grass is confined to raised tree beds; the tree court and walking routes are paved.
+
+Each favourite exposes all 766 original vertical surfaces, including individual small bricks. The new styles have generated vertical paint targets, including clipped triangular trim. Bench seats and backs expose their standard paint faces, including seat tops. Canvases and textures allocate on first use; unpainted targets borrow shared geometry and material. Blank layers remain outside the scene graph until used. Stationary target world transforms are cached; this assumes the current static building/chunk hierarchy.
+
+Paint workspaces frame scaled targets in world metres. Masked planar targets permit rectangular workspace framing while raycasts and paint overlays stay clipped to their triangles. Delayed paint restoration retains hidden-layer choices. Existing V1 Map 2 wall addresses remain an exact prefix in all nine chunks, with new surfaces appended. Map 1 storage keys and the map2-v1 namespace remain unchanged.
+
+80 fixed street-lamp positions remain available for night mode. The existing four pooled street lights plus player light are retained, without shadows. New windows use warm emission in the existing material shader, adding no real lights or postprocessing. **CHANGE SKY → NIGHTFALL** enables the street lights; Live Settings still control their count, activation distance, fade and physical reach.
+
+Assets are CC0 Quaternius Ultimate Textured Buildings. Sources and conversion details are recorded in `public/assets/quarter/LICENSE.txt`. Five self-contained glTF files total approximately 2.2 MB and load once per style per world, asynchronously with existing fallback geometry. The runtime URLs pin asset commit `826fc2b1caa41c48cd338a665a5693444c4c9b81`. No runtime OBJ parsing, new decoder or dependency is needed.
+
+Validation: 316 tests pass; application TypeScript, lint, standalone build and Aippy host build pass. Browser play checks cover keyboard walking, brick and seat paint, morning/night views, portrait/landscape, and five cached model requests without shader errors. Additional acceptance checks cover saved-art reload, map switching and triangular workspace framing. Review reproduced and resolved the workspace/hidden-layer regressions. A 22,000-target matrix benchmark improved from about 10.5 ms to 0.40 ms median after removing blank children and caching static transforms. These desktop/software-renderer measurements do not establish Android FPS; collect a new City walk log on the phone.
+
+The incremental Aippy manifest updates seven runtime files on top of the installed Morning Quarter update. It preserves the current importer, host wrapper, aliases, dependencies, server and unlisted files. The downloaded model files are hosted on GitHub and do not require copying into the host project.

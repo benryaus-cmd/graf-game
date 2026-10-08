@@ -9,7 +9,7 @@ export function disposeChunk(chunk: CityChunk, sharedMaterials: Set<THREE.Materi
     object.userData.disposeFixture?.();
     if (!(object instanceof THREE.Mesh)) return;
     if(object.userData.sharedMapAsset)return;
-    geometries.add(object.geometry);
+    if (!object.userData.sharedMapGeometry) geometries.add(object.geometry);
     const list = Array.isArray(object.material) ? object.material : [object.material];
     list.forEach((material) => {
       if (sharedMaterials.has(material)||object.userData.sharedMapMaterial) return;

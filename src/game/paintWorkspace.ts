@@ -242,7 +242,7 @@ function createSelection(wall: PaintWall, face: number, bounds: PaintWorkspaceBo
   if (!position || !uv) return null;
   const corners = [[u0, v0], [u1, v0], [u1, v1], [u0, v1]] as const;
   for (let i = 0; i < corners.length; i += 1) {
-    if (!findPositionForUv(geometry, face, corners[i][0], corners[i][1], LOCAL_POINTS[i])) return null;
+    if (!findPositionForUv(geometry, face, corners[i][0], corners[i][1], LOCAL_POINTS[i], wall.mesh.userData.planarPaintUv === true)) return null;
   }
   const right = EDGE_RIGHT.subVectors(LOCAL_POINTS[1], LOCAL_POINTS[0]);
   const up = EDGE_UP.subVectors(LOCAL_POINTS[3], LOCAL_POINTS[0]);
@@ -261,6 +261,7 @@ function createSelection(wall: PaintWall, face: number, bounds: PaintWorkspaceBo
   const worldRight = WORLD_POINTS[1].clone().sub(WORLD_POINTS[0]);
   const worldUp = WORLD_POINTS[3].clone().sub(WORLD_POINTS[0]);
   const worldNormal = worldRight.clone().cross(worldUp).normalize();
+  const worldWidth = worldRight.length(), worldHeight = worldUp.length();
   const localOutlinePoints = LOCAL_POINTS.map((point) => point.clone().addScaledVector(LOCAL_NORMAL, 0.018));
   const outline = new THREE.BufferGeometry().setFromPoints(localOutlinePoints);
   const preview = new THREE.LineLoop(outline, new THREE.LineBasicMaterial({ color: '#ffd166', transparent: true, depthTest: false, depthWrite: false }));
@@ -290,13 +291,13 @@ function createSelection(wall: PaintWall, face: number, bounds: PaintWorkspaceBo
     center,
     normal: worldNormal,
     up: worldUp.normalize(),
-    width,
-    height,
+    width: worldWidth,
+    height: worldHeight,
     preview,
   };
 }
 
-function findPositionForUv(geometry: THREE.BufferGeometry, materialIndex: number, targetU: number, targetV: number, result: THREE.Vector3): boolean {
+function findPositionForUv(geometry: THREE.BufferGeometry, materialIndex: number, targetU: number, targetV: number, result: THREE.Vector3, planarUv = false): boolean {
   const position = geometry.getAttribute('position');
   const uv = geometry.getAttribute('uv');
   if (!position || !uv) return false;
@@ -318,7 +319,9 @@ function findPositionForUv(geometry: THREE.BufferGeometry, materialIndex: number
       const wa = ((by - cy) * (targetU - cx) + (cx - bx) * (targetV - cy)) / denominator;
       const wb = ((cy - ay) * (targetU - cx) + (ax - cx) * (targetV - cy)) / denominator;
       const wc = 1 - wa - wb;
-      if (wa < -1e-5 || wb < -1e-5 || wc < -1e-5 || wa > 1.00001 || wb > 1.00001 || wc > 1.00001) continue;
+      // Masked planar faces use an affine UV map: frame their rectangle outside
+      // triangle edges while actual raycasts and paint overlays remain clipped.
+      if (!planarUv && (wa < -1e-5 || wb < -1e-5 || wc < -1e-5 || wa > 1.00001 || wb > 1.00001 || wc > 1.00001)) continue;
       result.set(
         position.getX(ia) * wa + position.getX(ib) * wb + position.getX(ic) * wc,
         position.getY(ia) * wa + position.getY(ib) * wb + position.getY(ic) * wc,

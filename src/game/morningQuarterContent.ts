@@ -9,7 +9,7 @@ import { assignSurfaceIds } from '../multiplayer/surfaces';
 import { applyFixtureGrain } from './fixtureBuildingGrain';
 import { getRenderSettings } from './renderSettings';
 import { FIXTURE_FACES, FIXTURE_POSITION } from './fixtureBuildingFaces';
-import { createPaintSurfaceLayer } from './paintSurfaceLayer';
+import { QUARTER_ASSETS } from './quarterBuildingAssets';
 import type { PaintWall } from './worldTypes';
 export interface DetailBuilding {
     description: QuarterBuilding;
@@ -25,6 +25,8 @@ export function* prepareQuarterChunk(cx: number, cz: number, materials: CityMate
     const batches = new Map<string, THREE.BufferGeometry[]>();
     const cancels: (() => void)[] = [];
     const windows: THREE.MeshStandardMaterial[] = [];
+    const extras: PaintWall[] = [];
+    const extraBuilders: (() => Generator<PaintWall, void, void>)[] = [];
     const box = (color: string, x: number, y: number, z: number, w: number, h: number, d: number) => { const g = new THREE.BoxGeometry(w, h, d); g.clearGroups(); g.translate(x, y, z); if (!batches.has(color))
         batches.set(color, []); batches.get(color)!.push(g); };
     const prop = (color: string, x: number, y: number, z: number, w: number, h: number, d: number) => { if (quarterChunk(x, z) === `${cx}:${cz}`)
@@ -43,33 +45,40 @@ export function* prepareQuarterChunk(cx: number, cz: number, materials: CityMate
         applyFixtureGrain(wallMaterial, assets.grain, { value: 1 }, true);
         content.walkSurfaces.push({ minX: b.x - b.width / 2, maxX: b.x + b.width / 2, minZ: b.z - b.depth / 2, maxZ: b.z + b.depth / 2, height: b.height });
         if (b.imported) {
-            // The ten broad actual facade slabs stay paintable, including the recessed door.
-            // Small architectural trim uses the shared visual without allocating paint canvases.
+            // Keep the ten V1 facade addresses, then append every small brick and trim face.
+            // Canvases are allocated only when a surface is painted.
             const yaw = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), b.yaw ?? 0);
             const fallback = new THREE.Mesh(new THREE.BoxGeometry(3.1, b.height, 6.7), wallMaterial);
             fallback.position.set(b.x, b.height / 2, b.z);
             fallback.quaternion.copy(yaw);
             root.add(fallback);
-            for (const [x, y, z, width, height, qx, qy, qz, qw] of FIXTURE_FACES.filter(f => f[3] * f[4] >= 4)) {
-                const geometry = new THREE.PlaneGeometry(width, height);
-                const target = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({ visible: false, colorWrite: false, depthWrite: false }));
-                target.position.set(x, y, z - FIXTURE_POSITION.z).applyQuaternion(yaw).add(new THREE.Vector3(b.x, 0, b.z));
-                target.quaternion.copy(yaw).multiply(new THREE.Quaternion(qx, qy, qz, qw).normalize());
-                root.add(target);
-                target.userData.paintWorkspaceContext = root;
-                target.userData.fixtureSlab = true;
-                const layers: PaintWall['layers'] = [];
-                const createLayer = () => { const layer = createPaintSurfaceLayer(target, geometry, 1, [0], [{ width: Math.max(32, Math.round(width * 64)), height: Math.max(32, Math.round(height * 64)) }], false, layers.length); layers.push(layer); return layer; };
-                const first = createLayer();
-                content.walls.push({ mesh: target, uvScales: [{ u: 1, v: 1 }], faceDimensions: [{ width, height }], layers, createLayer, contexts: first.contexts, textures: first.textures });
-            }
+            const transform = new THREE.Matrix4().compose(new THREE.Vector3(b.x,0,b.z),yaw,new THREE.Vector3(1,1,1));
+            const slab = (f: readonly number[]) => {
+                const wall=assets.paint.plane(root,[f[0],f[1],f[2]-FIXTURE_POSITION.z,...f.slice(3)],transform,`quarter-slab-${b.id}`);
+                // Equivalent quaternion signs still hash differently: keep the original V1 representation.
+                wall.mesh.quaternion.copy(yaw).multiply(new THREE.Quaternion(f[5],f[6],f[7],f[8]).normalize());
+                wall.faceDimensions[0]={width:f[3],height:f[4]};
+                return wall;
+            };
+            // Preserve all ten V1 addresses; append small bricks after every legacy wall slot.
+            for (const f of FIXTURE_FACES.filter(f => f[3]*f[4]>=4)) content.walls.push(slab(f));
+            extraBuilders.push(function*(){for(const f of FIXTURE_FACES.filter(f=>f[3]*f[4]<4))yield slab(f);});
             collider(b.x, b.z, b.yaw ? 6.3 : 2.7, b.yaw ? 2.7 : 6.3, b.height - .8);
             cancels.push(assets.attachBuilding(root, b, fallback));
         }
         else {
             const shell = createPaintWall(root, b.x, b.z, b.width, b.height, b.depth, wallMaterial);
             content.walls.push(shell.wall);
-            content.colliders.push(shell.collider);
+            content.colliders.push(b.asset ? { ...shell.collider, minX:shell.collider.minX+.8,maxX:shell.collider.maxX-.8,minZ:shell.collider.minZ+1.3,maxZ:shell.collider.maxZ-1.3 } : shell.collider);
+            const fallbackParts = new THREE.Group(); root.add(fallbackParts);
+            const base = shell.wall.mesh.userData.baseVisual as THREE.Mesh;
+            fallbackParts.attach(base); // target remains at its V1 position; fallback visual is in world coordinates.
+            if(b.asset){
+                const description=QUARTER_ASSETS[b.asset];
+                const transform=new THREE.Matrix4().compose(new THREE.Vector3(b.x,0,b.z),new THREE.Quaternion(),new THREE.Vector3(b.width/description.size[0],b.height/description.size[1],b.depth/description.size[2]));
+                extraBuilders.push(function*(){for(const f of description.faces)yield assets.paint.plane(root,f,transform,`quarter-premium-slab-${b.id}`);});
+                cancels.push(assets.attachPremium(root,b,fallbackParts,shell.wall.mesh));
+            }
             const parts: THREE.BufferGeometry[] = [];
             const detail = (x: number, y: number, z: number, w: number, h: number, d: number) => { const g = new THREE.BoxGeometry(w, h, d); g.clearGroups(); g.translate(x, y, z); parts.push(g); };
             detail(b.x, b.height + .12, b.z, b.width + .4, .24, b.depth + .4);
@@ -88,16 +97,17 @@ export function* prepareQuarterChunk(cx: number, cz: number, materials: CityMate
                 panes.forEach(g => g.dispose());
                 const material = new THREE.MeshStandardMaterial({ color: '#8d9c98', roughness: .7, emissive: '#ffc879', emissiveIntensity: 0 });
                 windows.push(material);
-                root.add(new THREE.Mesh(geom, material));
+                fallbackParts.add(new THREE.Mesh(geom, material));
             }
             const geom = mergeGeometries(parts, false)!;
             parts.forEach(g => g.dispose());
-            root.add(new THREE.Mesh(geom, new THREE.MeshStandardMaterial({ color: '#59666b', roughness: .85 })));
+            fallbackParts.add(new THREE.Mesh(geom, new THREE.MeshStandardMaterial({ color: '#59666b', roughness: .85 })));
             if (b.id.startsWith('shop-')) {
                 assets.label(root, Number(b.id.slice(-1)), b.x, 2.65, front + .14, 3.6);
+                extras.push(assets.paint.plane(root,[b.x,2.65,front+.142,3.6,.8,0,0,0,1],new THREE.Matrix4(),`quarter-shop-sign-${b.id}`));
                 const awning = new THREE.Mesh(new THREE.BoxGeometry(b.width - 1, .22, 2), new THREE.MeshStandardMaterial({ color: ['#827e6c', '#ac807d', '#829091'][Number(b.id.slice(-1)) % 3], roughness: 1 }));
                 awning.position.set(b.x, 3.2, front + .9);
-                root.add(awning);
+                fallbackParts.add(awning);
             }
         }
         yield content;
@@ -111,8 +121,18 @@ export function* prepareQuarterChunk(cx: number, cz: number, materials: CityMate
         prop('#b99773', x, .95, z + .3, 3.4, .6, .12);
         for (const ox of [-1.25, 1.25])
             prop('#4b5650', x + ox, .27, z, .2, .55, .55);
-        if (quarterChunk(x, z) === `${cx}:${cz}`)
-            collider(x, z, 3.6, .9, 1.2);
+        if (quarterChunk(x, z) === `${cx}:${cz}`) {
+            content.colliders.push({minX:x-1.7,maxX:x+1.7,minZ:z-.35,maxZ:z+.35,minY:.5,maxY:.66});
+            content.colliders.push({minX:x-1.7,maxX:x+1.7,minZ:z+.24,maxZ:z+.36,minY:.65,maxY:1.25});
+            content.walkSurfaces.push({minX:x-1.7,maxX:x+1.7,minZ:z-.35,maxZ:z+.35,height:.66});
+            const bench = new THREE.Group(); bench.name=`quarter-bench-${x}:${z}`; group.add(bench);
+            for(const [part,y,pz,w,h,d] of [['seat',.58,z,3.4,.16,.7],['back',.95,z+.3,3.4,.6,.12]] as const){
+                const paint=createPaintWall(bench,x,pz,w,h,d,materials.wallMaterial,y-h/2);
+                (paint.wall.mesh.userData.baseVisual as THREE.Mesh).visible=false;
+                paint.wall.mesh.name=`quarter-bench-${part}-${x}:${z}`;paint.wall.mesh.userData.paintWorkspaceContext=group;
+                extras.push(paint.wall);
+            }
+        }
     }
     const trees = QUARTER_TREES.filter(([x, z]) => quarterChunk(x, z) === `${cx}:${cz}`);
     const scenery = new THREE.Group();
@@ -127,7 +147,7 @@ export function* prepareQuarterChunk(cx: number, cz: number, materials: CityMate
         cancels.push(assets.attachTrees(scenery, trees, fallback));
         cancels.push(() => { foliage.dispose(); trunk.dispose(); });
     }
-    group.userData.updateScenery = (sky: string) => { const s = getRenderSettings(); scenery.visible = s.scenery; for (const m of windows)
+    group.userData.updateScenery = (sky: string) => { const s = getRenderSettings(); assets.updateLights(sky); scenery.visible = s.scenery; for (const m of windows)
         m.emissiveIntensity = s.streetLights && (s.skyMode === 'night' || s.skyMode === 'game' && sky === 'night') ? 1.6 : 0; };
     // Outer service walls bound the playable district while the city backdrop continues visually.
     for (const side of ['west', 'east', 'north', 'south']) {
@@ -180,6 +200,9 @@ export function* prepareQuarterChunk(cx: number, cz: number, materials: CityMate
         geometries.forEach(g => g.dispose());
         group.add(new THREE.Mesh(merged, new THREE.MeshStandardMaterial({ color, roughness: 1 })));
     }
+    // Small targets are incremental and invisible until painted; shared planes never add a draw call.
+    content.walls.push(...extras);
+    for(const build of extraBuilders){let count=0;for(const wall of build()){content.walls.push(wall);if(++count%32===0)yield content;}}
     assignSurfaceIds(cx, cz, content.walls, 'map2-v1');
     return content;
 }

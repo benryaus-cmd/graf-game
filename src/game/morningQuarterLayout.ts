@@ -1,13 +1,16 @@
 import type { CityBuildingDescription } from './cityBlockLayout';
 import { FIXTURE_DEPTH, FIXTURE_HEIGHT } from './fixtureBuildingFaces';
+import type { QuarterAssetKind } from './quarterBuildingAssets';
 export interface QuarterBuilding extends CityBuildingDescription {
     id: string;
     color: string;
     imported?: boolean;
     yaw?: number;
+    asset?: QuarterAssetKind;
 }
 const colors = ['#d2c5b5', '#b9c1b0', '#ceb4ac', '#b4bec3', '#cbbd98'];
-const shell = (id: string, x: number, z: number, width: number, depth: number, height: number, index: number): QuarterBuilding => ({ id, x, z, width, depth, height, color: colors[index % colors.length], tower: height >= 12, stairs: false });
+const styles:QuarterAssetKind[]=['1Story_Sign','2Story_Balcony','2Story_Wide','2Story_GableRoof','3Story_Small'];
+const shell = (id: string, x: number, z: number, width: number, depth: number, height: number, index: number): QuarterBuilding => ({ id, x, z, width, depth, height, color: colors[index % colors.length], tower: height >= 12, stairs: false, asset: styles[index%styles.length] });
 export const QUARTER_BUILDINGS: readonly QuarterBuilding[] = [
     ...[-56, -40, -24, -8, 8, 24, 40, 56].map((x, i) => shell(`shop-${i}`, x, -55, 14, 20, [8, 10, 7, 10, 22, 9, 11, 8][i], i)),
     shell('yard-workshop', -53, -24, 24, 14, 7, 2), shell('yard-back', -53, 29, 24, 28, 10, 1),
@@ -16,10 +19,10 @@ export const QUARTER_BUILDINGS: readonly QuarterBuilding[] = [
     shell('east-corner', 54, -18, 20, 23, 18, 3), shell('east-workshop', 57, 14, 16, 26, 8, 0),
     shell('south-west', -52, 60, 26, 14, 8, 4), shell('south-row-a', -12, 56, 12, 20, 9, 1),
     shell('south-row-b', 5, 56, 12, 20, 10, 2), shell('south-east', 58, 56, 22, 16, 11, 0),
-    { ...shell('square-hero', 0, -18, 4, FIXTURE_DEPTH, FIXTURE_HEIGHT, 0), imported: true, yaw: 0 },
-    { ...shell('square-west', -15, -4, 4, FIXTURE_DEPTH, FIXTURE_HEIGHT, 0), imported: true, yaw: 0 },
-    { ...shell('square-east', 16, 0, FIXTURE_DEPTH, 4, FIXTURE_HEIGHT, 0), imported: true, yaw: Math.PI / 2 },
-    { ...shell('court-corner', 18, 38, 4, FIXTURE_DEPTH, FIXTURE_HEIGHT, 0), imported: true, yaw: 0 },
+    { ...shell('square-hero', 0, -18, 4, FIXTURE_DEPTH, FIXTURE_HEIGHT, 0), asset:undefined, imported: true, yaw: 0 },
+    { ...shell('square-west', -15, -4, 4, FIXTURE_DEPTH, FIXTURE_HEIGHT, 0), asset:undefined, imported: true, yaw: 0 },
+    { ...shell('square-east', 16, 0, FIXTURE_DEPTH, 4, FIXTURE_HEIGHT, 0), asset:undefined, imported: true, yaw: Math.PI / 2 },
+    { ...shell('court-corner', 18, 38, 4, FIXTURE_DEPTH, FIXTURE_HEIGHT, 0), asset:undefined, imported: true, yaw: 0 },
 ];
 export const QUARTER_TREES: readonly [
     number,
