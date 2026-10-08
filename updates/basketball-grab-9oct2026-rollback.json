@@ -1,0 +1,32 @@
+{
+  "version": "basketball-grab-9oct2026-rollback",
+  "commit": "80d0852f5623dd51994d56a33f3c34d172638886",
+  "baseUrl": "https://raw.githubusercontent.com/benryaus-cmd/graf-game/80d0852f5623dd51994d56a33f3c34d172638886/",
+  "description": "Restore the five previously existing basketball paths to the prior full-screen release.",
+  "files": [
+    {
+      "source": "src/components/BasketballControls.tsx",
+      "target": "src/games/importedGame/upstream/src/components/BasketballControls.tsx"
+    },
+    {
+      "source": "src/components/WorldScene.tsx",
+      "target": "src/games/importedGame/upstream/src/components/WorldScene.tsx"
+    },
+    {
+      "source": "src/components/basketball.css",
+      "target": "src/games/importedGame/upstream/src/components/basketball.css"
+    },
+    {
+      "source": "src/game/basketballGame.ts",
+      "target": "src/games/importedGame/upstream/src/game/basketballGame.ts"
+    },
+    {
+      "source": "src/game/basketballPhysics.ts",
+      "target": "src/games/importedGame/upstream/src/game/basketballPhysics.ts"
+    }
+  ],
+  "notes": [
+    "Use the existing exact-file downloader. Preserve settings, saves, all unlisted files, dependencies and server.",
+    "The new basketballGesture.ts module can remain unreferenced after restoring these five paths."
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "version": "basketball-grab-9oct2026",
+  "commit": "6879aa840dfaa18a9cd59c58f5f2a0c86675784c",
+  "baseUrl": "https://raw.githubusercontent.com/benryaus-cmd/graf-game/6879aa840dfaa18a9cd59c58f5f2a0c86675784c/",
+  "description": "Grab the visible basketball, prepare with finger movement, then flick and release with velocity-based power and a 70% maximum-speed cap.",
+  "files": [
+    {
+      "source": "src/components/BasketballControls.tsx",
+      "target": "src/games/importedGame/upstream/src/components/BasketballControls.tsx"
+    },
+    {
+      "source": "src/components/WorldScene.tsx",
+      "target": "src/games/importedGame/upstream/src/components/WorldScene.tsx"
+    },
+    {
+      "source": "src/components/basketball.css",
+      "target": "src/games/importedGame/upstream/src/components/basketball.css"
+    },
+    {
+      "source": "src/game/basketballGame.ts",
+      "target": "src/games/importedGame/upstream/src/game/basketballGame.ts"
+    },
+    {
+      "source": "src/game/basketballPhysics.ts",
+      "target": "src/games/importedGame/upstream/src/game/basketballPhysics.ts"
+    },
+    {
+      "source": "src/game/basketballGesture.ts",
+      "target": "src/games/importedGame/upstream/src/game/basketballGesture.ts"
+    }
+  ],
+  "notes": [
+    "Use the current GraffCiti project's existing Node 22 incremental downloader.",
+    "Download all 6 files as raw bytes before replacing their exact target paths.",
+    "Preserve settings, saves, artwork, all unlisted files, importer, aliases, host wrapper, dependencies and server. No full re-import.",
+    "Build, load and fully reload GraffCiti. Shared seats and HORSE remain pending the existing server adapter."
+  ]
+}
