@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { loadModel, release, type Model } from './assetPreview';
 import { FIXTURE_SCALE, FIXTURE_MODEL_OFFSET, FIXTURE_POSITION } from './fixtureBuildingFaces';
 import { createFixtureGrain, applyFixtureGrain } from './fixtureBuildingGrain';
-import type { QuarterBuilding } from './morningQuarterLayout';
+import { QUARTER_PAVING, type QuarterBuilding } from './morningQuarterLayout';
 import type { PaintWorkspaceState } from './worldTypes';
 import { QuarterPaintSurfaces } from './quarterPaintSurface';
 import { QUARTER_ASSETS, type QuarterAssetKind } from './quarterBuildingAssets';
@@ -54,20 +54,27 @@ export class MorningQuarterAssets {
         canvas.height = 256;
         const ctx = canvas.getContext('2d');
         if (ctx) {
-            ctx.fillStyle = '#8b8982';
+            ctx.fillStyle = '#365f38';
             ctx.fillRect(0, 0, 256, 256);
             const rect = (color: string, x: number, z: number, w: number, d: number) => { ctx.fillStyle = color; ctx.fillRect((x - w / 2 - cx * 48 + 24) * 256 / 48, (z - d / 2 - cz * 48 + 24) * 256 / 48, w * 256 / 48, d * 256 / 48); };
+            // Paths and aprons are baked into the same paintable floor, without extra meshes.
+            for (const [x, z, w, d] of QUARTER_PAVING) rect('#b8b0a4', x, z, w, d);
             rect('#c9bbb0', 0, 0, 24, 24);
             rect('#c7c1b1', 28, 54, 22, 24);
             rect('#aaa699', -52, 0, 24, 22);
-            for (const [x, z, w, d] of [[0, -32, 132, 5], [-36, 4, 4.5, 85], [37, 7, 4.5, 86], [0, 36, 125, 4.5], [-50, 0, 32, 4], [42, 0, 32, 4]])
-                rect('#b8b0a4', x, z, w, d);
-            // Paving seams are baked into the existing paintable floor, with no extra draws.
+            // Draw seams only inside paving. They never turn a lawn into a walkway.
             ctx.strokeStyle = 'rgba(74,67,62,.16)'; ctx.lineWidth = .6;
+            ctx.save(); ctx.beginPath();
+            for (const [x,z,w,d] of QUARTER_PAVING) ctx.rect((x-w/2-cx*48+24)*256/48,(z-d/2-cz*48+24)*256/48,w*256/48,d*256/48);
+            ctx.clip();
             for (let i = 0; i <= 256; i += 16) { ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,256); ctx.stroke(); ctx.beginPath(); ctx.moveTo(0,i); ctx.lineTo(256,i); ctx.stroke(); }
-            rect('#b1ac9a', -53, -36, 17, 8);
-            rect('#e3d7c6', -53, -36, 14, .12);
-            rect('#e3d7c6', -53, -36, .12, 6);
+            ctx.restore();
+            rect('#78878a', -53, -36, 17, 10);
+            const px = (x:number) => (x-cx*48+24)*256/48, pz = (z:number) => (z-cz*48+24)*256/48;
+            ctx.strokeStyle='#eee5cd'; ctx.lineWidth=.9;
+            ctx.strokeRect(px(-61),pz(-40.5),16*256/48,9*256/48);
+            ctx.strokeRect(px(-55),pz(-40.5),4*256/48,4.5*256/48);
+            ctx.beginPath(); ctx.arc(px(-53),pz(-40),5.5*256/48,0,Math.PI); ctx.stroke();
             ctx.fillStyle = 'rgba(45,42,36,.045)';
             let seed = (cx + 3) * 73 + (cz + 3) * 123;
             for (let i = 0; i < 1200; i++) {
@@ -80,14 +87,23 @@ export class MorningQuarterAssets {
         map.repeat.set(1 / 8, 1 / 8);
         return new THREE.MeshStandardMaterial({ map, color: '#ffffff', roughness: 1, side: THREE.DoubleSide });
     }
-    label(parent: THREE.Object3D, index: number, x: number, y: number, z: number, width = 2.4) {
-        const geometry = new THREE.PlaneGeometry(width, .8), uv = geometry.getAttribute('uv'), column = index % 2, row = Math.floor(index / 2);
+    label(parent: THREE.Object3D, index: number, x: number, y: number, z: number, width = 2.4, height = .8) {
+        const geometry = new THREE.PlaneGeometry(width, height), uv = geometry.getAttribute('uv'), column = index % 2, row = Math.floor(index / 2);
         for (let i = 0; i < uv.count; i++)
             uv.setXY(i, (column + uv.getX(i)) / 2, 1 - (row + 1 - uv.getY(i)) / 8);
         const mesh = new THREE.Mesh(geometry, this.signs);
         mesh.position.set(x, y, z);
         mesh.userData.sharedMapMaterial = true;
+        mesh.name = 'quarter-sign';
         parent.add(mesh);
+        return mesh;
+    }
+    shopSignMount(b: QuarterBuilding) {
+        const kind = b.asset!;
+        // Coordinates are in each centred asset, above its actual ground-floor door.
+        const mount: Record<QuarterAssetKind, [number, number]> = { '1Story_Sign':[1.25,1.04], '2Story_Balcony':[1.02,.84], '2Story_Wide':[1.08,.72], '2Story_GableRoof':[1.10,1.04], '3Story_Small':[1.06,.90] };
+        const [y,z]=mount[kind], size=QUARTER_ASSETS[kind].size;
+        return { x:b.x, y:y*b.height/size[1], z:b.z+z*b.depth/size[2], width:kind==='1Story_Sign'?5.2:3.6, height:.65 };
     }
     private source(kind: 'building' | 'tree') {
         if (this[kind])

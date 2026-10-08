@@ -3,7 +3,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { createPaintWall } from './architectureWalls';
 import { createChunkGround, type CityMaterials } from './cityStructures';
 import type { CityChunkContent } from './cityChunkContent';
-import { quarterLayout, quarterChunk, QUARTER_TREES, QUARTER_LAMPS, type QuarterBuilding } from './morningQuarterLayout';
+import { QUARTER_BUILDINGS, quarterFootprint, quarterChunk, QUARTER_TREES, QUARTER_LAMPS, QUARTER_SHRUBS, type QuarterBuilding } from './morningQuarterLayout';
 import { MorningQuarterAssets } from './morningQuarterAssets';
 import { assignSurfaceIds } from '../multiplayer/surfaces';
 import { applyFixtureGrain } from './fixtureBuildingGrain';
@@ -36,11 +36,14 @@ export function* prepareQuarterChunk(cx: number, cz: number, materials: CityMate
     group.userData.disposeFixture = () => { for (const cancel of cancels)
         cancel(); };
     yield content;
-    for (const b of quarterLayout(cx, cz).buildings) {
+    for (const b of QUARTER_BUILDINGS.filter(b => quarterChunk(b.x, b.z) === `${cx}:${cz}`)) {
         const root = new THREE.Group();
         root.name = b.id;
         group.add(root);
-        buildings.push({ description: b, root });
+        buildings.push({ description: { ...b, ...quarterFootprint(b) }, root });
+        const colliderStart = content.colliders.length;
+        const walkStart = content.walkSurfaces.length;
+        root.userData.quarterPose = { b, colliderStart, walkStart };
         const wallMaterial = new THREE.MeshStandardMaterial({ color: b.color, roughness: 1 });
         applyFixtureGrain(wallMaterial, assets.grain, { value: 1 }, true);
         content.walkSurfaces.push({ minX: b.x - b.width / 2, maxX: b.x + b.width / 2, minZ: b.z - b.depth / 2, maxZ: b.z + b.depth / 2, height: b.height });
@@ -103,8 +106,9 @@ export function* prepareQuarterChunk(cx: number, cz: number, materials: CityMate
             parts.forEach(g => g.dispose());
             fallbackParts.add(new THREE.Mesh(geom, new THREE.MeshStandardMaterial({ color: '#59666b', roughness: .85 })));
             if (b.id.startsWith('shop-')) {
-                assets.label(root, Number(b.id.slice(-1)), b.x, 2.65, front + .14, 3.6);
-                extras.push(assets.paint.plane(root,[b.x,2.65,front+.142,3.6,.8,0,0,0,1],new THREE.Matrix4(),`quarter-shop-sign-${b.id}`));
+                const sign = assets.shopSignMount(b);
+                assets.label(root, Number(b.id.slice(-1)), sign.x, sign.y, sign.z, sign.width, sign.height);
+                extras.push(assets.paint.plane(root,[sign.x,sign.y,sign.z+.002,sign.width,sign.height,0,0,0,1],new THREE.Matrix4(),`quarter-shop-sign-${b.id}`));
                 const awning = new THREE.Mesh(new THREE.BoxGeometry(b.width - 1, .22, 2), new THREE.MeshStandardMaterial({ color: ['#827e6c', '#ac807d', '#829091'][Number(b.id.slice(-1)) % 3], roughness: 1 }));
                 awning.position.set(b.x, 3.2, front + .9);
                 fallbackParts.add(awning);
@@ -142,10 +146,21 @@ export function* prepareQuarterChunk(cx: number, cz: number, materials: CityMate
         const fallback = new THREE.Group();
         scenery.add(fallback);
         const foliage = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1.7, 0), new THREE.MeshStandardMaterial({ color: '#8eaa80', roughness: 1 }), trees.length), trunk = new THREE.InstancedMesh(new THREE.CylinderGeometry(.15, .23, 2.5, 5), new THREE.MeshStandardMaterial({ color: '#826e58', roughness: 1 }), trees.length), matrix = new THREE.Matrix4();
-        trees.forEach(([x, z], i) => { matrix.makeTranslation(x, 3.4, z); foliage.setMatrixAt(i, matrix); matrix.makeTranslation(x, 1.25, z); trunk.setMatrixAt(i, matrix); collider(x, z, .55, .55, 2.5); box('#c8c0af', x, .2, z, 3.7, .4, 3.7); box('#919a79', x, .42, z, 3.2, .05, 3.2); });
+        trees.forEach(([x, z], i) => { matrix.makeTranslation(x, 3.4, z); foliage.setMatrixAt(i, matrix); matrix.makeTranslation(x, 1.25, z); trunk.setMatrixAt(i, matrix); collider(x, z, .55, .55, 2.5); box('#c8c0af', x, .2, z, 3.7, .4, 3.7); box('#375c39', x, .42, z, 3.2, .05, 3.2); });
         fallback.add(foliage, trunk);
         cancels.push(assets.attachTrees(scenery, trees, fallback));
         cancels.push(() => { foliage.dispose(); trunk.dispose(); });
+    }
+    const shrubs = QUARTER_SHRUBS.filter(([x,z]) => quarterChunk(x,z) === `${cx}:${cz}`);
+    if (shrubs.length) {
+        const mesh = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1,0), new THREE.MeshStandardMaterial({color:'#ffffff',roughness:1}), shrubs.length * 3);
+        mesh.name='quarter-shrubs';
+        const matrix=new THREE.Matrix4();
+        shrubs.forEach(([x,z],i) => { for(let j=0;j<3;j++) {
+            matrix.compose(new THREE.Vector3(x+(j-1)*.7,.45+(j%2)*.1,z),new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0),i*.7+j),new THREE.Vector3(.65,.55,.65));
+            mesh.setMatrixAt(i*3+j,matrix); mesh.setColorAt(i*3+j,new THREE.Color(j===1?'#466d3f':'#2e5035'));
+        }});
+        mesh.computeBoundingSphere(); scenery.add(mesh); cancels.push(()=>mesh.dispose());
     }
     group.userData.updateScenery = (sky: string) => { const s = getRenderSettings(); assets.updateLights(sky); scenery.visible = s.scenery; for (const m of windows)
         m.emissiveIntensity = s.streetLights && (s.skyMode === 'night' || s.skyMode === 'game' && sky === 'night') ? 1.6 : 0; };
@@ -195,6 +210,18 @@ export function* prepareQuarterChunk(cx: number, cz: number, materials: CityMate
     for (const [x, z] of QUARTER_LAMPS)
         if (quarterChunk(x, z) === `${cx}:${cz}`)
             collider(x, z, .32, .32, 5.4);
+    // One small neighbourhood hoop, with its shooting area baked into the floor.
+    const hasHoop = cx === -1 && cz === -1;
+    if (hasHoop) {
+        box('#586265',-53,1.8,-41,.18,3.6,.18);
+        box('#586265',-53,3.3,-40.75,.16,.16,.65);
+        box('#e6e4d6',-53,3.35,-40.45,1.8,1.1,.08);
+        for(const x of [-53.3,-52.7]) box('#586265',x,3.23,-40.4,.045,.42,.01);
+        for(const y of [3.02,3.44]) box('#586265',-53,y,-40.4,.64,.045,.01);
+        const rim=new THREE.Mesh(new THREE.TorusGeometry(.28,.035,5,12),new THREE.MeshStandardMaterial({color:'#cf7748',roughness:.9}));
+        rim.name='quarter-basketball-rim'; rim.rotation.x=Math.PI/2; rim.position.set(-53,3.05,-40.08); scenery.add(rim);
+        collider(-53,-41,.22,.22,3.6);
+    }
     for (const [color, geometries] of batches) {
         const merged = mergeGeometries(geometries, false)!;
         geometries.forEach(g => g.dispose());
@@ -203,6 +230,27 @@ export function* prepareQuarterChunk(cx: number, cz: number, materials: CityMate
     // Small targets are incremental and invisible until painted; shared planes never add a draw call.
     content.walls.push(...extras);
     for(const build of extraBuilders){let count=0;for(const wall of build()){content.walls.push(wall);if(++count%32===0)yield content;}}
+    // Append new targets after all existing slots so saved building and bench art stays aligned.
+    if (hasHoop) content.walls.push(assets.paint.plane(group,[-53,3.35,-40.408,1.8,1.1,0,0,0,1],new THREE.Matrix4(),'quarter-basketball-backboard'));
     assignSurfaceIds(cx, cz, content.walls, 'map2-v1');
+    // Rotate whole buildings after assigning their existing paint addresses. The local
+    // surfaces and saved wall indices stay stable, including individual bricks.
+    for (const { root } of buildings) {
+        const { b, colliderStart, walkStart } = root.userData.quarterPose;
+        const delta = (b.facingYaw ?? b.yaw ?? 0) - (b.yaw ?? 0);
+        if (!delta) continue;
+        root.rotation.y = delta;
+        const center = new THREE.Vector3(b.x, 0, b.z);
+        root.position.copy(center).sub(center.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), delta));
+        root.updateWorldMatrix(true, true);
+        root.traverse(o => { if (!o.matrixWorldAutoUpdate) o.matrixWorld.copy(o.parent!.matrixWorld).multiply(o.matrix); });
+        // One body collider and roof per building; both follow the new footprint.
+        for (const bounds of [content.colliders[colliderStart], content.walkSurfaces[walkStart]]) {
+            const w = bounds.maxX - bounds.minX, d = bounds.maxZ - bounds.minZ;
+            const c = Math.abs(Math.cos(delta)), s = Math.abs(Math.sin(delta));
+            bounds.minX = b.x - (w * c + d * s) / 2; bounds.maxX = b.x + (w * c + d * s) / 2;
+            bounds.minZ = b.z - (d * c + w * s) / 2; bounds.maxZ = b.z + (d * c + w * s) / 2;
+        }
+    }
     return content;
 }

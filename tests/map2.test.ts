@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { normaliseRenderSettings } from '../src/game/renderSettings';
-import { paintChunkKey } from '../src/game/mapPreference';
+import { paintChunkKey, readMapSky, selectMap, saveMapSky } from '../src/game/mapPreference';
 import { buildingTierVisibility, distanceToBuilding } from '../src/game/buildingLod';
 test('original paint addresses stay compatible while Map 2 art is isolated', () => {
     assert.equal(paintChunkKey('original', '0:0'), '0:0');
@@ -26,8 +26,8 @@ test('height ranges remain ordered when users enter reversed cutoffs', () => {
 });
 import * as THREE from 'three';
 import { createCityChunkStream } from '../src/game/cityChunks';
-import { setRenderSettings, DEFAULT_RENDER_SETTINGS } from '../src/game/renderSettings';
-import { QUARTER_LAMPS, QUARTER_BUILDINGS, isInsideBuilding } from '../src/game/morningQuarterLayout';
+import { setRenderSettings, getRenderSettings, DEFAULT_RENDER_SETTINGS } from '../src/game/renderSettings';
+import { QUARTER_LAMPS, QUARTER_BUILDINGS, isInsideBuilding, quarterLayout, quarterFootprint } from '../src/game/morningQuarterLayout';
 import { BuildingHorizon } from '../src/game/buildingHorizon';
 import { CityAtmosphere, lampActivation } from '../src/game/cityAtmosphere';
 import { MorningQuarterAssets } from '../src/game/morningQuarterAssets';
@@ -127,6 +127,71 @@ test('premium buildings request valid glTF URLs once per style and preserve fall
     assert.equal(urls.length,1);
     assert.ok(urls[0].endsWith(`/${b.asset}.gltf`), urls[0]);
     assert.equal(fallback.visible,true);assets.dispose();
+});
+test('Map 2 adopts night once, enables 60 metre lamps, then remembers a later sky choice', () => {
+    const original=globalThis.localStorage;
+    const values=new Map<string,string>([['graffciti.map-sky.v1:map2','pastel'],['graffciti.map-render.v1:map2',JSON.stringify({renderScale:.7,fogDensity:.06,streetLights:false})]]);
+    globalThis.localStorage={getItem:(k:string)=>values.get(k)??null,setItem:(k:string,v:string)=>{values.set(k,v);},removeItem:(k:string)=>{values.delete(k);}} as Storage;
+    try {
+        assert.equal(readMapSky('map2'),'night');selectMap('map2');
+        const s=getRenderSettings();assert.equal(s.streetLights,true);assert.equal(s.lampActivationDistance,60);assert.equal(s.lampFadeDistance,0);assert.equal(s.renderScale,.7);
+        saveMapSky('map2','pastel');assert.equal(readMapSky('map2'),'pastel');
+    } finally {selectMap('original');globalThis.localStorage=original;setRenderSettings({...DEFAULT_RENDER_SETTINGS});}
+});
+test('night migration preserves the active Map 2 settings over an older map-switch snapshot',()=>{
+    const original=globalThis.localStorage,values=new Map<string,string>();
+    globalThis.localStorage={getItem:(k:string)=>values.get(k)??null,setItem:(k:string,v:string)=>{values.set(k,v);},removeItem:(k:string)=>{values.delete(k);}} as Storage;
+    try {
+        selectMap('map2');
+        setRenderSettings({renderScale:.8,fogDensity:.035});
+        values.set('graffciti.map-render.v1:map2',JSON.stringify({renderScale:.5,fogDensity:.08}));
+        values.delete('graffciti.map2-night.v1');
+        assert.equal(readMapSky('map2'),'night');
+        assert.equal(getRenderSettings().renderScale,.8);assert.equal(getRenderSettings().fogDensity,.035);
+    }finally{selectMap('original');globalThis.localStorage=original;setRenderSettings({...DEFAULT_RENDER_SETTINGS});}
+});
+test('fixed district lamps stay fully lit through 60m even with a shorter building detail range',()=>{
+    const scene=new THREE.Scene(),lights=new CityAtmosphere(scene,[[59,0],[60,0],[61,0]]);
+    try {
+        const settings=normaliseRenderSettings({streetLights:true,lampPools:true,lampActivationDistance:60,lampFadeDistance:0,detailDistance:40,heightLod:false,fogCull:false});
+        lights.update(0,0,[],settings,1000);
+        const bulbs=lights.root.children.find(o=>o instanceof THREE.InstancedMesh&&o.geometry.getAttribute('lampFade')&&o.geometry.parameters?.width===.6) as THREE.InstancedMesh;
+        const fade=bulbs.geometry.getAttribute('lampFade');assert.deepEqual([fade.getX(0),fade.getX(1),fade.getX(2)],[1,1,0]);assert.equal(lights.stats.lamps,2);assert.equal(lights.lights.length,4);
+    } finally {lights.dispose();}
+});
+test('central building entrances face into the social square',()=>{
+    const {content,assets}=quarterContent();
+    try {
+        for(const [name,wantX]of [['square-west',1],['square-east',-1]] as const){
+            const root=content.group.getObjectByName(name)!;
+            const forward=new THREE.Vector3(0,0,1).applyQuaternion(root.getWorldQuaternion(new THREE.Quaternion()));
+            // Original east asset has a +90° placement inside its root.
+            if(name==='square-east')forward.set(1,0,0).applyQuaternion(root.getWorldQuaternion(new THREE.Quaternion()));
+            assert.ok(forward.x*wantX>.99,name+' entrance points away from the square');
+        }
+    } finally {assets.dispose();}
+});
+test('turned buildings keep paint targets, body collisions and LOD footprints aligned',()=>{
+    const {content,assets}=quarterContent();
+    try {
+        for(const name of ['square-west','square-east','alley-nw','alley-sw']) {
+            const root=content.group.getObjectByName(name)!;
+            const wall=content.walls.find(w=>w.mesh.parent===root&&w.mesh.userData.fixtureSlab)!;
+            const expected=root.matrixWorld.clone().multiply(wall.mesh.matrix);
+            assert.ok(wall.mesh.matrixWorld.elements.every((v,i)=>Math.abs(v-expected.elements[i])<1e-8),'static paint matrix must follow its parent');
+            const point=wall.mesh.localToWorld(new THREE.Vector3());
+            assert.ok(pointToHit(wall,0,{x:point.x,y:point.y,z:point.z,pressure:1}));
+            const b=QUARTER_BUILDINGS.find(b=>b.id===name)!;
+            const size=quarterFootprint(b), proxy=quarterLayout(0,0).buildings.find(b=>b.id===name)!;
+            assert.equal(proxy.width,size.width);assert.equal(proxy.depth,size.depth);
+            const roof=content.walkSurfaces.find(s=>s.height===b.height&&Math.abs((s.minX+s.maxX)/2-b.x)<1e-6&&Math.abs((s.minZ+s.maxZ)/2-b.z)<1e-6)!;
+            assert.ok(roof);assert.ok(Math.abs(roof.maxX-roof.minX-size.width)<1e-6);assert.ok(Math.abs(roof.maxZ-roof.minZ-size.depth)<1e-6);
+            const body=content.colliders.find(c=>Math.abs((c.minX+c.maxX)/2-b.x)<1e-6&&Math.abs((c.minZ+c.maxZ)/2-b.z)<1e-6)!;
+            assert.ok(body);
+            if(name==='square-west') assert.ok(Math.abs(body.maxX-body.minX-6.3)<1e-6,'long side must turn east/west with the doorway');
+            if(name==='alley-nw') assert.ok(Math.abs(body.maxX-body.minX-14.4)<1e-6,'premium inset body must turn with its facade');
+        }
+    }finally{assets.dispose();}
 });
 test('permanent lamps cover accessible district ground and retain a bounded real-light pool', () => {
     assert.ok(QUARTER_LAMPS.length >= 50);

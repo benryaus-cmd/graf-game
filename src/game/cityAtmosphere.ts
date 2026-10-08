@@ -10,7 +10,7 @@ export function fogVisualDistance(settings:RenderSettings,camera?:THREE.Camera):
   return settings.fogStyle==='linear'?settings.fogFar*padding:settings.fogDensity>0?Math.sqrt(-Math.log(.002))/settings.fogDensity*padding:Infinity;
 }
 
-export function lampActivation(distance:number,settings:RenderSettings):number {const end=settings.lampActivationDistance,fade=Math.min(end,settings.lampFadeDistance);return distance>=end?0:fade>0?Math.min(1,(end-distance)/fade):1;}
+export function lampActivation(distance:number,settings:RenderSettings):number {const end=settings.lampActivationDistance,fade=Math.min(end,settings.lampFadeDistance);return distance>end?0:fade>0?Math.min(1,(end-distance)/fade):1;}
 
 export class CityAtmosphere {
   readonly root=new THREE.Group();readonly ground:THREE.Mesh;
@@ -41,7 +41,8 @@ export class CityAtmosphere {
     const changed=signature!==this.signature;
     const reach=settings.groundChunks*48;this.ground.visible=settings.groundExtension;this.ground.scale.set(reach*2,reach*2,1);this.ground.position.x=cx*48;this.ground.position.z=cz*48;
     (this.ground.material as THREE.MeshStandardMaterial).color.set(settings.groundColor);this.stats.groundReach=reach;
-    const limit=Math.min(settings.heightLod?Math.max(settings.shortDetailDistance,settings.tallDetailDistance):settings.detailDistance,fogVisualDistance(settings,camera));
+    const detailReach=settings.heightLod?Math.max(settings.shortDetailDistance,settings.tallDetailDistance):settings.detailDistance;
+    const limit=Math.min(this.layout?Math.max(detailReach,settings.lampActivationDistance):detailReach,fogVisualDistance(settings,camera));
     if(changed||now>=this.nextUpdate){
       this.signature=signature;this.nextUpdate=now+200;this.extra=[];const matrix=new THREE.Matrix4(),rotation=new THREE.Quaternion();let i=0;
       const positions=this.layout??Array.from({length:9},(_,k)=>[cx+Math.floor(k/3)-1,cz+k%3-1]).flatMap(([bx,bz])=>[[-8,0],[8,0],[0,-8],[0,8]].map(([ox,oz])=>[bx*48+ox,bz*48+oz]));

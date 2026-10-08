@@ -31,7 +31,7 @@ function canvasFixture() {
   let path: unknown[] = [];
   const context: any = {
     canvas, draws: [], globalAlpha: 1, globalCompositeOperation: 'source-over',
-    save() {}, restore() {}, setTransform() {}, fillRect() {}, fillText() {}, measureText(value: string) { return { width: value.length * 12 }; },
+    save() {}, restore() {}, setTransform() {}, fillRect() {}, rect() {}, clip() {}, strokeRect() {}, fillText() {}, measureText(value: string) { return { width: value.length * 12 }; },
     beginPath() { path = []; },
     moveTo(...args: number[]) { path.push(['move', ...args]); },
     lineTo(...args: number[]) { path.push(['line', ...args]); },
