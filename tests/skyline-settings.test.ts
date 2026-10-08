@@ -11,7 +11,7 @@ test('visual experiments support extended ranges and migrate missing skyline pre
 });
 
 test('tall distant buildings have flat instances and become plain boxes nearby',()=>{
- const scene=new THREE.Scene(),horizon=new CityHorizon(scene);setRenderSettings({...DEFAULT_RENDER_SETTINGS,horizonDistance:96,skylineDistance:240});
+ const scene=new THREE.Scene(),horizon=new CityHorizon(scene);setRenderSettings({...DEFAULT_RENDER_SETTINGS,heightLod:false,horizonDistance:96,skylineDistance:240});
  try{
   for(let i=0;i<100;i++)horizon.update(0,0,new Set());
   const planes:THREE.InstancedMesh[]=[];scene.traverse(o=>{if(o instanceof THREE.InstancedMesh)planes.push(o);});
@@ -22,7 +22,7 @@ test('tall distant buildings have flat instances and become plain boxes nearby',
 });
 
 test('a visible detailed tower masks its flat silhouette even beyond the plain-box range',()=>{
- const scene=new THREE.Scene(),horizon=new CityHorizon(scene);setRenderSettings({...DEFAULT_RENDER_SETTINGS,horizonDistance:48,detailDistance:96,skylineDistance:480});
+ const scene=new THREE.Scene(),horizon=new CityHorizon(scene);setRenderSettings({...DEFAULT_RENDER_SETTINGS,heightLod:false,horizonDistance:48,detailDistance:96,skylineDistance:480});
  try{
   for(let i=0;i<50;i++)horizon.update(-200,-156,new Set(['-3:-2']));
   const flat=scene.getObjectByName('city-flat-landmarks') as THREE.InstancedMesh;
@@ -33,7 +33,7 @@ test('a visible detailed tower masks its flat silhouette even beyond the plain-b
 });
 
 test('plain proxies cover the player-side edge of the planned ring',()=>{
- const scene=new THREE.Scene(),horizon=new CityHorizon(scene);setRenderSettings({...DEFAULT_RENDER_SETTINGS,horizonDistance:68,skylineDistance:240,fogCull:false});
+ const scene=new THREE.Scene(),horizon=new CityHorizon(scene);setRenderSettings({...DEFAULT_RENDER_SETTINGS,heightLod:false,horizonDistance:68,skylineDistance:240,fogCull:false});
  try{
   for(let i=0;i<100;i++)horizon.update(23.5,0,new Set());
   const block=horizon.root.children.find(root=>root instanceof THREE.Group&&root.children.some(mesh=>{
@@ -44,7 +44,7 @@ test('plain proxies cover the player-side edge of the planned ring',()=>{
 });
 
 test('flat replacements start two metres before the actual 3D end, including wider detail range',()=>{
- const scene=new THREE.Scene(),horizon=new CityHorizon(scene);setRenderSettings({...DEFAULT_RENDER_SETTINGS,horizonDistance:68,detailDistance:80,skylineDistance:240,skylineMinHeight:5,fogCull:false});
+ const scene=new THREE.Scene(),horizon=new CityHorizon(scene);setRenderSettings({...DEFAULT_RENDER_SETTINGS,heightLod:false,horizonDistance:68,detailDistance:80,skylineDistance:240,skylineMinHeight:5,fogCull:false});
  try{
   for(let i=0;i<100;i++)horizon.update(0,0,new Set());
   const flat=scene.getObjectByName('city-flat-landmarks') as THREE.InstancedMesh,matrix=new THREE.Matrix4();

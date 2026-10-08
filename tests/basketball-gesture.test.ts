@@ -17,22 +17,22 @@ test('final flick uses recent velocity after arbitrary preparation and holding',
   assert.ok(a);assert.deepEqual(a,b);
   assert.ok(a.dy>0 && a.durationMs<=140);
 });
-test('moving to a static position then lifting cannot shoot',()=>{
+test('moving to a static position then lifting releases a zero velocity drop',()=>{
   const tracker=new BasketballFlickTracker({x:.5,y:.8},0,384,606);
   tracker.move({x:.5,y:.5},100);
-  assert.equal(tracker.release({x:.5,y:.5},300),null);
+  assert.deepEqual(tracker.release({x:.5,y:.5},300),{dx:0,dy:0,durationMs:140});
 });
-test('tap, small movement, sideways or downward release cannot shoot',()=>{
+test('tap, small movement, sideways and downward release all produce a throw or drop',()=>{
   for(const end of [{x:.5,y:.8},{x:.5,y:.77},{x:.9,y:.75},{x:.5,y:.95}]) {
     const tracker=new BasketballFlickTracker({x:.5,y:.8},0,384,606);
-    tracker.move(end,100);assert.equal(tracker.release(end,110),null);
+    tracker.move(end,100);assert.ok(tracker.release(end,110));
   }
 });
-test('direction reversal resets the final upward stroke requirement',()=>{
+test('direction reversal forgets earlier preparation but keeps the small final release motion',()=>{
   const tracker=new BasketballFlickTracker({x:.5,y:.8},0,384,606);
   tracker.move({x:.5,y:.4},80);tracker.move({x:.5,y:.7},120);
   tracker.move({x:.5,y:.66},160);
-  assert.equal(tracker.release({x:.5,y:.66},170),null);
+  const release=tracker.release({x:.5,y:.66},170);assert.ok(release.dy>0&&release.dy<.2);
 });
 test('a large gradual final flick retains usable uncapped velocity',()=>{
   const tracker=new BasketballFlickTracker({x:.5,y:.8},0,384,606);
@@ -53,7 +53,7 @@ test('a stationary preparation gap requires a fresh full upward flick',()=>{
   tracker.move({x:.5,y:.9-150/606},50);
   tracker.move({x:.5,y:.9-150/606},2050);
   tracker.move({x:.5,y:.9-170/606},2100);
-  assert.equal(tracker.release({x:.5,y:.9-170/606},2100),null,'old preparation cannot qualify a tiny release');
+  const release=tracker.release({x:.5,y:.9-170/606},2100);assert.ok(release.dy>0&&release.dy<.1,'small final release survives without inheriting old preparation');
   const full=new BasketballFlickTracker({x:.5,y:.9},0,384,606);
   full.move({x:.5,y:.9-150/606},50);
   full.move({x:.5,y:.9-150/606},2050);

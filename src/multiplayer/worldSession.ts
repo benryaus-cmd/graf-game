@@ -538,7 +538,7 @@ export class WorldMultiplayerSession {
     if (!this.connection.connected || this.connection.protocol !== 2 || !targetUsername || !canManageRole(ownRole, this.directory.roleForUsername(targetUsername), role)) return false;
     return this.sendWorld({ type: 'admin_set_role', targetUsername, role });
   }
-  join(displayName: string, roomId = DEFAULT_ROOM_ID, identity?: PlayerIdentity): void {
+  join(displayName: string, roomId = DEFAULT_ROOM_ID, identity?: PlayerIdentity, expectedWorldId?: string): void {
     this.resetClientTools();
     this.profiles = new PlayerDirectory();
     this.ownIdentity = { username: identity?.username?.replace(/^@/, '') ?? '', nickName: identity?.nickName || displayName };
@@ -551,7 +551,7 @@ export class WorldMultiplayerSession {
     this.paint.interrupted(); this.artworks.interrupted(); this.players.clear(); this.ownSpeech.dispose(); this.playerSync.reset(); this.serverPlayerCount = null;
     this.flattenPrepareGeneration++; this.pendingFlatten = null;
     this.directory.clear(); this.spatialEnabled = false;
-    this.connection.connect(displayName, roomId, identity, this.world.playerPosition.toArray());
+    this.connection.connect(displayName, roomId, identity, this.world.playerPosition.toArray(), expectedWorldId);
   }
   leave(): void {
     this.resetClientTools();

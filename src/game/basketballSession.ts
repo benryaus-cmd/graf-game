@@ -44,7 +44,7 @@ const validGesture = (value: unknown): value is BasketballGesture => {
   if (!value || typeof value !== 'object') return false;
   const g = value as Record<string, unknown>;
   return typeof g.dx === 'number' && Number.isFinite(g.dx) && Math.abs(g.dx) <= 2
-    && typeof g.dy === 'number' && Number.isFinite(g.dy) && g.dy > 0 && g.dy <= 2
+    && typeof g.dy === 'number' && Number.isFinite(g.dy) && g.dy >= 0 && g.dy <= 2
     && typeof g.durationMs === 'number' && Number.isFinite(g.durationMs) && g.durationMs > 0 && g.durationMs <= 2000;
 };
 /** Parse JSON's already-decoded value; the adapter must enforce messageBytes before JSON.parse. */

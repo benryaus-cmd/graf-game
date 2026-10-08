@@ -3,12 +3,10 @@ import type { BasketballGesture } from './basketballPhysics';
 export interface BasketballScreenPoint {x:number;y:number}
 interface MotionSample extends BasketballScreenPoint {at:number}
 
-/** Preparation is free movement. Only the last upward stroke and recent velocity launch. */
+/** Preparation is free movement; normal release always throws using recent velocity. */
 export class BasketballFlickTracker {
   private samples: MotionSample[];
   private lastMotionAt = -Infinity;
-  private strokeX = 0;
-  private strokeY = 0;
   private readonly shortEdge:number;
   constructor(point:BasketballScreenPoint,at:number,private width:number,private height:number) {
     this.samples=[{...point,at}];this.shortEdge=Math.min(width,height);
@@ -18,13 +16,12 @@ export class BasketballFlickTracker {
     const dx=(point.x-previous.x)*this.width,dy=(previous.y-point.y)*this.height;
     if(Math.hypot(dx,dy)>.01) {
       if(at-this.lastMotionAt>80) {
-        this.strokeX=0;this.strokeY=0;
         // A pause is preparation, not part of the next flick. Keep its stationary endpoint.
         this.samples=[{...previous,at:Math.max(previous.at,at-80)}];
       }
       this.lastMotionAt=at;
-      if(dy>0 && dy>Math.abs(dx)) {this.strokeX+=dx;this.strokeY+=dy;}
-      else {this.strokeX=0;this.strokeY=0;this.samples=[];}
+      // Forget earlier preparation when the gesture changes away from an upward flick.
+      if(dy<=0 || dy<=Math.abs(dx))this.samples=[{...point,at}];
     }
     this.samples.push({...point,at});
     // Retain one sample preceding the velocity window for boundary interpolation.
@@ -50,10 +47,8 @@ export class BasketballFlickTracker {
     const bound=Math.max(1,Math.abs(rawDx),rawDy);
     return {dx:rawDx/bound,dy:rawDy/bound,durationMs:Math.max(40,at-start.at)};
   }
-  release(point:BasketballScreenPoint,at:number):BasketballGesture|null {
+  release(point:BasketballScreenPoint,at:number):BasketballGesture {
     this.move(point,at);
-    const gesture=this.preview(at);
-    if(!gesture || this.strokeY<this.shortEdge*.25 || this.strokeY<=Math.abs(this.strokeX) || gesture.dy<=Math.abs(gesture.dx))return null;
-    return gesture;
+    return this.preview(at) ?? {dx:0,dy:0,durationMs:140};
   }
 }

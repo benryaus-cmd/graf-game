@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { basketballFlickSpeed, type BasketballGesture } from '@/game/basketballPhysics';
+import { BASKETBALL_MAX_FLICK_SPEED, basketballFlickSpeed, type BasketballGesture } from '@/game/basketballPhysics';
 import type { BasketballView } from '@/game/basketballGame';
 import { BASKETBALL_COURT } from '@/game/basketballCourt';
 import { elementPointerIsRotated, elementPointerPoint } from '@/game/pointerCoordinates';
@@ -32,7 +32,7 @@ export function attachBasketballFlickPad(pad: HTMLElement, shoot: (gesture: Bask
     if(previewTimer!==undefined)clearTimeout(previewTimer);
     const preview=gesture.tracker.preview(now);
     const speed=preview ? basketballFlickSpeed(preview) : 0;
-    pad.style.setProperty('--basketball-power', `${Math.max(0,Math.min(100,speed/9.1*100))}%`);
+    pad.style.setProperty('--basketball-power', `${Math.max(0,Math.min(100,speed/BASKETBALL_MAX_FLICK_SPEED*100))}%`);
     const angle=preview && preview.dy>0 ? Math.atan2(preview.dx,preview.dy) : 0;
     pad.style.setProperty('--basketball-aim', `${Math.max(0,Math.min(100,50+angle/(Math.PI/2)*50))}%`);
     if(feedback)feedback.textContent=preview && preview.dy>Math.abs(preview.dx) ? 'Flick and release' : 'Move to prepare';
@@ -66,7 +66,7 @@ export function attachBasketballFlickPad(pad: HTMLElement, shoot: (gesture: Bask
     const point=pointFor(event),launch=gesture.tracker.release(point,performance.now());
     follow(point);
     // Launch before returning the held ball home: origin is its actual release position.
-    try {if(launch)shoot(launch);} finally {cancel();}
+    try {shoot(launch);} finally {cancel();}
   };
   const cancelled = (event: PointerEvent) => {if(event.pointerId===gesture?.id) cancel();};
   const hidden = () => {if(document.visibilityState==='hidden') cancel();};

@@ -6,6 +6,9 @@ import { basketballFlickSpeed, createBall, launchFromFlick, stepBall, type ShotL
 import { QUARTER_BUILDINGS, QUARTER_LAMPS, quarterFootprint } from '../src/game/morningQuarterLayout';
 import { MorningQuarterAssets } from '../src/game/morningQuarterAssets';
 import { prepareQuarterChunk } from '../src/game/morningQuarterContent';
+import { flick, flickDy } from './basketball-calibration';
+
+const releaseOrigin:[number,number,number]=[-52.725,2.6,-34.837];
 
 const falling = (x = -53, y = 3.5, velocity: [number, number, number] = [0,-2,0]): ShotLaunch => ({courtId:'map2-basketball',shotId:'test-shot',spotId:2,version:1,origin:[x,y,BASKETBALL_COURT.rim.center[2]],velocity});
 // These tests catch scoring by proximity, missing radius clearance, and reversed crossings.
@@ -40,14 +43,14 @@ test('ground, backboard and rim contacts change real velocities', () => {
  const rim=createBall(falling(-53+BASKETBALL_COURT.rim.radius,3.3)); stepBall(rim,.2); assert.equal(rim.contacted,true); assert.equal(rim.scored,false);
 });
 test('valid flicks control aim and strength without random or autoaim outcomes', () => {
- assert.equal(launchFromFlick(2,{dx:0,dy:.01,durationMs:200}),null);
+ assert.ok(launchFromFlick(2,{dx:0,dy:.01,durationMs:200}));
  for(const g of [{dx:0,dy:-.5,durationMs:450},{dx:NaN,dy:.5,durationMs:450},{dx:0,dy:.5,durationMs:0},{dx:0,dy:.5,durationMs:NaN}])assert.equal(launchFromFlick(2,g),null);
  assert.equal(launchFromFlick(99,{dx:0,dy:.2884,durationMs:140}),null);
- const good=launchFromFlick(2,{dx:0,dy:.2884,durationMs:140})!;
+ const good=launchFromFlick(2,flick(7.7),releaseOrigin)!;
  assert.ok(good); assert.equal(stepBall(createBall(good),3)?.outcome,'make');
- const weak=launchFromFlick(2,{dx:0,dy:.217,durationMs:140})!; assert.equal(stepBall(createBall(weak),3)?.outcome,'miss');
- const sideways=launchFromFlick(2,{dx:.25,dy:.2884,durationMs:140})!; assert.equal(stepBall(createBall(sideways),3)?.outcome,'miss');
- const fast=launchFromFlick(2,{dx:0,dy:.54,durationMs:100})!; assert.notDeepEqual(good.velocity,fast.velocity); assert.equal(stepBall(createBall(fast),3)?.outcome,'miss');
+ const weak=launchFromFlick(2,flick(4),releaseOrigin)!; assert.equal(stepBall(createBall(weak),3)?.outcome,'miss');
+ const sideways=launchFromFlick(2,{...flick(7.7),dx:.25},releaseOrigin)!; assert.equal(stepBall(createBall(sideways),3)?.outcome,'miss');
+ const fast=launchFromFlick(2,{dx:.7,dy:.54,durationMs:100},releaseOrigin)!; assert.notDeepEqual(good.velocity,fast.velocity); assert.equal(stepBall(createBall(fast),3)?.outcome,'miss');
  // Same gesture normalized against the short viewport dimension in portrait and landscape.
  const portrait=launchFromFlick(2,{dx:19.5/390,dy:210.6/390,durationMs:450})!;
  const landscape=launchFromFlick(2,{dx:18/360,dy:194.4/360,durationMs:450})!;
@@ -72,7 +75,9 @@ test('all five playable arc marks clear real building, table, lamp and support c
  for(const c of step.value.colliders)assert.ok(x<c.minX-.4||x>c.maxX+.4||z<c.minZ-.4||z>c.maxZ+.4,`spot ${spot.id} collider ${JSON.stringify(c)}`);
  for(const b of QUARTER_BUILDINGS){const f=quarterFootprint(b);assert.ok(Math.abs(x-b.x)>f.width/2+.4||Math.abs(z-b.z)>f.depth/2+.4);}
  for(const [lx,lz]of QUARTER_LAMPS)assert.ok(Math.hypot(x-lx,z-lz)>.6);
- const shot=launchFromFlick(spot.id,{dx:0,dy:.2884,durationMs:140})!; assert.equal(stepBall(createBall(shot),3)?.outcome,'make',`spot ${spot.id}`);
+ const distance=Math.hypot(BASKETBALL_COURT.rim.center[0]-x,BASKETBALL_COURT.rim.center[2]-z);
+ const origin:[number,number,number]=[x+(BASKETBALL_COURT.rim.center[0]-x)/distance*.25,2.6,z+(BASKETBALL_COURT.rim.center[2]-z)/distance*.25];
+ const shot=launchFromFlick(spot.id,flick(7.7),origin)!; assert.equal(stepBall(createBall(shot),3)?.outcome,'make',`spot ${spot.id}`);
  }
  }finally{assets.dispose();material.dispose();globalThis.document=priorDocument;}
 });
@@ -96,8 +101,8 @@ test('fast and glancing rim impacts bounce instead of tunnelling or scoring earl
 });
 
 test('ordinary flicks can bank off the board or bounce off the rim into a basket', () => {
- for (const [dy, prop] of [[.28084,'rim'],[.3052,'board']] as const) {
-  const ball=createBall(launchFromFlick(2,{dx:0,dy,durationMs:140})!);
+ for (const [speed, prop] of [[7.49,'rim'],[8.05,'board']] as const) {
+  const ball=createBall(launchFromFlick(2,{dx:0,dy:flickDy(speed),durationMs:140},releaseOrigin)!);
   let contactedAt:[number,number,number]|null=null, firstVelocity:[number,number,number]|null=null, made;
   for(let i=0;i<360;i++) {
    const wasContacted=ball.contacted;
@@ -112,11 +117,11 @@ test('ordinary flicks can bank off the board or bounce off the rim into a basket
 });
 
 
-test('release velocity controls strength with exactly seventy percent of the former maximum', () => {
- assert.equal(basketballFlickSpeed({dy:1,durationMs:40}),13*.7);
- assert.equal(basketballFlickSpeed({dy:.28,durationMs:140}),8);
- assert.equal(basketballFlickSpeed({dy:.14,durationMs:140}),4);
- assert.equal(basketballFlickSpeed({dy:.56,durationMs:280}),8);
+test('release velocity controls strength with a softer ceiling and broad low power', () => {
+ assert.equal(basketballFlickSpeed({dy:1,durationMs:40}),8.1);
+ assert.ok(Math.abs(basketballFlickSpeed(flick(8))-8)<1e-12);
+ assert.ok(Math.abs(basketballFlickSpeed(flick(4))-4)<1e-12);
+ assert.equal(basketballFlickSpeed({dy:.28,durationMs:140}),basketballFlickSpeed({dy:.56,durationMs:280}));
  const a=launchFromFlick(2,{dx:.03,dy:.3,durationMs:150})!;
  const b=launchFromFlick(2,{dx:.06,dy:.6,durationMs:300})!;
  assert.deepEqual(a.velocity,b.velocity,'same final direction and speed gives same launch');
@@ -127,4 +132,17 @@ test('release velocity controls strength with exactly seventy percent of the for
  const origin:[number,number,number]=[-53.1,2,-36];
  assert.deepEqual(launchFromFlick(2,{dx:0,dy:.3,durationMs:150},origin)!.origin,origin);
  assert.equal(launchFromFlick(2,{dx:0,dy:.3,durationMs:150},[NaN,2,-36]),null);
+});
+
+
+test('grabbed ball normal releases support drops and approachable low power with a lower maximum',()=>{
+ const origin:[number,number,number]=[-53,2.4,-35];
+ const drop=launchFromFlick(2,{dx:0,dy:0,durationMs:140},origin)!;
+ assert.ok(drop);assert.deepEqual(drop.velocity,[0,0,0]);
+ const ball=createBall(drop);stepBall(ball,.1);assert.ok(ball.position[1]<origin[1]);
+ assert.equal(basketballFlickSpeed({dy:1,durationMs:40}),8.1);
+ const speeds=[0,50,100,200,350,500,750,1000].map(px=>basketballFlickSpeed({dy:px*.14/(384*.65),durationMs:140}));
+ assert.equal(speeds[0],0);assert.ok(speeds[2]<1.5);assert.ok(speeds[4]>4&&speeds[4]<5);
+ assert.ok(speeds[6]>7.5&&speeds[6]<7.8);assert.ok(speeds[7]<8.1);
+ assert.ok(speeds.every((v,i)=>i===0||v>speeds[i-1]));
 });

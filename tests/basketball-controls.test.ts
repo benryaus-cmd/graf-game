@@ -101,7 +101,7 @@ test('only the visible ball starts a grab; it follows finger with original grab 
     now+=500;f.canvas.dispatchEvent(logicalPointer('pointermove',.6,.9));
     assert.ok(Math.abs(positions.at(-1)!.x-.58)<1e-10);assert.ok(Math.abs(positions.at(-1)!.y-.9)<1e-10);
     assert.equal(shots.length,0);now+=100;
-    f.canvas.dispatchEvent(logicalPointer('pointerup',.6,.9));assert.equal(shots.length,0);assert.equal(positions.at(-1),null);
+    f.canvas.dispatchEvent(logicalPointer('pointerup',.6,.9));assert.equal(shots.length,1);assert.equal(positions.at(-1),null);
   } finally {stop();restore();}
 });
 test('native and rotated ball grabs produce identical final flicks after a long preparation',t=>{
@@ -121,7 +121,7 @@ test('native and rotated ball grabs produce identical final flicks after a long 
     assert.equal(shots[0].durationMs,140);assert.ok(Math.abs(releases[0].y-(.85-150/606))<1e-10);
   } finally {restore();}
 });
-test('static lift after moving upward, short taps, sideways and downward movements never shoot',t=>{
+test('every normal release after grabbing throws exactly once, including weak and static lifts',t=>{
   const restore=globals(),f=padFixture(),shots:any[]=[];let now=0;t.mock.method(performance,'now',()=>now);
   const stop=attachBasketballFlickPad(f.canvas,g=>shots.push(g),{target:()=>target,move:()=>{}});
   try {
@@ -130,7 +130,9 @@ test('static lift after moving upward, short taps, sideways and downward movemen
       f.canvas.dispatchEvent(logicalPointer('pointermove',x,y));now+=delay;
       f.canvas.dispatchEvent(logicalPointer('pointerup',x,y));now+=1000;
     }
-    assert.equal(shots.length,0);
+    assert.equal(shots.length,5);
+    assert.equal(shots[0].dy,0);assert.equal(shots[4].dy,0);
+    f.canvas.dispatchEvent(logicalPointer('pointerup',.4,.3));assert.equal(shots.length,5);
   } finally {stop();restore();}
 });
 test('UI targets, secondary pointers and nonexistent balls cannot start grabs',()=>{
@@ -178,11 +180,11 @@ test('holding the grabbed ball clears recent velocity feedback without storing a
   const restore=globals(),f=padFixture(),values=new Map<string,string>(),label={textContent:''};
   let now=0;t.mock.method(performance,'now',()=>now);t.mock.timers.enable({apis:['setTimeout']});
   (f.canvas as any).style={setProperty:(k:string,v:string)=>values.set(k,v)};(f.canvas as any).querySelector=()=>label;
-  const stop=attachBasketballFlickPad(f.canvas,()=>assert.fail('stationary lift must not shoot'),{target:()=>target,move:()=>{}});
+  const shots:any[]=[];const stop=attachBasketballFlickPad(f.canvas,g=>shots.push(g),{target:()=>target,move:()=>{}});
   try {
     f.canvas.dispatchEvent(logicalPointer('pointerdown',.4,.75));now=100;
     f.canvas.dispatchEvent(logicalPointer('pointermove',.4,.5));assert.ok(Number.parseFloat(values.get('--basketball-power')!)>0);
     now+=81;t.mock.timers.tick(81);assert.equal(values.get('--basketball-power'),'0%');assert.match(label.textContent,/prepare/);
-    f.canvas.dispatchEvent(logicalPointer('pointerup',.4,.5));
+    f.canvas.dispatchEvent(logicalPointer('pointerup',.4,.5));assert.equal(shots.length,1);assert.equal(shots[0].dy,0);
   } finally {stop();restore();}
 });

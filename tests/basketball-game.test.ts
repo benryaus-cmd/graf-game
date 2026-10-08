@@ -4,6 +4,8 @@ import * as THREE from 'three';
 import { BasketballGame, BASKETBALL_BALL_POOL_SIZE } from '../src/game/basketballGame';
 import { createBall, launchFromFlick, stepBall } from '../src/game/basketballPhysics';
 import { BASKETBALL_COURT } from '../src/game/basketballCourt';
+import { flickDy } from './basketball-calibration';
+import { BasketballFlickTracker } from '../src/game/basketballGesture';
 
 function setup() {
   let now = 0;
@@ -34,7 +36,7 @@ test('overlapping miss then make keeps the newest result and chronological strea
   game.enter(2);
   game.shoot({ dx: 0, dy: .14, durationMs: 140 });
   setNow(500);
-  game.shoot({ dx: 0, dy: .273, durationMs: 140 });
+  game.shoot({ dx: 0, dy: flickDy(7.8), durationMs: 140 });
   for (let now = 600; now <= 3200; now += 100) setNow(now);
   assert.deepEqual(results, ['make', 'miss']);
   assert.equal(game.getSnapshot().attempts, 2);
@@ -64,7 +66,7 @@ test('a swish gives a distinct restrained basket response using the same existin
     game.dispose();
     return { color, netScale };
   };
-  const swish = response(.273, true), contactMake = response(.2695, false);
+  const swish = response(flickDy(7.8), true), contactMake = response(flickDy(7.7), false);
   assert.notEqual(swish.color, contactMake.color);
   assert.ok(swish.netScale > contactMake.netScale);
 });
@@ -133,7 +135,7 @@ test('idle court transforms remain finite before the first make and after feedba
   setNow(100);
   assertFiniteTransforms();
   game.enter(2);
-  game.shoot({ dx: 0, dy: .273, durationMs: 140 });
+  game.shoot({ dx: 0, dy: flickDy(7.8), durationMs: 140 });
   setNow(1900);
   assert.equal(game.getSnapshot().makes, 1);
   setNow(1950);
@@ -149,7 +151,7 @@ test('leaving clears live shots and feedback without late results or releasing p
   const results: string[] = [];
   game.onResult = result => results.push(result.outcome);
   game.enter(2);
-  const launch = game.shoot({ dx: 0, dy: .273, durationMs: 140 })!;
+  const launch = game.shoot({ dx: 0, dy: flickDy(7.8), durationMs: 140 })!;
   const before = resources(world.scene);
   game.leave();
   world.scene.traverse(object => {
@@ -162,7 +164,7 @@ test('leaving clears live shots and feedback without late results or releasing p
   assert.equal(game.receiveShot(launch), false);
   assert.deepEqual(resources(world.scene), before);
   game.enter(2);
-  game.shoot({ dx: 0, dy: .273, durationMs: 140 });
+  game.shoot({ dx: 0, dy: flickDy(7.8), durationMs: 140 });
   setNow(5800);
   assert.equal(game.getSnapshot().makes, 1);
   game.leave();
@@ -182,7 +184,7 @@ test('made shots report one bucket and a miss resets the streak while all effect
   const results: string[] = [];
   game.onResult = result => results.push(result.outcome);
   game.enter(2);
-  game.shoot({ dx: 0, dy: .273, durationMs: 140 });
+  game.shoot({ dx: 0, dy: flickDy(7.8), durationMs: 140 });
   setNow(1800);
   assert.equal(game.getSnapshot().makes, 1);
   assert.equal(game.getSnapshot().streak, 1);
@@ -343,7 +345,7 @@ test('grab target matches the visible ball and follows preparation at every mark
 });
 
 
-test('a deliberate 146 to 230 pixel release stroke can make from all five marks in either phone orientation', () => {
+test('a deliberate 225 pixel release stroke can make from all five marks in either phone orientation', () => {
  for(const [width,height] of [[384,606],[606,384]]) {
   const camera=new THREE.PerspectiveCamera(76,width/height,.1,1200);
   const world={scene:new THREE.Scene(),camera,playerPosition:new THREE.Vector3(),playerYaw:0,playerPitch:0,cameraMode:'first' as const};
@@ -351,15 +353,19 @@ test('a deliberate 146 to 230 pixel release stroke can make from all five marks 
   for(const spot of BASKETBALL_COURT.spots) {
    game.enter(spot.id);
    // Grab, reposition for preparation, then travel a substantial upward stroke.
-   game.setHeldBallScreenPosition({x:.5,y:.78});
-   const pixels=(.78-.4)*height;
-   assert.ok(pixels>=145.9&&pixels<=231);
-   const velocityPixels=474.24;
+   const pixels=225;
+   game.setHeldBallScreenPosition({x:.5,y:.4+pixels/height});
+   const velocityPixels=flickDy(7.6)/.14*(384*.65);
    const totalDurationMs=pixels/velocityPixels*1000;
-   assert.ok(totalDurationMs>=300);
+   assert.ok(totalDurationMs>=250&&totalDurationMs<=400);
+   const tracker=new BasketballFlickTracker({x:.5,y:.4+pixels/height},0,width,height);
+   for(let sample=1;sample<=10;sample++) {
+    const point={x:.5,y:.4+pixels/height*(1-sample/10)};
+    tracker.move(point,totalDurationMs*sample/10);
+    game.setHeldBallScreenPosition(point);
+   }
    game.setHeldBallScreenPosition({x:.5,y:.4});
-   const finalWindowMs=140;
-   const shot=game.shoot({dx:0,dy:velocityPixels*(finalWindowMs/1000)/(.65*Math.min(width,height)),durationMs:finalWindowMs})!;
+   const shot=game.shoot(tracker.release({x:.5,y:.4},totalDurationMs))!;
    assert.ok(Math.abs(Math.hypot(...shot.velocity)-7.6)<1e-10);
    assert.equal(stepBall(createBall(shot),3)?.outcome,'make',`mark ${spot.id} at ${width}x${height}`);
    game.setHeldBallScreenPosition(null);

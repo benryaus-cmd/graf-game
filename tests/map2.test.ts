@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { normaliseRenderSettings } from '../src/game/renderSettings';
-import { paintChunkKey, readMapSky, selectMap, saveMapSky } from '../src/game/mapPreference';
+import { paintChunkKey, readMapSky, selectMap, saveMapSky, readMapChoice, canJoinMultiplayer, NIGHT_PRESET } from '../src/game/mapPreference';
 import { buildingTierVisibility, distanceToBuilding } from '../src/game/buildingLod';
 test('original paint addresses stay compatible while Map 2 art is isolated', () => {
     assert.equal(paintChunkKey('original', '0:0'), '0:0');
@@ -128,17 +128,28 @@ test('premium buildings request valid glTF URLs once per style and preserve fall
     assert.ok(urls[0].endsWith(`/${b.asset}.gltf`), urls[0]);
     assert.equal(fallback.visible,true);assets.dispose();
 });
-test('Map 2 adopts night once, enables 60 metre lamps, then remembers a later sky choice', () => {
+test('Town is the default main world, with Original an explicit local-only choice', () => {
+    assert.equal(readMapChoice(null), 'map2');
+    assert.equal(readMapChoice('bad-value'), 'map2');
+    assert.equal(readMapChoice('map2'), 'map2');
+    assert.equal(readMapChoice('original'), 'original');
+    assert.equal(canJoinMultiplayer('map2'), true);
+    assert.equal(canJoinMultiplayer('original'), false);
+    assert.deepEqual(NIGHT_PRESET, DEFAULT_RENDER_SETTINGS);
+});
+test('Town preserves existing sky and lighting without rerunning old default migrations', () => {
     const original=globalThis.localStorage;
     const values=new Map<string,string>([['graffciti.map-sky.v1:map2','pastel'],['graffciti.map-render.v1:map2',JSON.stringify({renderScale:.7,fogDensity:.06,streetLights:false})]]);
     globalThis.localStorage={getItem:(k:string)=>values.get(k)??null,setItem:(k:string,v:string)=>{values.set(k,v);},removeItem:(k:string)=>{values.delete(k);}} as Storage;
     try {
-        assert.equal(readMapSky('map2'),'night');selectMap('map2');
-        const s=getRenderSettings();assert.equal(s.streetLights,true);assert.equal(s.lampActivationDistance,60);assert.equal(s.lampFadeDistance,0);assert.equal(s.renderScale,.7);
+        selectMap('original');
+        values.set('graffciti.map-render.v1:map2',JSON.stringify({renderScale:.7,fogDensity:.06,streetLights:false}));
+        assert.equal(readMapSky('map2'),'pastel');selectMap('map2');
+        const s=getRenderSettings();assert.equal(s.streetLights,false);assert.equal(s.lampActivationDistance,60);assert.equal(s.lampFadeDistance,0);assert.equal(s.renderScale,.7);
         saveMapSky('map2','pastel');assert.equal(readMapSky('map2'),'pastel');
     } finally {selectMap('original');globalThis.localStorage=original;setRenderSettings({...DEFAULT_RENDER_SETTINGS});}
 });
-test('night migration preserves the active Map 2 settings over an older map-switch snapshot',()=>{
+test('reading Town sky preserves active settings over an older map-switch snapshot',()=>{
     const original=globalThis.localStorage,values=new Map<string,string>();
     globalThis.localStorage={getItem:(k:string)=>values.get(k)??null,setItem:(k:string,v:string)=>{values.set(k,v);},removeItem:(k:string)=>{values.delete(k);}} as Storage;
     try {
@@ -150,16 +161,16 @@ test('night migration preserves the active Map 2 settings over an older map-swit
         assert.equal(getRenderSettings().renderScale,.8);assert.equal(getRenderSettings().fogDensity,.035);
     }finally{selectMap('original');globalThis.localStorage=original;setRenderSettings({...DEFAULT_RENDER_SETTINGS});}
 });
-test('existing Map 2 adopts twelve lights once while later count and range choices persist',()=>{
+test('existing Town custom light count and range choices persist across map switches',()=>{
  const original=globalThis.localStorage,values=new Map<string,string>([['graffciti.map2-night.v1','1'],['graffciti.map-sky.v1:map2','pastel'],['graffciti.map-render.v1:map2',JSON.stringify({lampCount:4,lampActivationDistance:77,renderScale:.7})]]);
  globalThis.localStorage={getItem:(k:string)=>values.get(k)??null,setItem:(k:string,v:string)=>{values.set(k,v);},removeItem:(k:string)=>{values.delete(k);}} as Storage;
  try {
-  selectMap('map2');assert.equal(getRenderSettings().lampCount,12);assert.equal(getRenderSettings().lampActivationDistance,77);assert.equal(getRenderSettings().renderScale,.7);assert.equal(readMapSky('map2'),'pastel');
+  selectMap('map2');assert.equal(getRenderSettings().lampCount,4);assert.equal(getRenderSettings().lampActivationDistance,77);assert.equal(getRenderSettings().renderScale,.7);assert.equal(readMapSky('map2'),'pastel');
   setRenderSettings({lampCount:6,lampActivationDistance:88});readMapSky('map2');assert.equal(getRenderSettings().lampCount,6);
   selectMap('original');selectMap('map2');assert.equal(getRenderSettings().lampCount,6);assert.equal(getRenderSettings().lampActivationDistance,88);
  }finally{selectMap('original');globalThis.localStorage=original;setRenderSettings({...DEFAULT_RENDER_SETTINGS});}
 });
-test('light-count migration preserves the selected map snapshot when global settings are absent',()=>{
+test('reading Town sky does not rewrite the stored snapshot or current settings',()=>{
  const original=globalThis.localStorage,values=new Map<string,string>();
  globalThis.localStorage={getItem:(k:string)=>values.get(k)??null,setItem:(k:string,v:string)=>{values.set(k,v);},removeItem:(k:string)=>{values.delete(k);}} as Storage;
  try {
@@ -168,7 +179,8 @@ test('light-count migration preserves the selected map snapshot when global sett
   values.set('graffciti.map-sky.v1:map2','pastel');values.delete('graffciti.render-settings.v1');values.delete('graffciti.map2-light-count.v1');
   assert.equal(readMapSky('map2'),'pastel');
   const saved=JSON.parse(values.get('graffciti.map-render.v1:map2')!);
-  for(const settings of [saved,getRenderSettings()]){assert.equal(settings.lampCount,12);assert.equal(settings.lampActivationDistance,77);assert.equal(settings.renderScale,.7);assert.equal(settings.skyMode,'pastel');}
+  assert.equal(saved.lampCount,4);assert.equal(saved.lampActivationDistance,77);assert.equal(saved.renderScale,.7);assert.equal(saved.skyMode,'pastel');
+  assert.deepEqual(getRenderSettings(),DEFAULT_RENDER_SETTINGS);
  }finally{selectMap('original');globalThis.localStorage=original;setRenderSettings({...DEFAULT_RENDER_SETTINGS});}
 });
 test('fixed district lamps stay fully lit through 60m even with a shorter building detail range',()=>{

@@ -68,6 +68,45 @@ class Socket {
   receive(value: any) { this.onmessage?.({ data: JSON.stringify(value) }); }
 }
 
+test('town join preserves identity and rejects a missing or wrong world before accepting state', () => {
+  for (const worldId of [undefined, 'original-v1']) {
+    const socket = new Socket(), states: any[] = [], received: any[] = [];
+    const connection = new MultiplayerConnection('wss://example.test', value => states.push(value), value => received.push(value), () => socket);
+    connection.connect('Nickname', 'morning-quarter-v1', { username: 'artist', nickName: 'Nickname' }, [0, 1.7, 0], 'map2-v1');
+    socket.readyState = 1;
+    socket.receive({ type: 'hello', playerId: 'self', protocol: 2 });
+    assert.equal(socket.sent[0].worldId, 'map2-v1');
+    assert.equal(socket.sent[0].roomId, 'morning-quarter-v1');
+    assert.equal(socket.sent[0].username, 'artist');
+    assert.equal(socket.sent[0].nickName, 'Nickname');
+    socket.receive({ type: 'account_state', credits: 999 });
+    socket.receive({ type: 'world_snapshot', playerId: 'self', roomId: 'morning-quarter-v1', worldId, strokes: [], players: [] });
+    assert.equal(connection.connected, false);
+    assert.deepEqual(received, []);
+    assert.match(states.at(-1).notice, /server.*Town world update/i);
+    connection.disconnect();
+  }
+});
+
+test('town accepts matching snapshot only and never falls back to public', () => {
+  const socket = new Socket(), received: any[] = [];
+  const connection = new MultiplayerConnection('wss://example.test', () => {}, value => received.push(value), () => socket);
+  connection.connect('Artist', 'morning-quarter-v1', {}, [0, 1.7, 0], 'map2-v1');
+  socket.readyState = 1;
+  socket.receive({ type: 'hello', playerId: 'self', protocol: 2 });
+  socket.receive({ type: 'world_snapshot', playerId: 'self', roomId: 'public', worldId: 'map2-v1', strokes: [], players: [] });
+  assert.equal(connection.connected, false);
+  const snapshot = { type: 'world_snapshot', playerId: 'self', roomId: 'morning-quarter-v1', worldId: 'map2-v1', strokes: [], players: [] };
+  socket.receive(snapshot);
+  assert.equal(connection.connected, true);
+  assert.deepEqual(received, [snapshot]);
+  assert.equal(socket.sent.length, 1);
+  socket.receive({ ...snapshot, worldId: 'original-v1' });
+  assert.equal(connection.connected, false, 'mismatched resync must stop the town session');
+  assert.deepEqual(received, [snapshot], 'wrong-world resync cannot reach replay');
+  connection.disconnect();
+});
+
 test('stroke index returns only a wall bucket in stable sequence order and tracks mutations', () => {
   const index = new StrokeIndex();
   const wallId = (n: number) => `ss1:0:${Math.floor(n / 100)}:wall`;

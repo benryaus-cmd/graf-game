@@ -18,6 +18,15 @@ function acceptedHorse() {
   return horse;
 }
 
+test('a stationary normal release is an accepted attempted drop, not a reset',()=>{
+  const court=joined(1),seat=court.snapshot().seats[0]!;
+  const drop={dx:0,dy:0,durationMs:140};
+  assert.ok(readCourtRequest({type:'court_shot',...scope,version:1,revision:court.snapshot().revision,shotId:`s${seat.epoch}-1`,sequence:1,seatEpoch:seat.epoch,gesture:drop}));
+  const reply=court.shoot('p0',{shotId:`s${seat.epoch}-1`,sequence:1,seatEpoch:seat.epoch,gesture:drop},court.snapshot().revision,0);
+  assert.equal(reply.ok,true);assert.deepEqual(reply.launch?.velocity,[0,0,0]);
+  assert.equal(reply.result?.outcome,'miss');assert.equal(court.snapshot().seats[0]!.attempts,1);
+});
+
 test('sequential server processing of concurrent joins allocates five distinct marks and reports full', () => {
   const court = joined(5);
   assert.deepEqual(court.snapshot().seats.map(seat => seat.spotId), [0, 1, 2, 3, 4]);
@@ -46,12 +55,12 @@ test('court scores shots from deterministic simulation and refuses duplicate IDs
   const first = court.shoot('p0', { shotId: `s${seat.epoch}-1`, sequence: 1, seatEpoch: seat.epoch, gesture }, court.snapshot().revision, 1000);
   assert.equal(first.ok, true);
   assert.ok(first.launch);
-  assert.equal(first.result?.outcome, 'make');
+  assert.equal(first.result?.outcome, 'miss','staged server fallback has no actual raised release position');
   const revision = court.snapshot().revision;
   assert.equal(court.shoot('p0', { shotId: `s${seat.epoch}-1`, sequence: 2, seatEpoch: seat.epoch, gesture }, revision, 5000).reason, 'duplicate');
   assert.equal(court.shoot('p0', { shotId: 'other', sequence: 1, seatEpoch: seat.epoch, gesture }, revision, 5000).reason, 'sequence');
   assert.equal(court.snapshot().revision, revision);
-  assert.equal(court.snapshot().seats[0]!.makes, 1);
+  assert.equal(court.snapshot().seats[0]!.makes, 0);
 });
 test('old seat epochs and invalid flicks cannot consume a new shot', () => {
   const court = joined(1);

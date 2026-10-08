@@ -1,13 +1,13 @@
 # Final goal: GraffCiti — a premium graffiti world
 
-Updated: 8 October 2026 (Australia/Sydney).
+Updated: 9 October 2026 (Australia/Sydney).
 
 Repository: https://github.com/benryaus-cmd/graf-game  
 Live reference: https://aippy.ai/@PinkYyyy/street-art-canvas-aV7b
 
 This is the working destination for future development. It describes intended behaviour, not completed features. Later instructions from the owner take precedence. Keep the GitHub-to-Aippy importer working as the game evolves.
 
-**Owner's latest implementation instruction:** The multiplayer backend is already built, deployed and tested. Integrate the existing game with it. Preserve the current world and functioning painting system for this integration. Do not create another backend, VM service, Docker container, WebSocket server or multiplayer architecture. The broader overhaul below remains the long-term destination, not permission to replace the game during this initial integration.
+**Owner's latest implementation instruction:** Make the premium town (canonical map ID `map2`, world identity `map2-v1`) the fresh default/main world and the only multiplayer choice. Keep the original city as a second, local-only option; preserve both worlds' existing artwork addresses and saved preferences. Apply the supplied 9 October night/settings defaults without overwriting saved custom settings. After grabbing a basketball, every normal release throws it, including a weak toss or stationary drop; cancellation does not. Soften power so a deliberate upward flick feels useful and low power is controllable. Use the existing multiplayer backend only. Publish a handover for its server AI, which may propose better backend schemas for a subsequent frontend update. Do not create another backend, VM service, Docker container or WebSocket server, and do not claim the new room/shared basketball is deployed before verification.
 
 ## Direction: keep the world and spraying foundation; rebuild the experience
 
@@ -139,6 +139,30 @@ The join action is an authoritative server admission request, not a client-side 
 
 The shared world persists when everyone leaves. The service remains running; last-player departure must not reset art, claims, identities or credits. Leaving multiplayer returns to solo while preserving local work. Joining loads the shared world's state; it does not automatically publish every local wall texture.
 
+The main town keeps its existing `map2`/`map2-v1` identities despite its new main-world label. Request room `morning-quarter-v1` and require matching `worldId: "map2-v1"` on initial/resync snapshots. Never fall back to the original `public` room or project old art onto new geometry. The original city remains local-only in this client, and its old server records are preserved. See `docs/main-world-server-handoff-9oct2026.md` for the existing-server integration and schema review requested from the server AI.
+
+### Main-town fresh defaults: owner screenshots, 9 October
+
+Night is the town's fresh sky; sky/time follows the game. Apply these to fresh defaults and reset, while preserving saved custom values. Colour swatches retain the existing ground `#8b8982` and fog `#111b2c` values.
+
+| Settings | Defaults |
+| --- | --- |
+| Render scale; haze; exposure | 1.2; 0.06; 1.5 |
+| Detail range; 3D blocks; flat skyline | 69 m; 68 m; 400 m |
+| Landmark height; height split; height ranges | 5 m; 12 m; on |
+| Short detail / simple 3D / flat 2D | 48 / 68 / 160 m |
+| Tall detail / simple 3D / flat 2D | 60 / 84 / 400 m |
+| Silhouette width; live strokes | 1; 5 m |
+| Load budget; keep chunks; prefetch | 1.5 ms; 3 s; 12 m |
+| Fog style; fog start; solid fog | EXP; 20 m; 200 m |
+| Ground reach; shared images; concurrent image loads | 4 chunks; 35 m; 1 |
+| Ambient; sun/moon | 5; 3 |
+| Nearby real lights; lights on within | 12; 60 m |
+| Lamp power; reach; pool radius; fade | 150; 40 m; 12 m; 0 m |
+| Player light power | 10 |
+| Ground extension; sky/haze matching; street lights; glow pools; player light; city proxies; flat skyline; tree detail | on |
+| Fog culling; solid haze sky; custom fog colour | off |
+
 Keep solo saves and shared state separate. Offer an explicit future publish/import flow for chosen handmade designs or draft pieces, with normal claim/size/credit checks. Solo rewards and browser-edited counters cannot become server credits. A disconnected online session may retain a local draft; it cannot finalise purchases or assume an expired claim still permits shared writes.
 
 ## Visible people, conversation and convincing characters
@@ -165,7 +189,7 @@ Mirror only chosen licensed files into the project for reliable Aippy imports. K
 
 Use the existing secure endpoint: wss://24.144.88.205/multiplayer. Health: https://24.144.88.205/health. The owner reports the service is separate from Studio, already deployed and persistent, with publicly trusted TLS. No infrastructure or database changes are part of this work.
 
-The deployed protocol is version 2. Wait for hello with its server-generated playerId, then send join with protocol 2, roomId public and the default Aippy nickname/username. world_snapshot includes revisions, sequences, strokes, artwork, players, chat history and world items. Keep the room selection modular without adding private-room UI yet. The current integration retains the existing world/controller/paint renderer, adds public chat, shares existing cosmetics/emotes, and uploads posters as binary to the existing /artwork-upload endpoint. References are shared through artwork_place; base64 images never go through WebSocket.
+The existing protocol is version 2. Wait for hello with its server-generated playerId, then send join with protocol 2, roomId `morning-quarter-v1`, worldId `map2-v1` and the default Aippy nickname/username in separate identity fields. The town server room/snapshot contract requires the existing-server handover; this client update does not establish live deployment. world_snapshot retains revisions, sequences, strokes, artwork, players, chat history and world items, and must confirm the town identity. Keep room selection modular without adding private-room UI yet. Preserve the existing controller/paint renderer, chat, cosmetics/emotes and binary /artwork-upload flow. References are shared through artwork_place; base64 images never go through WebSocket.
 
 Current scope includes connection/public join, player count, visible/interpolated players, shared paint/eraser metadata, persisted reconstruction, reconnect/resync, public chat, persistent posters and shared visual appearance/actions. Inventory/economy/trading authority remains disabled because the server runs AIPPY_AUTH_MODE=disabled. Do not bypass verified_account_required with username, uid, localStorage identity or a custom auth service. Do not invent capacity/free-slot numbers, account verification, claims or credit APIs. Solo remains the default and solo currency/saves are separate from shared data.
 
@@ -288,7 +312,7 @@ Owner direction, 8 October: add small optional games to places in the city, star
 
 - Show a compact **PLAY BASKETBALL** button only near the court while exploring. Entering places the player at an available shooting mark on the three-point arc, facing the hoop. Leave is always available and restores normal controls immediately.
 - Use five fixed shooting marks across the arc, each with a stable spot ID. Fit them to the existing playable court without placing players inside walls, props or the hoop support. Markings should look like ordinary court markings, not a large minigame menu.
-- Grab the visible held ball, move it with the finger to prepare, then flick upward and release to launch. Once grabbed, movement continues across the game view; starting elsewhere must not shoot. Power and aim come from recent release velocity/direction, not a static finger position or hold time. Require a deliberate larger upward stroke, cancel a stationary lift, and cap launch speed at 70% of the former maximum. Keep score, Leave and spot selection compact at the edges, with the hoop and centre clear; show compact feedback only while holding the ball. Mouse drag/release uses the same gesture; cancelled gestures do not shoot.
+- Grab the visible held ball, move it with the finger to prepare, then flick upward and release to launch. Once grabbed, movement continues across the game view; starting elsewhere must not shoot. Every normal release throws exactly one ball: a small motion is a weak toss and no recent motion is a drop, not a silent reset. Power and aim come from recent release velocity/direction, not a static finger position or hold time. Use a softer capped power curve with a wider controllable low-power range; a deliberate substantial upward flick should make a useful shot. Keep score, Leave and spot selection compact at the edges, with the hoop and centre clear; show compact feedback only while holding the ball. Mouse drag/release uses the same gesture; pointer cancellation, lost focus and menu entry do not shoot.
 - Provide unlimited balls without inventory or credit charges. A fresh held ball appears after release. Each thrown ball lasts three seconds from launch, fading near the end and then returning to its reusable pool. Leaving the game, changing maps or disposing the world cleans up balls and effects.
 - Use a deterministic ballistic calculation with gravity and lightweight court/backboard/rim bounces. A basket scores only when the ball crosses the rim plane downward through the opening with room for its radius. Upward crossings, nearby passes and repeated crossings by the same ball must not score.
 - A made shot gets a brief rim/net response, a satisfying swish, a restrained burst and a small **BUCKET!** / streak indicator. Give a clean extra response for a swish without overwhelming chat or the view. Respect existing sound controls. Avoid bloom, shadows, new lights or an added physics dependency.
@@ -327,6 +351,6 @@ Verify flick strength and aim on a phone; cancellation and simultaneous pointer 
 
 Map 2 now offers local solo basketball near its existing hoop: five selectable shooting marks, upward flick power and lateral aim feedback, unlimited pooled balls, gravity and lightweight court/backboard/rim contacts, three-second flight lifetime, made-shot rim/net response, swish and streak feedback. Enter/Leave owns controls without deleting a paint draft; map changes dispose gameplay resources. Existing backboard paint addresses stay unchanged. No added real lights, shadows, physics dependency or downloaded game assets.
 
-Court seat allocation, bounded shot commands, deterministic server-side outcomes and two-player HORSE rules are implemented and unit tested as reusable groundwork. Shared free shooting and HORSE are **not enabled**: the existing server source/room contract is unavailable in this workspace, and Map 2 remains local. `docs/basketball-server-handoff.md` specifies the integration needed on that existing service. The other minigames above remain ideas.
+Court seat allocation, bounded shot commands, deterministic server-side outcomes and two-player HORSE rules are implemented and unit tested as reusable groundwork. Shared free shooting and HORSE are **not enabled**: the existing server source/adapter is unavailable in this workspace. The town is now the main multiplayer candidate, but its room/world handshake still needs deployment on the existing service. `docs/main-world-server-handoff-9oct2026.md` and `docs/basketball-server-handoff.md` describe the main-world integration and separate proposed court contract. Actual movable-ball release origins must be agreed and validated before claiming shared-shot equivalence. The other minigames above remain ideas.
 
 The urgent painting regression was traced to solo Undo reading the live 2048×2048 paint canvas, making subsequent texture updates slow in the browser benchmark. Solo world Undo/Redo is disabled, with no pixel readback or history allocation; multiplayer server Undo/Redo and the manual tag library are unchanged. Fully reload after applying the update to recreate previously affected canvases. Phone FPS must still be verified on the device.

@@ -1,4 +1,5 @@
-import type { MapId } from '@/game/mapPreference';
+import { canJoinMultiplayer, type MapId } from '@/game/mapPreference';
+import { MAIN_ROOM_ID, MAIN_WORLD_ID } from '@/multiplayer/config';
 import { getRenderSettings, subscribeRenderSettings } from '@/game/renderSettings';
 import { observeWorldPerformance } from '@/game/worldPerformance';
 import { performanceLog } from '@/game/performanceLog';
@@ -250,7 +251,7 @@ const WorldScene = (props: WorldSceneProps) => {
   useEffect(() => {
     const request = props.multiplayerRequest;
     if (!request) return;
-    if (request.action === 'join'&&props.mapId!=='map2') multiplayerRef.current?.join(props.displayName, undefined, { username: props.username, nickName: props.nickName });
+    if (request.action === 'join'&&canJoinMultiplayer(props.mapId)) multiplayerRef.current?.join(props.displayName, MAIN_ROOM_ID, { username: props.username, nickName: props.nickName }, MAIN_WORLD_ID);
     else if (request.action === 'leave') multiplayerRef.current?.leave();
     else if (request.action === 'chat') multiplayerRef.current?.sendChat(request.text ?? '');
     else if (request.action === 'inspect') multiplayerRef.current?.inspectPiece(request.text ?? '');

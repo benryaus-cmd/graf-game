@@ -17,18 +17,21 @@ export interface BasketballBall {
 }
 export const BASKETBALL_SHOT_VERSION = 1;
 export const BASKETBALL_LIFETIME_SECONDS = 3;
+export const BASKETBALL_MAX_FLICK_SPEED = 8.1;
 const GRAVITY = 9.81, FIXED_STEP = 1 / 120;
 let nextShotId = 0;
 
 /** Shared by the preview and launch; callers validate or clamp their gesture. */
 export function basketballFlickSpeed(gesture: Pick<BasketballGesture, 'dy' | 'durationMs'>): number {
-    return Math.min(9.1, 4 * gesture.dy / (gesture.durationMs / 1000));
+    const rate = Math.max(0, gesture.dy / (gesture.durationMs / 1000));
+    // A broad gentle-release range, then a soft ceiling for deliberate full flicks.
+    return BASKETBALL_MAX_FLICK_SPEED * (1 - Math.exp(-Math.pow(rate / 1.57, 1.5)));
 }
 
 export function launchFromFlick(spotId: number, gesture: BasketballGesture, releaseOrigin?: BasketballVector): ShotLaunch | null {
     const spot = court.spots.find(s => s.id === spotId);
     const { dx, dy, durationMs } = gesture;
-    if (!spot || ![dx, dy, durationMs].every(Number.isFinite) || Math.abs(dx) > 1 || dy < .06 || dy > 1 || durationMs < 40 || durationMs > 2000 || releaseOrigin && !releaseOrigin.every(Number.isFinite)) return null;
+    if (!spot || ![dx, dy, durationMs].every(Number.isFinite) || Math.abs(dx) > 1 || dy < 0 || dy > 1 || durationMs < 40 || durationMs > 2000 || releaseOrigin && !releaseOrigin.every(Number.isFinite)) return null;
     const [x, , z] = releaseOrigin ?? spot.position;
     const aim = Math.atan2(court.rim.center[0] - x, court.rim.center[2] - z) - Math.atan2(dx, dy);
     // Fixed elevation leaves direction and actual release speed as learnable controls.
@@ -36,7 +39,7 @@ export function launchFromFlick(spotId: number, gesture: BasketballGesture, rele
     const elevation = 58 * Math.PI / 180, horizontal = speed * Math.cos(elevation);
     return { courtId: court.id, shotId: `local-${++nextShotId}`, spotId, version: 1,
         origin: releaseOrigin ? [...releaseOrigin] : [x + Math.sin(aim) * .25, 1.7, z + Math.cos(aim) * .25],
-        velocity: [Math.sin(aim) * horizontal, speed * Math.sin(elevation), Math.cos(aim) * horizontal] };
+        velocity: speed === 0 ? [0, 0, 0] : [Math.sin(aim) * horizontal, speed * Math.sin(elevation), Math.cos(aim) * horizontal] };
 }
 export function createBall(launch: ShotLaunch, elapsedSeconds = 0): BasketballBall {
     const ball: BasketballBall = { launch: { ...launch, origin: [...launch.origin], velocity: [...launch.velocity] },

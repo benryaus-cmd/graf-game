@@ -8,8 +8,8 @@ import { applySkyLighting } from '../src/game/skyEffects';
 
 test('atmosphere controls migrate old settings and validate fog, image and light budgets',()=>{
  const defaults=normaliseRenderSettings({renderScale:.7});
- assert.equal(defaults.groundChunks,6);assert.equal(defaults.imageLoadDistance,60);
- assert.equal(defaults.streetLights,true);assert.equal(defaults.playerLight,false);
+ assert.equal(defaults.groundChunks,4);assert.equal(defaults.imageLoadDistance,35);
+ assert.equal(defaults.streetLights,true);assert.equal(defaults.playerLight,true);
  const input=normaliseRenderSettings({fogStyle:'linear',fogNear:80,fogFar:20,imageConcurrency:99,lampCount:9,skyMode:'invalid',fogColor:'bad'});
  assert.ok(input.fogFar>input.fogNear);assert.equal(input.imageConcurrency,7);assert.equal(input.lampCount,9);
  assert.equal(input.skyMode,'game');assert.equal(input.fogColor,DEFAULT_RENDER_SETTINGS.fogColor);
@@ -34,7 +34,8 @@ test('fresh lighting defaults activate twelve real lamps within sixty metres',()
  const scene=new THREE.Scene(),atmosphere=new CityAtmosphere(scene,Array.from({length:16},(_,i)=>[10+i,0] as [number,number]));
  try {
   atmosphere.update(0,0,[],normaliseRenderSettings({fogCull:false}),0);
-  assert.equal(atmosphere.stats.realLights,12);
+  assert.equal(atmosphere.lights.filter(light=>light.visible).length,12);
+  assert.equal(atmosphere.stats.realLights,13,'twelve street lamps plus the enabled player light');
   assert.equal(normaliseRenderSettings({}).lampActivationDistance,60);
   assert.equal(normaliseRenderSettings({lampCount:24}).lampCount,24);
  }finally{atmosphere.dispose();}
@@ -61,7 +62,7 @@ test('lamp experiments keep the light pool bounded and support glow-only and pla
 });
 
 test('fog culling retains corner padding and can be disabled without changing requested detail range',()=>{
- const linear={...DEFAULT_RENDER_SETTINGS,fogStyle:'linear' as const,fogFar:40};assert.equal(fogVisualDistance(linear),72);
+ const linear={...DEFAULT_RENDER_SETTINGS,fogCull:true,fogStyle:'linear' as const,fogFar:40};assert.equal(fogVisualDistance(linear),72);
  assert.ok(fogVisualDistance({...linear,fogStyle:'exp',fogDensity:.1})<50);
  const wide=new THREE.PerspectiveCamera(76,844/390,.1,1000);
  assert.ok(fogVisualDistance(linear,wide)>40*Math.sqrt(1+Math.tan(38*Math.PI/180)**2*(1+wide.aspect**2))-.001);

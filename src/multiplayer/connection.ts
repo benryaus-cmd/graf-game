@@ -30,7 +30,7 @@ export class MultiplayerConnection {
     private makeSocket: (url: string) => SocketLike = url => new WebSocket(url) as unknown as SocketLike,
   ) {}
 
-  connect(displayName: string, roomId: string, identity: PlayerIdentity = {}, initialPosition?: readonly number[]): void {
+  connect(displayName: string, roomId: string, identity: PlayerIdentity = {}, initialPosition?: readonly number[], expectedWorldId?: string): void {
     this.closeSocket();
     this.roomId = roomId;
     const generation = this.generation;
@@ -58,6 +58,10 @@ export class MultiplayerConnection {
         this.protocol = message.protocol as number;
         this.capabilities = Array.isArray(message.capabilities) ? message.capabilities.filter((v): v is string => typeof v === 'string') : [];
         const join: Message = { type: 'join', ...(this.protocol === 2 ? { protocol: 2 } : {}), roomId, displayName: displayName.trim().slice(0, 40) || 'PLAYER' };
+        if (expectedWorldId) {
+          if (this.protocol !== 2) { this.fail('The server needs the Town world update. Solo is still available.'); return; }
+          join.worldId = expectedWorldId;
+        }
         if (this.protocol === 2) {
           const spatial = this.capabilities.includes('spatial_interest_v1');
           if (spatial && (!initialPosition || initialPosition.length !== 3 || !initialPosition.every(value => Number.isFinite(value)))) {
@@ -76,6 +80,10 @@ export class MultiplayerConnection {
           message.playerId !== this.playerId ||
           message.roomId !== this.roomId
         ) return;
+
+        if (expectedWorldId && message.worldId !== expectedWorldId) {
+          this.fail('The server needs the Town world update. Solo is still available.'); return;
+        }
 
         if (!Array.isArray(message.strokes)) return;
 
@@ -114,7 +122,7 @@ export class MultiplayerConnection {
       } else if (message.type === 'ping') {
         this.sendRaw({ type: 'pong', ...(message.timestamp !== undefined ? { timestamp: message.timestamp } : {}) });
       } else if (message.type === 'client_update_required') { this.fail(UPDATE_NOTICE); }
-      else if (this.connected || (this.playerId && ['account_state', 'permissions', 'credit_balance', 'spatial_status', 'chat_mute_state'].includes(message.type))) this.onMessage(message);
+      else if (this.connected || (!expectedWorldId && this.playerId && ['account_state', 'permissions', 'credit_balance', 'spatial_status', 'chat_mute_state'].includes(message.type))) this.onMessage(message);
     };
     socket.onerror = () => { if (generation === this.generation) this.fail('Connection lost. Offline paint stays local; Reconnect to resync.'); };
     socket.onclose = () => { if (generation === this.generation) this.fail('Disconnected. Offline paint stays local; Reconnect to resync.'); };
