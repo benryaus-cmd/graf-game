@@ -425,7 +425,7 @@ const App = () => {
   return (
     <SheetCollapseContext.Provider value={setSheetCollapsed}><main
       ref={shellRef}
-      className={`game-shell ${portrait ? 'game-portrait' : ''} ${workspaceView.active ? 'canvas-mode' : ''} ${tutorialStep ? 'has-tutorial' : ''} ${reference?.moving ? 'has-reference-adjust' : ''} ${sheetCollapsed && activeMenu ? 'has-collapsed-sheet' : ''}`}
+      className={`game-shell ${basketballActive ? 'basketball-active' : ''} ${portrait ? 'game-portrait' : ''} ${workspaceView.active ? 'canvas-mode' : ''} ${tutorialStep ? 'has-tutorial' : ''} ${reference?.moving ? 'has-reference-adjust' : ''} ${sheetCollapsed && activeMenu ? 'has-collapsed-sheet' : ''}`}
       style={{ '--accent': accentColor, '--panel': panelColor } as CSSProperties}
       onClickCapture={startAudioOnFirstClick}
     >

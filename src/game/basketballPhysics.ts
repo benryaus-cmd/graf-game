@@ -50,41 +50,95 @@ function result(ball: BasketballBall, outcome: 'make' | 'miss'): ShotResult {
     const { courtId, shotId, spotId, version } = ball.launch;
     return { courtId, shotId, spotId, version, outcome, swish: outcome === 'make' && !ball.contacted };
 }
-function advance(ball: BasketballBall, dt: number): ShotResult | null {
-    const p = ball.position, v = ball.velocity, old: BasketballVector = [...p];
-    p[0] += v[0] * dt; p[1] += v[1] * dt - GRAVITY * dt * dt / 2; p[2] += v[2] * dt;
-    v[1] -= GRAVITY * dt;
+type Contact = { distance: number; normal: BasketballVector };
+const CONTACT_EPSILON = .00001;
+const rimExtent = court.rim.radius + court.rim.tubeRadius + court.ballRadius;
+const rimBounds = { min: [court.rim.center[0] - rimExtent, court.rim.center[1] - court.rim.tubeRadius - court.ballRadius, court.rim.center[2] - rimExtent],
+    max: [court.rim.center[0] + rimExtent, court.rim.center[1] + court.rim.tubeRadius + court.ballRadius, court.rim.center[2] + rimExtent] };
+const boardBounds = { min: [court.backboard.bounds.minX - court.ballRadius, court.backboard.bounds.minY - court.ballRadius, court.backboard.bounds.minZ - court.ballRadius],
+    max: [court.backboard.bounds.maxX + court.ballRadius, court.backboard.bounds.maxY + court.ballRadius, court.backboard.bounds.maxZ + court.ballRadius] };
+function rimContact(p: BasketballVector): Contact {
     const [rx, ry, rz] = court.rim.center;
-    let event: ShotResult | null = null;
-    if (!ball.resultEmitted && old[1] > ry && p[1] <= ry && v[1] < 0) {
+    const radial = Math.hypot(p[0] - rx, p[2] - rz);
+    const qx = rx + (radial > 1e-10 ? (p[0] - rx) / radial : 1) * court.rim.radius;
+    const qz = rz + (radial > 1e-10 ? (p[2] - rz) / radial : 0) * court.rim.radius;
+    const offset: BasketballVector = [p[0] - qx, p[1] - ry, p[2] - qz];
+    const length = Math.hypot(...offset);
+    return { distance: length - court.ballRadius - court.rim.tubeRadius,
+        normal: length > 1e-10 ? offset.map(n => n / length) as BasketballVector : [0, 1, 0] };
+}
+function boardContact(p: BasketballVector): Contact {
+    const board = court.backboard;
+    const half = [board.width / 2, board.height / 2, board.depth / 2];
+    const local = p.map((value, axis) => value - board.center[axis]);
+    const offset = local.map((value, axis) => value - Math.max(-half[axis], Math.min(half[axis], value)));
+    const length = Math.hypot(...offset);
+    if (length > 1e-10) return { distance: length - court.ballRadius, normal: offset.map(n => n / length) as BasketballVector };
+    // A malformed/late remote origin inside the board still escapes through its nearest face.
+    let axis = 0;
+    for (let i = 1; i < 3; i++) if (half[i] - Math.abs(local[i]) < half[axis] - Math.abs(local[axis])) axis = i;
+    const normal: BasketballVector = [0, 0, 0]; normal[axis] = local[axis] >= 0 ? 1 : -1;
+    return { distance: -(half[axis] - Math.abs(local[axis])) - court.ballRadius, normal };
+}
+/** Conservative advancement against signed sphere/solid distance. It sweeps the whole
+ * segment, so fast and grazing contacts do not depend on an endpoint overlapping. */
+function sweep(start: BasketballVector, end: BasketballVector, contact: (p: BasketballVector) => Contact, bounds: typeof rimBounds): { fraction: number; contact: Contact } | null {
+    // Most of a flight is far from either prop: reject with six numeric bounds checks.
+    for (let axis = 0; axis < 3; axis++) if (Math.min(start[axis], end[axis]) > bounds.max[axis] || Math.max(start[axis], end[axis]) < bounds.min[axis]) return null;
+    const movement = end.map((value, axis) => value - start[axis]);
+    const length = Math.hypot(...movement);
+    if (length < 1e-12) return null;
+    let fraction = 0;
+    for (let iteration = 0; iteration < 24; iteration++) {
+        const p = start.map((value, axis) => value + movement[axis] * fraction) as BasketballVector;
+        const hit = contact(p);
+        if (hit.distance <= CONTACT_EPSILON) {
+            const inward = movement.reduce((sum, value, axis) => sum + value * hit.normal[axis], 0);
+            if (inward < -1e-10 || hit.distance < -CONTACT_EPSILON) return { fraction, contact: hit };
+            return null;
+        }
+        fraction += hit.distance / length;
+        if (fraction > 1) return null;
+    }
+    // The bounded sweep can converge slowly near a tangent; an endpoint overlap still resolves.
+    const hit = contact(end);
+    return hit.distance < 0 ? { fraction: 1, contact: hit } : null;
+}
+function scoreSegment(ball: BasketballBall, old: BasketballVector, p: BasketballVector): ShotResult | null {
+    const [rx, ry, rz] = court.rim.center;
+    if (!ball.resultEmitted && old[1] > ry && p[1] <= ry) {
         const fraction = (old[1] - ry) / (old[1] - p[1]);
         const x = old[0] + (p[0] - old[0]) * fraction, z = old[2] + (p[2] - old[2]) * fraction;
         const clearance = court.rim.radius - court.rim.tubeRadius - court.ballRadius;
-        if (Math.hypot(x - rx, z - rz) <= clearance) { ball.scored = true; event = result(ball, 'make'); }
+        if (Math.hypot(x - rx, z - rz) <= clearance) { ball.scored = true; return result(ball, 'make'); }
     }
-    const board = court.backboard, boardFace = board.center[2] + board.depth / 2 + court.ballRadius;
-    const boardBack = board.center[2] - board.depth / 2 - court.ballRadius;
-    const frontHit = old[2] > boardFace && p[2] <= boardFace, backHit = old[2] < boardBack && p[2] >= boardBack;
-    if (frontHit || backHit) {
-        const plane = frontHit ? boardFace : boardBack, t = (plane - old[2]) / (p[2] - old[2]);
-        const x = old[0] + (p[0] - old[0]) * t, y = old[1] + (p[1] - old[1]) * t;
-        if (Math.abs(x - board.center[0]) <= board.width / 2 + court.ballRadius && Math.abs(y - board.center[1]) <= board.height / 2 + court.ballRadius) {
-            p[2] = plane + (frontHit ? 1 : -1) * .00001; v[2] *= -.65; ball.contacted = true;
+    return null;
+}
+function advance(ball: BasketballBall, dt: number): ShotResult | null {
+    const p = ball.position, v = ball.velocity;
+    // Half-step gravity preserves the original ballistic arc while collisions can consume
+    // the remaining part of this fixed step using their reflected velocity.
+    v[1] -= GRAVITY * dt / 2;
+    let remaining = dt, event: ShotResult | null = null;
+    for (let collision = 0; collision < 3 && remaining > 1e-9; collision++) {
+        const start: BasketballVector = [...p];
+        const end = p.map((value, axis) => value + v[axis] * remaining) as BasketballVector;
+        const rim = sweep(start, end, rimContact, rimBounds), board = sweep(start, end, boardContact, boardBounds);
+        const hit = rim && (!board || rim.fraction <= board.fraction) ? { ...rim, restitution: .55 } : board ? { ...board, restitution: .65 } : null;
+        const fraction = hit?.fraction ?? 1;
+        for (let axis = 0; axis < 3; axis++) p[axis] = start[axis] + (end[axis] - start[axis]) * fraction;
+        event = scoreSegment(ball, start, p) ?? event;
+        if (!hit) break;
+        const { normal, distance } = hit.contact;
+        const inward = v.reduce((sum, value, axis) => sum + value * normal[axis], 0);
+        for (let axis = 0; axis < 3; axis++) {
+            p[axis] += normal[axis] * Math.max(CONTACT_EPSILON, CONTACT_EPSILON - distance);
+            if (inward < 0) v[axis] -= (1 + hit.restitution) * inward * normal[axis];
         }
+        ball.contacted = true;
+        remaining *= 1 - fraction;
     }
-    // Sphere against a torus centreline; fixed steps bound travel and prevent rim tunnelling.
-    const radial = Math.hypot(p[0] - rx, p[2] - rz);
-    if (radial > .00001) {
-        const qx = rx + (p[0] - rx) * court.rim.radius / radial, qz = rz + (p[2] - rz) * court.rim.radius / radial;
-        const nx = p[0] - qx, ny = p[1] - ry, nz = p[2] - qz;
-        const length = Math.hypot(nx, ny, nz), contactRadius = court.ballRadius + court.rim.tubeRadius;
-        if (length < contactRadius && length > .000001) {
-            const normal: BasketballVector = [nx / length, ny / length, nz / length];
-            const inward = v[0] * normal[0] + v[1] * normal[1] + v[2] * normal[2];
-            for (let axis = 0; axis < 3; axis++) { p[axis] += normal[axis] * (contactRadius - length + .00001); if (inward < 0) v[axis] -= 1.55 * inward * normal[axis]; }
-            ball.contacted = true;
-        }
-    }
+    v[1] -= GRAVITY * dt / 2;
     if (p[1] < court.ballRadius) { p[1] = court.ballRadius; if (v[1] < 0) v[1] *= -.62; v[0] *= .82; v[2] *= .82; ball.contacted = true; }
     return event;
 }

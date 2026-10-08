@@ -1,30 +1,25 @@
 .basketball-enter { position: absolute; z-index: 12; left: 50%; bottom: max(30px, env(safe-area-inset-bottom)); transform: translateX(-50%); padding: 12px 18px; border: 1px solid #ffac57; border-radius: 8px; background: #1b211bee; color: #fff1d2; font-size: 12px; font-weight: 800; letter-spacing: .07em; box-shadow: 0 4px 20px #0005; white-space: nowrap; pointer-events: auto; }
-.basketball-controls { position: absolute; z-index: 12; right: max(14px, env(safe-area-inset-right)); bottom: max(14px, env(safe-area-inset-bottom)); width: min(268px, calc(100% - 28px)); padding: 12px; border: 1px solid #ffac5755; border-radius: 12px; background: #151b19ee; color: #f5f0df; box-shadow: 0 5px 26px #0005; pointer-events: auto; }
-.basketball-controls header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.basketball-controls header strong { display: block; font-size: 13px; letter-spacing: .08em; }
-.basketball-controls header small { display: block; margin-top: 3px; font-size: 9px; color: #bcc5ae; }
-.basketball-controls button { padding: 7px 9px; border: 1px solid #b3c0a644; border-radius: 5px; background: #26312b; color: #f5f0df; font-size: 10px; font-weight: 700; }
-.basketball-score { display: flex; justify-content: space-between; margin-top: 12px; font-size: 11px; color: #bcc5ae; }
-.basketball-score b { color: #fff1d2; font-size: 17px; }
-.basketball-result { margin: 8px 0; min-height: 19px; text-align: center; color: #ffbe78; font-weight: 800; font-size: 13px; }
+/* No stacking context here: the transparent gesture surface stays below the game HUD/menu. */
+.basketball-controls { position: absolute; inset: 0; pointer-events: none; color: #f5f0df; }
+.basketball-screen { position: absolute; inset: 0; z-index: 5; pointer-events: auto; touch-action: none; user-select: none; cursor: grab; }
+.basketball-active .paint-quick-controls, .basketball-active .reticle { display: none; }
+.basketball-controls button { min-width: 36px; min-height: 40px; padding: 7px 9px; border: 1px solid #b3c0a655; border-radius: 7px; background: #1b211bee; color: #f5f0df; font-size: 11px; font-weight: 700; pointer-events: auto; }
+.basketball-score { position: absolute; z-index: 12; left: max(12px, env(safe-area-inset-left)); bottom: max(68px, calc(env(safe-area-inset-bottom) + 56px)); display: flex; gap: 10px; align-items: center; padding: 5px 8px; border-radius: 6px; background: #151b19c9; font-size: 10px; color: #d1d5c7; }
+.basketball-score b { color: #fff1d2; font-size: 13px; }
+.basketball-result { position: absolute; z-index: 12; left: max(12px, env(safe-area-inset-left)); bottom: max(51px, calc(env(safe-area-inset-bottom) + 39px)); margin: 0; color: #ffbe78; text-shadow: 0 1px 4px #000; font-weight: 800; font-size: 10px; }
 .basketball-result.is-make { color: #e5ff93; animation: basketball-bucket .45s ease-out; }
-.basketball-spots { display: flex; justify-content: center; gap: 5px; margin-bottom: 8px; }
-.basketball-spots button { width: 34px; }
-.basketball-spots button[aria-pressed="true"] { border-color: #ffac57; background: #6c431e; }
-.basketball-pad { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; height: 132px; border: 1px dashed #f8bb7370; border-radius: 8px; background: linear-gradient(0deg,#bd6c272b,#1d342821); touch-action: none; user-select: none; cursor: grab; }
-.basketball-flick-arrow { font-size: 35px; line-height: 1; color: #ffb25e; }
-.basketball-pad strong { font-size: 12px; letter-spacing: .12em; }
-.basketball-pad small { font-size: 9px; color: #bfc4b3; }
-@keyframes basketball-bucket { from { transform: scale(1.18); } to { transform: scale(1); } }
-@media (max-height: 530px) { .basketball-controls { width: 226px; padding: 9px; } .basketball-pad { height: 96px; } .basketball-score { margin-top: 7px; } }
-@media (prefers-reduced-motion: reduce) { .basketball-result.is-make { animation: none; } }
-
-.basketball-feedback-meters { display: grid; gap: 6px; width: 82%; margin: 3px 0; pointer-events: none; }
+.basketball-leave { position: absolute; z-index: 12; right: max(12px, env(safe-area-inset-right)); bottom: max(61px, calc(env(safe-area-inset-bottom) + 49px)); }
+.basketball-spots { position: absolute; z-index: 12; left: 50%; bottom: max(10px, env(safe-area-inset-bottom)); transform: translateX(-50%); display: flex; gap: 5px; pointer-events: auto; }
+.basketball-spots button[aria-pressed="true"] { border-color: #ffac57; background: #6c431eee; }
+.basketball-feedback { position: absolute; left: max(12px, env(safe-area-inset-left)); bottom: max(106px, calc(env(safe-area-inset-bottom) + 94px)); width: 158px; padding: 6px 8px; border-radius: 6px; background: #151b19bd; pointer-events: none; opacity: var(--basketball-feedback-opacity, 0); transition: opacity 120ms; }
+.basketball-feedback small { display: block; margin-top: 4px; font-size: 8px; color: #d1d5c7; }
+.basketball-feedback-meters { display: grid; gap: 5px; pointer-events: none; }
 .basketball-meter-row { display: flex; align-items: center; gap: 7px; }
 .basketball-meter-row span { width: 32px; flex-shrink: 0; font-size: 8px; color: #ced3be; letter-spacing: .07em; }
-.basketball-power-meter, .basketball-aim-meter { position: relative; flex: 1; height: 7px; border-radius: 4px; background: #080e0abb; }
+.basketball-power-meter, .basketball-aim-meter { position: relative; flex: 1; height: 6px; border-radius: 4px; background: #080e0abb; }
 .basketball-power-fill { position: absolute; inset: 0 auto 0 0; width: var(--basketball-power, 0%); border-radius: inherit; background: #efa657; }
 .basketball-power-band { position: absolute; z-index: 1; top: -2px; bottom: -2px; left: 37.5%; width: 5%; border: 1px solid #d5f69e; background: #d5f69e33; }
 .basketball-aim-center { position: absolute; top: -2px; bottom: -2px; left: 50%; width: 1px; background: #d5f69e; }
-.basketball-aim-marker { position: absolute; left: var(--basketball-aim, 50%); top: -1px; width: 5px; height: 9px; border-radius: 2px; background: #efa657; transform: translateX(-50%); }
-@media (max-height: 530px) { .basketball-pad { height: 118px; } .basketball-flick-arrow { font-size: 24px; } }
+.basketball-aim-marker { position: absolute; left: var(--basketball-aim, 50%); top: -1px; width: 5px; height: 8px; border-radius: 2px; background: #efa657; transform: translateX(-50%); }
+@keyframes basketball-bucket { from { transform: scale(1.18); } to { transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) { .basketball-result.is-make { animation: none; } .basketball-feedback { transition: none; } }

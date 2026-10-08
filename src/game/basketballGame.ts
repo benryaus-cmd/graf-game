@@ -89,24 +89,26 @@ export class BasketballGame {
       this.pool.push({ group, shot: null });
     }
     const netPoints: number[] = [];
+    const netTopRadius = BASKETBALL_COURT.rim.radius - BASKETBALL_COURT.rim.tubeRadius * .7;
+    const netMidRadius = netTopRadius * (.21 / .255), netBottomRadius = netTopRadius * (.16 / .255);
     for (let i = 0; i < 12; i++) {
       const angle = i / 12 * Math.PI * 2;
       const next = (i + 1) / 12 * Math.PI * 2;
-      netPoints.push(Math.cos(angle) * .255, 0, Math.sin(angle) * .255, Math.cos(next) * .16, -.38, Math.sin(next) * .16);
-      netPoints.push(Math.cos(angle) * .21, -.19, Math.sin(angle) * .21, Math.cos(next) * .21, -.19, Math.sin(next) * .21);
+      netPoints.push(Math.cos(angle) * netTopRadius, 0, Math.sin(angle) * netTopRadius, Math.cos(next) * netBottomRadius, -.38, Math.sin(next) * netBottomRadius);
+      netPoints.push(Math.cos(angle) * netMidRadius, -.19, Math.sin(angle) * netMidRadius, Math.cos(next) * netMidRadius, -.19, Math.sin(next) * netMidRadius);
     }
     const netGeometry = new THREE.BufferGeometry();
     netGeometry.setAttribute('position', new THREE.Float32BufferAttribute(netPoints, 3));
     this.net = new THREE.LineSegments(netGeometry, new THREE.LineBasicMaterial({ color: '#eee8d7', transparent: true, opacity: .72 }));
     this.net.name = 'basketball-net';
     this.net.position.fromArray(BASKETBALL_COURT.rim.center);
-    this.ring = new THREE.Mesh(new THREE.TorusGeometry(.3, .012, 4, 24), new THREE.MeshBasicMaterial({ color: '#ffd58a', transparent: true, opacity: 0, depthWrite: false }));
+    this.ring = new THREE.Mesh(new THREE.TorusGeometry(BASKETBALL_COURT.rim.radius + BASKETBALL_COURT.rim.tubeRadius, .012, 4, 24), new THREE.MeshBasicMaterial({ color: '#ffd58a', transparent: true, opacity: 0, depthWrite: false }));
     this.ring.rotation.x = Math.PI / 2;
     this.ring.position.copy(this.net.position);
     this.ring.visible = false;
     const points = new THREE.BufferGeometry();
     const positions: number[] = [];
-    for (let i = 0; i < 8; i++) positions.push(Math.cos(i / 8 * Math.PI * 2) * .28, (i % 2) * .09, Math.sin(i / 8 * Math.PI * 2) * .28);
+    for (let i = 0; i < 8; i++) positions.push(Math.cos(i / 8 * Math.PI * 2) * BASKETBALL_COURT.rim.radius, (i % 2) * .09, Math.sin(i / 8 * Math.PI * 2) * BASKETBALL_COURT.rim.radius);
     points.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
     this.burst = new THREE.Points(points, new THREE.PointsMaterial({ color: '#ffd58a', size: .045, transparent: true, opacity: 0, depthWrite: false }));
     this.burst.position.copy(this.net.position);

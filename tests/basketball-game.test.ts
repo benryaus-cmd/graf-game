@@ -64,9 +64,21 @@ test('a swish gives a distinct restrained basket response using the same existin
     game.dispose();
     return { color, netScale };
   };
-  const swish = response(.54, true), contactMake = response(.52, false);
+  const swish = response(.54, true), contactMake = response(.504, false);
   assert.notEqual(swish.color, contactMake.color);
   assert.ok(swish.netScale > contactMake.netScale);
+});
+
+test('net and basket feedback follow the enlarged canonical rim without extra render resources', () => {
+  const { world, game } = setup();
+  const net = world.scene.getObjectByName('basketball-net') as THREE.LineSegments;
+  assert.deepEqual(net.position.toArray(), [...BASKETBALL_COURT.rim.center]);
+  const positions = net.geometry.getAttribute('position');
+  assert.ok(Math.abs(Math.hypot(positions.getX(0), positions.getZ(0)) - (BASKETBALL_COURT.rim.radius - BASKETBALL_COURT.rim.tubeRadius * .7)) < 1e-6);
+  let ringRadius = 0;
+  world.scene.traverse(object => { if(object instanceof THREE.Mesh && object.geometry instanceof THREE.TorusGeometry) ringRadius = object.geometry.parameters.radius; });
+  assert.equal(ringRadius, BASKETBALL_COURT.rim.radius + BASKETBALL_COURT.rim.tubeRadius);
+  game.dispose();
 });
 
 test('five shooting marks are visible floor rings in one owned line draw derived from court positions', () => {

@@ -4,18 +4,19 @@ import type { BasketballView } from '@/game/basketballGame';
 import { BASKETBALL_COURT } from '@/game/basketballCourt';
 import { elementPointerIsRotated, elementPointerPoint } from '@/game/pointerCoordinates';
 
-/** Owns exactly one pointer. Cancellation always abandons the shot. */
+/** Transparent game-viewport surface. Owns one pointer; cancellation never shoots. */
 export function attachBasketballFlickPad(pad: HTMLElement, shoot: (gesture: BasketballGesture) => void): () => void {
   let gesture: {id:number;x:number;y:number;started:number;width:number;height:number} | null = null;
   const feedback = pad.querySelector<HTMLElement>('[data-basketball-feedback]');
   const resetFeedback = () => {
     pad.style.setProperty('--basketball-power', '0%');
     pad.style.setProperty('--basketball-aim', '50%');
-    if (feedback) feedback.textContent = 'Try a smooth half-pad flick';
+    pad.style.setProperty('--basketball-feedback-opacity', '0');
+    if (feedback) feedback.textContent = 'Flick up anywhere';
   };
   const readGesture = (event: PointerEvent): BasketballGesture | null => {
     if (!gesture || gesture.id !== event.pointerId) return null;
-    const point = elementPointerPoint(pad,event),scale = Math.min(gesture.width,gesture.height);
+    const point = elementPointerPoint(pad,event),scale = Math.min(gesture.width,gesture.height)*.35;
     return {dx:(point.x-gesture.x)*gesture.width/scale,dy:(gesture.y-point.y)*gesture.height/scale,durationMs:performance.now()-gesture.started};
   };
   const move = (event: PointerEvent) => {
@@ -35,20 +36,25 @@ export function attachBasketballFlickPad(pad: HTMLElement, shoot: (gesture: Bask
     if (id !== undefined && pad.hasPointerCapture(id)) pad.releasePointerCapture(id);
   };
   const down = (event: PointerEvent) => {
-    if (gesture || (event.pointerType === 'mouse' && (!event.isPrimary || event.button !== 0))) return;
+    const target = event.target as Element | null;
+    if (gesture || !event.isPrimary || (event.pointerType === 'mouse' && event.button !== 0) ||
+      (typeof target?.closest === 'function' && target.closest('button, a, input, select, textarea, [role=button], [data-basketball-ui]'))) return;
     event.preventDefault();event.stopPropagation();
     const point = elementPointerPoint(pad,event),rect=pad.getBoundingClientRect();
     if (point.x<0 || point.x>1 || point.y<0 || point.y>1) return;
     const rotated=elementPointerIsRotated(pad);
     gesture={id:event.pointerId,x:point.x,y:point.y,started:performance.now(),width:rotated?rect.height:rect.width,height:rotated?rect.width:rect.height};
-    try {pad.setPointerCapture(event.pointerId);} catch {gesture=null;}
+    try {pad.setPointerCapture(event.pointerId);pad.style.setProperty('--basketball-feedback-opacity', '1');} catch {gesture=null;resetFeedback();}
   };
   const up = (event: PointerEvent) => {
     if (!gesture || gesture.id!==event.pointerId) return;
     event.preventDefault();event.stopPropagation();
     const {dx,dy,durationMs}=readGesture(event)!;
     cancel();
-    if (Number.isFinite(dx) && Number.isFinite(dy) && dy>=0.08 && dy>Math.abs(dx)) shoot({dx,dy,durationMs});
+    // Validate the actual direction before clamping long screen swipes to the launch contract.
+    if (Number.isFinite(dx) && Number.isFinite(dy) && dy>=0.08 && dy>Math.abs(dx)) {
+      shoot({dx:Math.max(-1,Math.min(1,dx)),dy:Math.min(1,dy),durationMs});
+    }
   };
   const cancelled = (event: PointerEvent) => {if(event.pointerId===gesture?.id) cancel();};
   const hidden = () => {if(document.visibilityState==='hidden') cancel();};
@@ -89,12 +95,15 @@ export function BasketballControls({view,exploring,paused,onEnter,onLeave,onSpot
   const outcome=view.recentResult?.outcome;
   const status=outcome==='make' ? 'BUCKET!' : outcome==='miss' ? 'Try again' : 'Flick up to shoot';
   return <section className="basketball-controls" aria-label="Basketball shooting controls">
-    <header><div><strong>BASKETBALL</strong><small>SOLO · FIVE SPOTS</small></div><button onClick={onLeave}>LEAVE</button></header>
-    <div className="basketball-score"><span><b>{view.makes}</b> / {view.attempts} made</span><span><b>{view.streak}</b> streak</span></div>
+    <div className="basketball-screen" ref={pad} role="group" aria-label="Flick upward anywhere to shoot">
+      <div className="basketball-feedback" aria-hidden="true">
+        <div className="basketball-feedback-meters"><div className="basketball-meter-row"><span>POWER</span><div className="basketball-power-meter"><i className="basketball-power-band" /><i className="basketball-power-fill" /></div></div><div className="basketball-meter-row"><span>AIM</span><div className="basketball-aim-meter"><i className="basketball-aim-center" /><i className="basketball-aim-marker" /></div></div></div>
+        <small data-basketball-feedback>Flick up anywhere</small>
+      </div>
+    </div>
+    <div className="basketball-score"><span><b>{view.makes}</b>/{view.attempts} made</span><span><b>{view.streak}</b> streak</span></div>
     <p className={`basketball-result ${outcome==='make'?'is-make':''}`} aria-live="polite">{status}</p>
-    <div className="basketball-spots" aria-label="Choose shooting spot">{BASKETBALL_COURT.spots.map((spot,index)=><button key={spot.id} aria-label={`Spot ${index+1}`} aria-pressed={view.spotId===spot.id} onClick={()=>onSpot(spot.id)}>{index+1}</button>)}</div>
-    <div className="basketball-pad" ref={pad} role="group" aria-label="Flick upward to shoot"><span className="basketball-flick-arrow" aria-hidden="true">↑</span><strong>FLICK UP</strong>
-      <div className="basketball-feedback-meters" aria-hidden="true"><div className="basketball-meter-row"><span>POWER</span><div className="basketball-power-meter"><i className="basketball-power-band" /><i className="basketball-power-fill" /></div></div><div className="basketball-meter-row"><span>AIM</span><div className="basketball-aim-meter"><i className="basketball-aim-center" /><i className="basketball-aim-marker" /></div></div></div>
-      <small data-basketball-feedback>Try a smooth half-pad flick</small></div>
+    <button className="basketball-leave" data-basketball-ui onClick={onLeave}>LEAVE</button>
+    <div className="basketball-spots" data-basketball-ui aria-label="Choose shooting spot">{BASKETBALL_COURT.spots.map((spot,index)=><button key={spot.id} aria-label={`Spot ${index+1}`} aria-pressed={view.spotId===spot.id} onClick={()=>onSpot(spot.id)}>{index+1}</button>)}</div>
   </section>;
 }
