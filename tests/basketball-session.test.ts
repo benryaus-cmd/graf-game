@@ -3,7 +3,7 @@ import test from 'node:test';
 import { CourtSession, HorseSession, readCourtRequest } from '../src/game/basketballSession';
 
 const scope = { roomId: 'map2-local', mapId: 'map2', courtId: 'map2-basketball' };
-const gesture = { dx: 0, dy: .54, durationMs: 450 };
+const gesture = { dx: 0, dy: .2884, durationMs: 140 };
 const result = (shotId: string, outcome: 'make' | 'miss', spotId = 2) => ({
   shotId, outcome, spotId, version: 1 as const, courtId: scope.courtId, swish: outcome === 'make',
 });

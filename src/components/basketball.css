@@ -1,7 +1,7 @@
 .basketball-enter { position: absolute; z-index: 12; left: 50%; bottom: max(30px, env(safe-area-inset-bottom)); transform: translateX(-50%); padding: 12px 18px; border: 1px solid #ffac57; border-radius: 8px; background: #1b211bee; color: #fff1d2; font-size: 12px; font-weight: 800; letter-spacing: .07em; box-shadow: 0 4px 20px #0005; white-space: nowrap; pointer-events: auto; }
 /* No stacking context here: the transparent gesture surface stays below the game HUD/menu. */
 .basketball-controls { position: absolute; inset: 0; pointer-events: none; color: #f5f0df; }
-.basketball-screen { position: absolute; inset: 0; z-index: 5; pointer-events: auto; touch-action: none; user-select: none; cursor: grab; }
+.basketball-screen { position: absolute; inset: 0; z-index: 5; pointer-events: auto; touch-action: none; user-select: none; cursor: default; }
 .basketball-active .paint-quick-controls, .basketball-active .reticle { display: none; }
 .basketball-controls button { min-width: 36px; min-height: 40px; padding: 7px 9px; border: 1px solid #b3c0a655; border-radius: 7px; background: #1b211bee; color: #f5f0df; font-size: 11px; font-weight: 700; pointer-events: auto; }
 .basketball-score { position: absolute; z-index: 12; left: max(12px, env(safe-area-inset-left)); bottom: max(68px, calc(env(safe-area-inset-bottom) + 56px)); display: flex; gap: 10px; align-items: center; padding: 5px 8px; border-radius: 6px; background: #151b19c9; font-size: 10px; color: #d1d5c7; }
@@ -18,8 +18,9 @@
 .basketball-meter-row span { width: 32px; flex-shrink: 0; font-size: 8px; color: #ced3be; letter-spacing: .07em; }
 .basketball-power-meter, .basketball-aim-meter { position: relative; flex: 1; height: 6px; border-radius: 4px; background: #080e0abb; }
 .basketball-power-fill { position: absolute; inset: 0 auto 0 0; width: var(--basketball-power, 0%); border-radius: inherit; background: #efa657; }
-.basketball-power-band { position: absolute; z-index: 1; top: -2px; bottom: -2px; left: 37.5%; width: 5%; border: 1px solid #d5f69e; background: #d5f69e33; }
 .basketball-aim-center { position: absolute; top: -2px; bottom: -2px; left: 50%; width: 1px; background: #d5f69e; }
 .basketball-aim-marker { position: absolute; left: var(--basketball-aim, 50%); top: -1px; width: 5px; height: 8px; border-radius: 2px; background: #efa657; transform: translateX(-50%); }
 @keyframes basketball-bucket { from { transform: scale(1.18); } to { transform: scale(1); } }
 @media (prefers-reduced-motion: reduce) { .basketball-result.is-make { animation: none; } .basketball-feedback { transition: none; } }
+
+.basketball-screen.is-grabbing { cursor: grabbing; }

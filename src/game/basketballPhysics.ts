@@ -1,6 +1,6 @@
 import { BASKETBALL_COURT as court } from './basketballCourt';
 export type BasketballVector = [number, number, number];
-/** Normalize pointer displacement by the shorter viewport dimension; upward dy is positive. */
+/** Final release movement normalized by .65 of the shorter viewport edge; upward dy is positive. */
 export interface BasketballGesture { dx: number; dy: number; durationMs: number }
 export interface ShotLaunch {
     courtId: string; shotId: string; spotId: number; version: 1;
@@ -22,20 +22,20 @@ let nextShotId = 0;
 
 /** Shared by the preview and launch; callers validate or clamp their gesture. */
 export function basketballFlickSpeed(gesture: Pick<BasketballGesture, 'dy' | 'durationMs'>): number {
-    return Math.min(13, 5 + 4 * gesture.dy + .9 * gesture.dy / (gesture.durationMs / 1000));
+    return Math.min(9.1, 4 * gesture.dy / (gesture.durationMs / 1000));
 }
 
-export function launchFromFlick(spotId: number, gesture: BasketballGesture): ShotLaunch | null {
+export function launchFromFlick(spotId: number, gesture: BasketballGesture, releaseOrigin?: BasketballVector): ShotLaunch | null {
     const spot = court.spots.find(s => s.id === spotId);
     const { dx, dy, durationMs } = gesture;
-    if (!spot || ![dx, dy, durationMs].every(Number.isFinite) || Math.abs(dx) > 1 || dy < .06 || dy > 1 || durationMs < 40 || durationMs > 2000) return null;
-    const [x, , z] = spot.position;
-    const aim = Math.atan2(court.rim.center[0] - x, court.rim.center[2] - z) - dx * .9;
-    // Fixed elevation makes length/speed a learnable power control, not a hoop-target solver.
+    if (!spot || ![dx, dy, durationMs].every(Number.isFinite) || Math.abs(dx) > 1 || dy < .06 || dy > 1 || durationMs < 40 || durationMs > 2000 || releaseOrigin && !releaseOrigin.every(Number.isFinite)) return null;
+    const [x, , z] = releaseOrigin ?? spot.position;
+    const aim = Math.atan2(court.rim.center[0] - x, court.rim.center[2] - z) - Math.atan2(dx, dy);
+    // Fixed elevation leaves direction and actual release speed as learnable controls.
     const speed = basketballFlickSpeed(gesture);
     const elevation = 58 * Math.PI / 180, horizontal = speed * Math.cos(elevation);
     return { courtId: court.id, shotId: `local-${++nextShotId}`, spotId, version: 1,
-        origin: [x + Math.sin(aim) * .25, 1.7, z + Math.cos(aim) * .25],
+        origin: releaseOrigin ? [...releaseOrigin] : [x + Math.sin(aim) * .25, 1.7, z + Math.cos(aim) * .25],
         velocity: [Math.sin(aim) * horizontal, speed * Math.sin(elevation), Math.cos(aim) * horizontal] };
 }
 export function createBall(launch: ShotLaunch, elapsedSeconds = 0): BasketballBall {

@@ -1,0 +1,11 @@
+# Grab, prepare, flick and release
+
+Basketball now starts a shooting gesture only when the visible held ball is grabbed. The ball follows the finger with the original grab offset, allowing free preparation before the final upward flick. Pointer capture lets the gesture continue across the gameplay viewport. Score, Leave and five spot buttons stay compact at the edges.
+
+Power comes from recent upward velocity, and lateral aim comes from the final movement direction. Holding longer or leaving the finger at a particular position does not charge a shot. A deliberate accumulated upward stroke is separate from the recent velocity window, allowing larger motions without forcing every valid release to full power. A stationary lift, cancelled pointer or lost focus resets the held ball without shooting. The ball launches from its visible release position.
+
+Maximum launch speed is 9.1 m/s, 70% of the previous 13 m/s cap. The enlarged hoop and swept rim/backboard collisions remain in place. No physics dependencies, lights, shadows or new render resources are added. Shooting does not reactivate solo world Undo/Redo or change painting history.
+
+Delivery uses `updates/basketball-grab-9oct2026.json` for the current GraffCiti project. Preserve settings, saves, artwork, unlisted files, importer, aliases, host wrapper, dependencies and server. The rollback manifest restores the five previously existing runtime paths; the new gesture module can remain unreferenced after rollback.
+
+Validation: 383/383 full-suite tests, source TypeScript, full ESLint and standalone/imported-host production builds passed. The final independent review passed 44 focused tests, including the corrected fast-diagonal direction and preparation-pause cases. Actual browser touch checks verified grab-only input, finger following, stationary/tap/cancel/menu/spot behavior, exact held-world release origins and scored baskets from all five marks in native and rotated phone layouts. Both screenshots were inspected. Software rendering was reduced during timed touch tests and restored for screenshots; browser timing required gesture calibration, and these checks do not establish device FPS. Validation used Node 24.19.0; delivery uses the existing Node 22 downloader.

@@ -389,7 +389,9 @@ const WorldScene = (props: WorldSceneProps) => {
       onEnter={() => basketballRef.current?.enter()}
       onLeave={() => basketballRef.current?.leave()}
       onSpot={id => basketballRef.current?.enter(id)}
-      onShoot={gesture => basketballRef.current?.shoot(gesture)} />
+      onShoot={gesture => basketballRef.current?.shoot(gesture)}
+      onBallTarget={() => basketballRef.current?.getHeldBallTarget() ?? null}
+      onBallMove={point => basketballRef.current?.setHeldBallScreenPosition(point)} />
     {props.reference?.moving && !basketballView?.active && <div className="reference-move-surface" aria-label="Drag to position reference image"
       onPointerDown={event => {
         if (dragRef.current || (event.pointerType === 'mouse' && event.button !== 0)) return;

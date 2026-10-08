@@ -71,157 +71,118 @@ test('basketball ownership blocks direct joystick movement and touch jump', () =
 });
 
 import { attachBasketballFlickPad } from '../src/components/BasketballControls';
+import type { BasketballScreenPoint } from '../src/game/basketballGesture';
 
 function padFixture(rotated=false) {
   const f=fixture();
+  f.canvas.getBoundingClientRect=()=>({left:0,top:0,width:rotated?606:384,height:rotated?384:606}) as DOMRect;
   (f.canvas as any).closest=(selector:string)=>selector==='.game-portrait' && rotated ? {} : null;
   (f.canvas as any).style={setProperty:()=>{}};
+  (f.canvas as any).classList={add:()=>{},remove:()=>{}};
   (f.canvas as any).querySelector=()=>null;
   return f;
 }
-test('flick pad completes one owned upward gesture in normalized portrait coordinates',()=>{
-  const old=globalThis.window,oldDocument=globalThis.document;globalThis.window=new EventTarget() as any;globalThis.document=new EventTarget() as any;
-  const f=padFixture(true),shots:any[]=[];
-  const stop=attachBasketballFlickPad(f.canvas,g=>shots.push(g));
-  try {
-    // Portrait local up is screen left: local (0.5,0.75) -> (0.5,0.25).
-    f.canvas.dispatchEvent(pointer('pointerdown',1,300,100));
-    f.canvas.dispatchEvent(pointer('pointerdown',2,200,80));
-    f.canvas.dispatchEvent(pointer('pointerup',2,100,80));
-    assert.equal(shots.length,0);
-    f.canvas.dispatchEvent(pointer('pointerup',1,100,100));
-    assert.equal(shots.length,1);assert.equal(shots[0].dx,0);assert.equal(shots[0].dy,1);
-    assert.equal(f.captured,null);
-  } finally {stop();globalThis.window=old;globalThis.document=oldDocument;}
-});
-test('flick pad cancellation lost capture blur and teardown never shoot',()=>{
-  const old=globalThis.window,oldDocument=globalThis.document;globalThis.window=new EventTarget() as any;globalThis.document=new EventTarget() as any;
-  const f=padFixture(),shots:any[]=[];const stop=attachBasketballFlickPad(f.canvas,g=>shots.push(g));
-  try {
-    for (const type of ['pointercancel','lostpointercapture','blur']) {
-      f.canvas.dispatchEvent(pointer('pointerdown',1,200,180));
-      assert.equal(f.captured,1,'gesture owns capture until cancellation');
-      (type==='blur' ? window : f.canvas).dispatchEvent(pointer(type,1,200,20));
-      f.canvas.dispatchEvent(pointer('pointerup',1,200,20));
-    }
-    f.canvas.dispatchEvent(pointer('pointerdown',1,200,180));stop();
-    f.canvas.dispatchEvent(pointer('pointerup',1,200,20));
-    assert.equal(shots.length,0);assert.equal(f.captured,null);
-  } finally {stop();globalThis.window=old;globalThis.document=oldDocument;}
-});
-test('flick pad rejects taps sideways and downward gestures',()=>{
-  const old=globalThis.window,oldDocument=globalThis.document;globalThis.window=new EventTarget() as any;globalThis.document=new EventTarget() as any;
-  const f=padFixture(),shots:any[]=[];const stop=attachBasketballFlickPad(f.canvas,g=>shots.push(g));
-  try {
-    for (const [x,y] of [[200,180],[350,170],[200,195]]) {
-      f.canvas.dispatchEvent(pointer('pointerdown',1,200,180));
-      assert.equal(f.captured,1);
-      f.canvas.dispatchEvent(pointer('pointerup',1,x,y));
-    }
-    assert.equal(shots.length,0);
-  } finally {stop();globalThis.window=old;globalThis.document=oldDocument;}
-});
-
-test('flick pad shows live release power and sideways aim before release and resets on cancel',t=>{
-  const old=globalThis.window,oldDocument=globalThis.document;globalThis.window=new EventTarget() as any;globalThis.document=new EventTarget() as any;
-  const f=padFixture(),values=new Map<string,string>(),label={textContent:''};
-  (f.canvas as any).style={setProperty:(key:string,value:string)=>values.set(key,value)};
-  (f.canvas as any).querySelector=()=>label;
+function logicalPointer(type:string,x:number,y:number,rotated=false,id=1) {
+  return pointer(type,id,rotated?y*606:x*384,rotated?(1-x)*384:y*606);
+}
+function globals() {
+  const old=globalThis.window,oldDocument=globalThis.document;
+  globalThis.window=new EventTarget() as any;globalThis.document=new EventTarget() as any;
+  return ()=>{globalThis.window=old;globalThis.document=oldDocument;};
+}
+const target={x:.4,y:.75,radius:.09};
+test('only the visible ball starts a grab; it follows finger with original grab offset',t=>{
+  const restore=globals(),f=padFixture(),shots:any[]=[],positions:(BasketballScreenPoint|null)[]=[];
   let now=1000;t.mock.method(performance,'now',()=>now);
-  const shots:any[]=[];const stop=attachBasketballFlickPad(f.canvas,g=>shots.push(g));
+  const stop=attachBasketballFlickPad(f.canvas,g=>shots.push(g),{target:()=>target,move:p=>positions.push(p)});
   try {
-    assert.equal(values.get('--basketball-power'),'0%');
-    f.canvas.dispatchEvent(pointer('pointerdown',1,200,180));now+=450;
-    f.canvas.dispatchEvent(pointer('pointermove',1,220,72));
-    assert.equal(shots.length,0,'feedback does not shoot');
-    assert.ok(Number.parseFloat(values.get('--basketball-power')!)>35);
-    assert.ok(Math.abs(Number.parseFloat(values.get('--basketball-aim')!)-(50+20/70*50))<1e-8);
-    assert.match(label.textContent,/Power/);
-    const value=values.get('--basketball-power');
-    f.canvas.dispatchEvent(pointer('pointermove',2,300,20));assert.equal(values.get('--basketball-power'),value);
-    f.canvas.dispatchEvent(pointer('pointercancel',1));
-    assert.equal(values.get('--basketball-power'),'0%');assert.equal(values.get('--basketball-aim'),'50%');
-    assert.match(label.textContent,/anywhere/);assert.equal(shots.length,0);
-  } finally {stop();globalThis.window=old;globalThis.document=oldDocument;}
+    f.canvas.dispatchEvent(logicalPointer('pointerdown',.8,.3));assert.equal(f.captured,null);
+    f.canvas.dispatchEvent(logicalPointer('pointerdown',.42,.75));assert.equal(f.captured,1);
+    now+=500;f.canvas.dispatchEvent(logicalPointer('pointermove',.6,.9));
+    assert.ok(Math.abs(positions.at(-1)!.x-.58)<1e-10);assert.ok(Math.abs(positions.at(-1)!.y-.9)<1e-10);
+    assert.equal(shots.length,0);now+=100;
+    f.canvas.dispatchEvent(logicalPointer('pointerup',.6,.9));assert.equal(shots.length,0);assert.equal(positions.at(-1),null);
+  } finally {stop();restore();}
 });
-
-import * as basketballPhysics from '../src/game/basketballPhysics';
-test('live flick power uses the identical launch speed without changing physics',()=>{
-  assert.equal(typeof basketballPhysics.basketballFlickSpeed,'function');
-  for(const gesture of [{dx:0,dy:.54,durationMs:450},{dx:.1,dy:.8,durationMs:120},{dx:-.2,dy:.2,durationMs:900}]) {
-    const launch=basketballPhysics.launchFromFlick(2,gesture)!;
-    assert.ok(Math.abs(Math.hypot(...launch.velocity)-basketballPhysics.basketballFlickSpeed(gesture))<1e-10);
-  }
-});
-
-import { BASKETBALL_COURT } from '../src/game/basketballCourt';
-test('horizontal flick aims toward the camera right or left from all five marks',()=>{
-  for(const spot of BASKETBALL_COURT.spots) {
-    const yaw=Math.atan2(spot.position[0]-BASKETBALL_COURT.rim.center[0],spot.position[2]-BASKETBALL_COURT.rim.center[2]);
-    const cameraRight=[Math.cos(yaw),-Math.sin(yaw)];
-    for(const dx of [-.1,.1]) {
-      const launch=basketballPhysics.launchFromFlick(spot.id,{dx,dy:.54,durationMs:450})!;
-      const lateral=launch.velocity[0]*cameraRight[0]+launch.velocity[2]*cameraRight[1];
-      assert.ok(lateral*dx>0,`spot ${spot.id} dx ${dx} must aim in the flick direction`);
+test('native and rotated ball grabs produce identical final flicks after a long preparation',t=>{
+  const restore=globals(),shots:any[]=[],releases:any[]=[];let now=0;t.mock.method(performance,'now',()=>now);
+  try {
+    for(const rotated of [false,true]) {
+      const f=padFixture(rotated);let position:BasketballScreenPoint|null=null;
+      const stop=attachBasketballFlickPad(f.canvas,g=>{shots.push(g);releases.push(position);},{target:()=>target,move:p=>{position=p;}});
+      f.canvas.dispatchEvent(logicalPointer('pointerdown',.4,.75,rotated));
+      now+=500;f.canvas.dispatchEvent(logicalPointer('pointermove',.6,.85,rotated));
+      now+=2500;f.canvas.dispatchEvent(logicalPointer('pointermove',.6,.85,rotated));
+      for(let i=1;i<=6;i++) {now+=50;f.canvas.dispatchEvent(logicalPointer('pointermove',.6,.85-i*25/606,rotated));}
+      f.canvas.dispatchEvent(logicalPointer('pointerup',.6,.85-150/606,rotated));
+      assert.equal(position,null,'return home follows the release');stop();now+=1000;
     }
-  }
+    assert.equal(shots.length,2);assert.ok(Math.abs(shots[0].dy-shots[1].dy)<1e-10);assert.ok(Math.abs(shots[0].dx-shots[1].dx)<1e-10);
+    assert.equal(shots[0].durationMs,140);assert.ok(Math.abs(releases[0].y-(.85-150/606))<1e-10);
+  } finally {restore();}
 });
-
-
-test('screen flicks use the same short-edge reference from different start positions',t=>{
-  const old=globalThis.window,oldDocument=globalThis.document;globalThis.window=new EventTarget() as any;globalThis.document=new EventTarget() as any;
-  const f=padFixture(),shots:any[]=[];f.canvas.getBoundingClientRect=()=>({left:0,top:0,width:384,height:606}) as DOMRect;
-  let now=1000;t.mock.method(performance,'now',()=>now);
-  const stop=attachBasketballFlickPad(f.canvas,g=>shots.push(g));
+test('static lift after moving upward, short taps, sideways and downward movements never shoot',t=>{
+  const restore=globals(),f=padFixture(),shots:any[]=[];let now=0;t.mock.method(performance,'now',()=>now);
+  const stop=attachBasketballFlickPad(f.canvas,g=>shots.push(g),{target:()=>target,move:()=>{}});
   try {
-    for(const [x,y] of [[50,250],[190,480],[330,590]]) {
-      f.canvas.dispatchEvent(pointer('pointerdown',1,x,y));now+=450;
-      f.canvas.dispatchEvent(pointer('pointerup',1,x,y-384*.35*.54));
+    for(const [x,y,delay] of [[.4,.75,0],[.4,.72,0],[.8,.7,0],[.4,.9,0],[.4,.3,100]]) {
+      f.canvas.dispatchEvent(logicalPointer('pointerdown',.4,.75));now+=100;
+      f.canvas.dispatchEvent(logicalPointer('pointermove',x,y));now+=delay;
+      f.canvas.dispatchEvent(logicalPointer('pointerup',x,y));now+=1000;
     }
-    assert.equal(shots.length,3);
-    for(const shot of shots) {assert.equal(shot.dx,0);assert.ok(Math.abs(shot.dy-.54)<1e-10);assert.equal(shot.durationMs,450);}
-  } finally {stop();globalThis.window=old;globalThis.document=oldDocument;}
-});
-test('long upward screen swipes clamp power and aim while raw sideways gestures still reject',t=>{
-  const old=globalThis.window,oldDocument=globalThis.document;globalThis.window=new EventTarget() as any;globalThis.document=new EventTarget() as any;
-  const f=padFixture(),shots:any[]=[];f.canvas.getBoundingClientRect=()=>({left:0,top:0,width:384,height:606}) as DOMRect;
-  let now=1000;t.mock.method(performance,'now',()=>now);const stop=attachBasketballFlickPad(f.canvas,g=>shots.push(g));
-  try {
-    f.canvas.dispatchEvent(pointer('pointerdown',1,100,590));now+=500;f.canvas.dispatchEvent(pointer('pointerup',1,300,20));
-    assert.equal(shots.length,1);assert.equal(shots[0].dy,1);assert.equal(shots[0].dx,1);
-    assert.ok(basketballPhysics.launchFromFlick(2,shots[0]),'normal long swipes must launch instead of exceeding physics limits');
-    f.canvas.dispatchEvent(pointer('pointerdown',1,10,590));now+=500;f.canvas.dispatchEvent(pointer('pointerup',1,380,400));
-    assert.equal(shots.length,1,'raw sideways swipe cannot become upward through clamping');
-  } finally {stop();globalThis.window=old;globalThis.document=oldDocument;}
-});
-test('native and app-rotated screen flicks produce identical power and aim',t=>{
-  const old=globalThis.window,oldDocument=globalThis.document;globalThis.window=new EventTarget() as any;globalThis.document=new EventTarget() as any;
-  let now=1000;t.mock.method(performance,'now',()=>now);const shots:any[]=[];
-  for(const rotated of [false,true]) {
-    const f=padFixture(rotated);f.canvas.getBoundingClientRect=()=>({left:0,top:0,width:rotated?606:384,height:rotated?384:606}) as DOMRect;
-    const stop=attachBasketballFlickPad(f.canvas,g=>shots.push(g));
-    try {
-      f.canvas.dispatchEvent(pointer('pointerdown',1,rotated?450:120,rotated?264:450));now+=450;
-      f.canvas.dispatchEvent(pointer('pointerup',1,rotated?377.424:130,rotated?254:377.424));
-    } finally {stop();}
-  }
-  try {assert.equal(shots.length,2);assert.ok(Math.abs(shots[0].dx-shots[1].dx)<1e-10);assert.ok(Math.abs(shots[0].dy-shots[1].dy)<1e-10);assert.equal(shots[0].durationMs,shots[1].durationMs);}
-  finally {globalThis.window=old;globalThis.document=oldDocument;}
-});
-test('screen gesture ignores UI targets and secondary touch pointers',()=>{
-  const old=globalThis.window,oldDocument=globalThis.document;globalThis.window=new EventTarget() as any;globalThis.document=new EventTarget() as any;
-  const f=padFixture(),shots:any[]=[];const stop=attachBasketballFlickPad(f.canvas,g=>shots.push(g));
-  try {
-    const ui=pointer('pointerdown',1,100,180);Object.defineProperty(ui,'target',{value:{closest:()=>({})}});
-    f.canvas.dispatchEvent(ui);assert.equal(f.captured,null);f.canvas.dispatchEvent(pointer('pointerup',1,100,20));
-    const secondary=pointer('pointerdown',2,100,180);Object.assign(secondary,{pointerType:'touch',isPrimary:false});
-    f.canvas.dispatchEvent(secondary);assert.equal(f.captured,null);f.canvas.dispatchEvent(pointer('pointerup',2,100,20));
     assert.equal(shots.length,0);
-  } finally {stop();globalThis.window=old;globalThis.document=oldDocument;}
+  } finally {stop();restore();}
 });
-test('hiding the page cancels a screen gesture without a release shot',()=>{
-  const old=globalThis.window,oldDocument=globalThis.document;globalThis.window=new EventTarget() as any;globalThis.document=new EventTarget() as any;
-  const f=padFixture(),shots:any[]=[];const stop=attachBasketballFlickPad(f.canvas,g=>shots.push(g));
-  try {f.canvas.dispatchEvent(pointer('pointerdown',1,100,180));Object.assign(document,{visibilityState:'hidden'});document.dispatchEvent(new Event('visibilitychange'));f.canvas.dispatchEvent(pointer('pointerup',1,100,20));assert.equal(shots.length,0);assert.equal(f.captured,null);}
-  finally {stop();globalThis.window=old;globalThis.document=oldDocument;}
+test('UI targets, secondary pointers and nonexistent balls cannot start grabs',()=>{
+  const restore=globals(),f=padFixture(),shots:any[]=[];let visible=true;
+  const stop=attachBasketballFlickPad(f.canvas,g=>shots.push(g),{target:()=>visible?target:null,move:()=>{}});
+  try {
+    const ui=logicalPointer('pointerdown',.4,.75);Object.defineProperty(ui,'target',{value:{closest:()=>({})}});
+    f.canvas.dispatchEvent(ui);assert.equal(f.captured,null);
+    const secondary=logicalPointer('pointerdown',.4,.75);Object.assign(secondary,{pointerType:'touch',isPrimary:false});
+    f.canvas.dispatchEvent(secondary);assert.equal(f.captured,null);
+    visible=false;f.canvas.dispatchEvent(logicalPointer('pointerdown',.4,.75));assert.equal(f.captured,null);assert.equal(shots.length,0);
+  } finally {stop();restore();}
+});
+test('pointer cancellation, capture loss, blur, page hiding and teardown return ball home without shooting',()=>{
+  const restore=globals(),f=padFixture(),shots:any[]=[],positions:(BasketballScreenPoint|null)[]=[];
+  const stop=attachBasketballFlickPad(f.canvas,g=>shots.push(g),{target:()=>target,move:p=>positions.push(p)});
+  try {
+    for(const type of ['pointercancel','lostpointercapture','blur','visibilitychange']) {
+      Object.assign(document,{visibilityState:'visible'});
+      f.canvas.dispatchEvent(logicalPointer('pointerdown',.4,.75));assert.equal(f.captured,1);
+      if(type==='visibilitychange') {Object.assign(document,{visibilityState:'hidden'});document.dispatchEvent(new Event(type));}
+      else (type==='blur'?window:f.canvas).dispatchEvent(pointer(type));
+      assert.equal(f.captured,null);assert.equal(positions.at(-1),null);
+      f.canvas.dispatchEvent(logicalPointer('pointerup',.4,.3));
+    }
+    f.canvas.dispatchEvent(logicalPointer('pointerdown',.4,.75));stop();assert.equal(f.captured,null);assert.equal(positions.at(-1),null);assert.equal(shots.length,0);
+  } finally {stop();restore();}
+});
+test('second pointer cannot move or release the owned ball; preview shows velocity without shooting',t=>{
+  const restore=globals(),f=padFixture(),shots:any[]=[],positions:any[]=[],values=new Map<string,string>();
+  let now=0;t.mock.method(performance,'now',()=>now);
+  (f.canvas as any).style={setProperty:(k:string,v:string)=>values.set(k,v)};
+  const stop=attachBasketballFlickPad(f.canvas,g=>shots.push(g),{target:()=>target,move:p=>positions.push(p)});
+  try {
+    f.canvas.dispatchEvent(logicalPointer('pointerdown',.4,.75));now+=50;
+    f.canvas.dispatchEvent(logicalPointer('pointermove',.4,.7));
+    assert.ok(Number.parseFloat(values.get('--basketball-power')!)>0);const count=positions.length;
+    f.canvas.dispatchEvent(logicalPointer('pointermove',.4,.5,false,2));
+    f.canvas.dispatchEvent(logicalPointer('pointerup',.4,.3,false,2));assert.equal(positions.length,count);assert.equal(f.captured,1);assert.equal(shots.length,0);
+    f.canvas.dispatchEvent(pointer('pointercancel'));assert.equal(values.get('--basketball-power'),'0%');
+  } finally {stop();restore();}
+});
+
+test('holding the grabbed ball clears recent velocity feedback without storing a charged shot',t=>{
+  const restore=globals(),f=padFixture(),values=new Map<string,string>(),label={textContent:''};
+  let now=0;t.mock.method(performance,'now',()=>now);t.mock.timers.enable({apis:['setTimeout']});
+  (f.canvas as any).style={setProperty:(k:string,v:string)=>values.set(k,v)};(f.canvas as any).querySelector=()=>label;
+  const stop=attachBasketballFlickPad(f.canvas,()=>assert.fail('stationary lift must not shoot'),{target:()=>target,move:()=>{}});
+  try {
+    f.canvas.dispatchEvent(logicalPointer('pointerdown',.4,.75));now=100;
+    f.canvas.dispatchEvent(logicalPointer('pointermove',.4,.5));assert.ok(Number.parseFloat(values.get('--basketball-power')!)>0);
+    now+=81;t.mock.timers.tick(81);assert.equal(values.get('--basketball-power'),'0%');assert.match(label.textContent,/prepare/);
+    f.canvas.dispatchEvent(logicalPointer('pointerup',.4,.5));
+  } finally {stop();restore();}
 });

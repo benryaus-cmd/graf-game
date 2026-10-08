@@ -18,6 +18,7 @@ export interface BasketballView {
   streak: number;
   recentResult: ShotResult | null;
 }
+export interface HeldBallTarget { x: number; y: number; radius: number }
 
 type BasketballWorld = Pick<WorldEngine, 'scene' | 'playerPosition' | 'playerYaw' | 'playerPitch' | 'cameraMode'> & {
   activityLocked?: boolean;
@@ -46,6 +47,8 @@ export class BasketballGame {
   private readonly burst: THREE.Points<THREE.BufferGeometry, THREE.PointsMaterial>;
   private readonly held: THREE.Group;
   private readonly heldRotation = new THREE.Euler(0, 0, 0, 'YXZ');
+  private heldScreenPosition: { x: number; y: number } | null = null;
+  private readonly projectedHeld = new THREE.Vector3();
   private readonly pool: BallSlot[] = [];
   private readonly shots = new Set<ActiveShot>();
   private readonly seen = new Map<string, number>();
@@ -130,6 +133,33 @@ export class BasketballGame {
 
   getSnapshot(): BasketballView { return { ...this.view }; }
 
+  /** Logical viewport coordinates; radius is a fraction of its shorter edge. */
+  getHeldBallTarget(): HeldBallTarget | null {
+    const camera = this.world.camera;
+    if (!this.view.active || this.disposed || !camera) return null;
+    this.positionHeld();
+    camera.updateMatrixWorld(true);
+    this.held.updateMatrixWorld(true);
+    const centre = this.projectedHeld.copy(this.held.position).project(camera);
+    const x = (centre.x + 1) / 2, y = (1 - centre.y) / 2;
+    const width = camera.aspect, shortEdge = Math.min(width, 1);
+    const body = this.held.children[0] as THREE.Mesh<THREE.BufferGeometry>;
+    const positions = body.geometry.getAttribute('position');
+    let radius = 0;
+    for (let i = 0; i < positions.count; i++) {
+      const vertex = this.projectedHeld.fromBufferAttribute(positions, i).applyMatrix4(body.matrixWorld).project(camera);
+      radius = Math.max(radius, Math.hypot(((vertex.x + 1) / 2 - x) * width, (1 - vertex.y) / 2 - y) / shortEdge);
+    }
+    return { x, y, radius };
+  }
+
+  setHeldBallScreenPosition(point: { x: number; y: number } | null): void {
+    if (this.disposed || !this.view.active) return;
+    if (point && ![point.x, point.y].every(Number.isFinite)) return;
+    this.heldScreenPosition = point ? { x: point.x, y: point.y } : null;
+    this.positionHeld();
+  }
+
   enter(spotId = 2): boolean {
     if (this.disposed) return false;
     const spot = BASKETBALL_COURT.spots.find(candidate => candidate.id === spotId);
@@ -147,6 +177,7 @@ export class BasketballGame {
     if (this.world.velocityY !== undefined) this.world.velocityY = 0;
     this.view.active = true;
     this.view.spotId = spotId;
+    this.heldScreenPosition = null;
     this.held.visible = true;
     this.updateCamera();
     this.positionHeld();
@@ -186,13 +217,15 @@ export class BasketballGame {
     this.previous = null;
     this.view.active = false;
     this.view.spotId = null;
+    this.heldScreenPosition = null;
     this.held.visible = false;
     this.publish();
   }
 
   shoot(gesture: BasketballGesture): ShotLaunch | null {
     if (this.disposed || !this.view.active || this.view.spotId === null) return null;
-    const launch = launchFromFlick(this.view.spotId, gesture);
+    this.positionHeld();
+    const launch = launchFromFlick(this.view.spotId, gesture, this.held.position.toArray());
     if (!launch) return null;
     this.addShot(launch, 0, true);
     this.view.attempts++;
@@ -313,7 +346,9 @@ export class BasketballGame {
     const halfHeight = depth * Math.tan(THREE.MathUtils.degToRad((camera?.fov ?? 76) / 2));
     if (camera) this.held.quaternion.copy(camera.quaternion);
     else this.held.quaternion.setFromEuler(this.heldRotation.set(this.world.playerPitch, this.world.playerYaw, 0));
-    this.held.position.set(halfHeight * (camera?.aspect ?? 16 / 9) * -.25, -halfHeight * .48, -depth)
+    const x = this.heldScreenPosition ? this.heldScreenPosition.x * 2 - 1 : -.25;
+    const y = this.heldScreenPosition ? 1 - this.heldScreenPosition.y * 2 : -.48;
+    this.held.position.set(halfHeight * (camera?.aspect ?? 16 / 9) * x, halfHeight * y, -depth)
       .applyQuaternion(this.held.quaternion).add(this.world.playerPosition);
   }
 

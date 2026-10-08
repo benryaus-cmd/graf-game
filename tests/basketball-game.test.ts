@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { BasketballGame, BASKETBALL_BALL_POOL_SIZE } from '../src/game/basketballGame';
-import { launchFromFlick } from '../src/game/basketballPhysics';
+import { createBall, launchFromFlick, stepBall } from '../src/game/basketballPhysics';
 import { BASKETBALL_COURT } from '../src/game/basketballCourt';
 
 function setup() {
@@ -32,9 +32,9 @@ test('overlapping miss then make keeps the newest result and chronological strea
   const results: string[] = [];
   game.onResult = result => results.push(result.outcome);
   game.enter(2);
-  game.shoot({ dx: 0, dy: .2, durationMs: 450 });
+  game.shoot({ dx: 0, dy: .14, durationMs: 140 });
   setNow(500);
-  game.shoot({ dx: 0, dy: .54, durationMs: 450 });
+  game.shoot({ dx: 0, dy: .273, durationMs: 140 });
   for (let now = 600; now <= 3200; now += 100) setNow(now);
   assert.deepEqual(results, ['make', 'miss']);
   assert.equal(game.getSnapshot().attempts, 2);
@@ -51,7 +51,7 @@ test('a swish gives a distinct restrained basket response using the same existin
     let classification: boolean | undefined;
     game.onResult = result => { classification = result.swish; };
     game.enter(2);
-    game.shoot({ dx: 0, dy, durationMs: 450 });
+    game.shoot({ dx: 0, dy, durationMs: 140 });
     setNow(3000);
     setNow(3050);
     assert.equal(classification, swish);
@@ -64,7 +64,7 @@ test('a swish gives a distinct restrained basket response using the same existin
     game.dispose();
     return { color, netScale };
   };
-  const swish = response(.54, true), contactMake = response(.504, false);
+  const swish = response(.273, true), contactMake = response(.2695, false);
   assert.notEqual(swish.color, contactMake.color);
   assert.ok(swish.netScale > contactMake.netScale);
 });
@@ -133,7 +133,7 @@ test('idle court transforms remain finite before the first make and after feedba
   setNow(100);
   assertFiniteTransforms();
   game.enter(2);
-  game.shoot({ dx: 0, dy: .54, durationMs: 450 });
+  game.shoot({ dx: 0, dy: .273, durationMs: 140 });
   setNow(1900);
   assert.equal(game.getSnapshot().makes, 1);
   setNow(1950);
@@ -149,7 +149,7 @@ test('leaving clears live shots and feedback without late results or releasing p
   const results: string[] = [];
   game.onResult = result => results.push(result.outcome);
   game.enter(2);
-  const launch = game.shoot({ dx: 0, dy: .54, durationMs: 450 })!;
+  const launch = game.shoot({ dx: 0, dy: .273, durationMs: 140 })!;
   const before = resources(world.scene);
   game.leave();
   world.scene.traverse(object => {
@@ -162,7 +162,7 @@ test('leaving clears live shots and feedback without late results or releasing p
   assert.equal(game.receiveShot(launch), false);
   assert.deepEqual(resources(world.scene), before);
   game.enter(2);
-  game.shoot({ dx: 0, dy: .54, durationMs: 450 });
+  game.shoot({ dx: 0, dy: .273, durationMs: 140 });
   setNow(5800);
   assert.equal(game.getSnapshot().makes, 1);
   game.leave();
@@ -182,12 +182,12 @@ test('made shots report one bucket and a miss resets the streak while all effect
   const results: string[] = [];
   game.onResult = result => results.push(result.outcome);
   game.enter(2);
-  game.shoot({ dx: 0, dy: .54, durationMs: 450 });
+  game.shoot({ dx: 0, dy: .273, durationMs: 140 });
   setNow(1800);
   assert.equal(game.getSnapshot().makes, 1);
   assert.equal(game.getSnapshot().streak, 1);
   assert.equal(game.getSnapshot().recentResult?.outcome, 'make');
-  game.shoot({ dx: 0, dy: .2, durationMs: 450 });
+  game.shoot({ dx: 0, dy: .14, durationMs: 140 });
   setNow(4800);
   assert.equal(game.getSnapshot().makes, 1);
   assert.equal(game.getSnapshot().streak, 0);
@@ -313,4 +313,57 @@ test('basketball rejects expired late arrivals and invalid shots without changin
   setNow(9000);
   assert.equal(game.shoot(gesture), null);
   game.dispose();
+});
+
+
+test('grab target matches the visible ball and follows preparation at every mark and viewport shape', () => {
+ for(const aspect of [384/606,606/384,16/9]) {
+  const camera=new THREE.PerspectiveCamera(76,aspect,.1,1200);
+  const world={scene:new THREE.Scene(),camera,playerPosition:new THREE.Vector3(),playerYaw:0,playerPitch:0,cameraMode:'first' as const};
+  const game=new BasketballGame(world,()=>{});
+  assert.equal(game.getHeldBallTarget(),null);
+  for(const spot of BASKETBALL_COURT.spots) {
+   game.enter(spot.id);
+   const home=game.getHeldBallTarget()!;
+   assert.ok(Math.abs(home.x-.375)<1e-10&&Math.abs(home.y-.74)<1e-10);
+   assert.ok(home.radius>.04&&home.radius<.18);
+   const point={x:.49,y:.4};
+   game.setHeldBallScreenPosition(point);
+   const target=game.getHeldBallTarget()!;
+   assert.ok(Math.abs(target.x-point.x)<1e-10&&Math.abs(target.y-point.y)<1e-10);
+   const held=world.scene.getObjectByName('basketball-held')!;
+   const before=held.position.toArray();
+   const shot=game.shoot({dx:0,dy:.28,durationMs:140})!;
+   assert.deepEqual(shot.origin,before,'the released ball starts at the visible prepared position');
+   game.setHeldBallScreenPosition(null);
+   assert.ok(Math.abs(game.getHeldBallTarget()!.y-home.y)<1e-10);
+  }
+  game.leave(); assert.equal(game.getHeldBallTarget(),null); game.dispose();
+ }
+});
+
+
+test('a deliberate 146 to 230 pixel release stroke can make from all five marks in either phone orientation', () => {
+ for(const [width,height] of [[384,606],[606,384]]) {
+  const camera=new THREE.PerspectiveCamera(76,width/height,.1,1200);
+  const world={scene:new THREE.Scene(),camera,playerPosition:new THREE.Vector3(),playerYaw:0,playerPitch:0,cameraMode:'first' as const};
+  const game=new BasketballGame(world,()=>{});
+  for(const spot of BASKETBALL_COURT.spots) {
+   game.enter(spot.id);
+   // Grab, reposition for preparation, then travel a substantial upward stroke.
+   game.setHeldBallScreenPosition({x:.5,y:.78});
+   const pixels=(.78-.4)*height;
+   assert.ok(pixels>=145.9&&pixels<=231);
+   const velocityPixels=474.24;
+   const totalDurationMs=pixels/velocityPixels*1000;
+   assert.ok(totalDurationMs>=300);
+   game.setHeldBallScreenPosition({x:.5,y:.4});
+   const finalWindowMs=140;
+   const shot=game.shoot({dx:0,dy:velocityPixels*(finalWindowMs/1000)/(.65*Math.min(width,height)),durationMs:finalWindowMs})!;
+   assert.ok(Math.abs(Math.hypot(...shot.velocity)-7.6)<1e-10);
+   assert.equal(stepBall(createBall(shot),3)?.outcome,'make',`mark ${spot.id} at ${width}x${height}`);
+   game.setHeldBallScreenPosition(null);
+  }
+  game.dispose();
+ }
 });
