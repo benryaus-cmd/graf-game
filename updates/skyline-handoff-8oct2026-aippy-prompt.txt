@@ -1,0 +1,9 @@
+Use Node 22 to apply this update to the CURRENT GraffCiti project:
+
+https://raw.githubusercontent.com/benryaus-cmd/graf-game/main/updates/skyline-handoff-8oct2026.json
+
+Use the existing incremental downloader. Download the 1 listed file as raw bytes using manifest.baseUrl + source, then replace its exact target path.
+
+Preserve settings, saves, all unlisted files, the importer, aliases, host wrapper and dependencies. No full re-import or server changes.
+
+Build and load GraffCiti. Report version, downloads X/1, replacements X/1 and build PASS/FAIL.

@@ -1,0 +1,17 @@
+{
+  "version": "skyline-handoff-8oct2026-rollback",
+  "commit": "18161259dfbf4220c5302a6786bebf02be801222",
+  "baseUrl": "https://raw.githubusercontent.com/benryaus-cmd/graf-game/18161259dfbf4220c5302a6786bebf02be801222/",
+  "description": "Restore cityHorizon.ts from atmosphere-controls-8oct2026.",
+  "files": [
+    {
+      "source": "src/game/cityHorizon.ts",
+      "target": "src/games/importedGame/upstream/src/game/cityHorizon.ts"
+    }
+  ],
+  "notes": [
+    "Requires atmosphere-controls-8oct2026.",
+    "Download the listed file as raw bytes and replace its exact target.",
+    "Preserve settings, saves and all unlisted files. No server, importer, alias, wrapper or dependency changes."
+  ]
+}

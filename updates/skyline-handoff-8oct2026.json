@@ -1,0 +1,17 @@
+{
+  "version": "skyline-handoff-8oct2026",
+  "commit": "03cd0683cbab2e156f59e12cdc405ae5be9f9c21",
+  "baseUrl": "https://raw.githubusercontent.com/benryaus-cmd/graf-game/03cd0683cbab2e156f59e12cdc405ae5be9f9c21/",
+  "description": "Flat silhouettes appear 2m before the available 3D range ends; complete proxy coverage across chunk boundaries.",
+  "files": [
+    {
+      "source": "src/game/cityHorizon.ts",
+      "target": "src/games/importedGame/upstream/src/game/cityHorizon.ts"
+    }
+  ],
+  "notes": [
+    "Requires atmosphere-controls-8oct2026.",
+    "Download the listed file as raw bytes and replace its exact target.",
+    "Preserve settings, saves and all unlisted files. No server, importer, alias, wrapper or dependency changes."
+  ]
+}
