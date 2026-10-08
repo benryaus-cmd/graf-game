@@ -1,0 +1,69 @@
+{
+  "version": "atmosphere-controls-8oct2026-rollback",
+  "commit": "bac3b953fd1ae2e31c3e66cd545fe328f883964c",
+  "baseUrl": "https://raw.githubusercontent.com/benryaus-cmd/graf-game/bac3b953fd1ae2e31c3e66cd545fe328f883964c/",
+  "description": "Restore fourteen existing runtime files to performance-logger-8oct2026; the new cityAtmosphere.ts becomes unused and may remain.",
+  "files": [
+    {
+      "source": "src/components/DeveloperPanel.tsx",
+      "target": "src/games/importedGame/upstream/src/components/DeveloperPanel.tsx"
+    },
+    {
+      "source": "src/components/WorldScene.tsx",
+      "target": "src/games/importedGame/upstream/src/components/WorldScene.tsx"
+    },
+    {
+      "source": "src/game/cityChunks.ts",
+      "target": "src/games/importedGame/upstream/src/game/cityChunks.ts"
+    },
+    {
+      "source": "src/game/cityHorizon.ts",
+      "target": "src/games/importedGame/upstream/src/game/cityHorizon.ts"
+    },
+    {
+      "source": "src/game/cityStreetLamps.ts",
+      "target": "src/games/importedGame/upstream/src/game/cityStreetLamps.ts"
+    },
+    {
+      "source": "src/game/createWorld.ts",
+      "target": "src/games/importedGame/upstream/src/game/createWorld.ts"
+    },
+    {
+      "source": "src/game/performanceLog.ts",
+      "target": "src/games/importedGame/upstream/src/game/performanceLog.ts"
+    },
+    {
+      "source": "src/game/renderSettings.ts",
+      "target": "src/games/importedGame/upstream/src/game/renderSettings.ts"
+    },
+    {
+      "source": "src/game/skyBackdrop.ts",
+      "target": "src/games/importedGame/upstream/src/game/skyBackdrop.ts"
+    },
+    {
+      "source": "src/game/skyEffects.ts",
+      "target": "src/games/importedGame/upstream/src/game/skyEffects.ts"
+    },
+    {
+      "source": "src/game/worldPerformance.ts",
+      "target": "src/games/importedGame/upstream/src/game/worldPerformance.ts"
+    },
+    {
+      "source": "src/index.css",
+      "target": "src/games/importedGame/upstream/src/index.css"
+    },
+    {
+      "source": "src/multiplayer/artworkSync.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/artworkSync.ts"
+    },
+    {
+      "source": "src/multiplayer/worldSession.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/worldSession.ts"
+    }
+  ],
+  "notes": [
+    "Stage all 14 existing files before replacements.",
+    "The new src/game/cityAtmosphere.ts is no longer imported after rollback.",
+    "No server, importer or dependency changes."
+  ]
+}

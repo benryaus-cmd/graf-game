@@ -1,0 +1,75 @@
+{
+  "version": "atmosphere-controls-8oct2026",
+  "commit": "3c3733f79d7e7c5507008f9a7aad8b5391a07fa3",
+  "baseUrl": "https://raw.githubusercontent.com/benryaus-cmd/graf-game/3c3733f79d7e7c5507008f9a7aad8b5391a07fa3/",
+  "description": "Extended plain ground, matching haze sky, linear fog/culling, instanced street lamps, bounded lighting and remote shared-art image range/concurrency.",
+  "files": [
+    {
+      "source": "src/components/DeveloperPanel.tsx",
+      "target": "src/games/importedGame/upstream/src/components/DeveloperPanel.tsx"
+    },
+    {
+      "source": "src/components/WorldScene.tsx",
+      "target": "src/games/importedGame/upstream/src/components/WorldScene.tsx"
+    },
+    {
+      "source": "src/game/cityChunks.ts",
+      "target": "src/games/importedGame/upstream/src/game/cityChunks.ts"
+    },
+    {
+      "source": "src/game/cityHorizon.ts",
+      "target": "src/games/importedGame/upstream/src/game/cityHorizon.ts"
+    },
+    {
+      "source": "src/game/cityStreetLamps.ts",
+      "target": "src/games/importedGame/upstream/src/game/cityStreetLamps.ts"
+    },
+    {
+      "source": "src/game/createWorld.ts",
+      "target": "src/games/importedGame/upstream/src/game/createWorld.ts"
+    },
+    {
+      "source": "src/game/performanceLog.ts",
+      "target": "src/games/importedGame/upstream/src/game/performanceLog.ts"
+    },
+    {
+      "source": "src/game/renderSettings.ts",
+      "target": "src/games/importedGame/upstream/src/game/renderSettings.ts"
+    },
+    {
+      "source": "src/game/skyBackdrop.ts",
+      "target": "src/games/importedGame/upstream/src/game/skyBackdrop.ts"
+    },
+    {
+      "source": "src/game/skyEffects.ts",
+      "target": "src/games/importedGame/upstream/src/game/skyEffects.ts"
+    },
+    {
+      "source": "src/game/worldPerformance.ts",
+      "target": "src/games/importedGame/upstream/src/game/worldPerformance.ts"
+    },
+    {
+      "source": "src/index.css",
+      "target": "src/games/importedGame/upstream/src/index.css"
+    },
+    {
+      "source": "src/multiplayer/artworkSync.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/artworkSync.ts"
+    },
+    {
+      "source": "src/multiplayer/worldSession.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/worldSession.ts"
+    },
+    {
+      "source": "src/game/cityAtmosphere.ts",
+      "target": "src/games/importedGame/upstream/src/game/cityAtmosphere.ts"
+    }
+  ],
+  "notes": [
+    "Requires performance-logger-8oct2026 already imported.",
+    "Stage all 15 raw files before replacing the listed persistent targets.",
+    "No server, importer, aliases, host wrapper or dependency changes.",
+    "Shared image range applies to remote artwork, not terrain or solo paint restoration.",
+    "Phone FPS gains require a new comparable route recording."
+  ]
+}
