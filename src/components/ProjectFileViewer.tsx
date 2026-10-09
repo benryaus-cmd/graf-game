@@ -30,7 +30,7 @@ const FilePreview = ({
   };
 
   return (
-    <div className="fixed inset-0 z-[70] flex flex-col bg-neutral-950 font-mono text-neutral-200">
+    <div className="absolute inset-0 z-[100] flex flex-col bg-neutral-950 font-mono text-neutral-200" onPointerDown={e => e.stopPropagation()} onPointerUp={e => e.stopPropagation()} onClick={e => e.stopPropagation()}>
       <div className="flex items-center gap-2 border-b border-neutral-800 px-3 py-2.5">
         <button type="button" onClick={onBack} className="min-h-11 shrink-0 rounded bg-neutral-800 px-3 text-xs">
           ← BACK
@@ -193,7 +193,7 @@ const ProjectFileViewer = ({ onClose }: { onClose: () => void }) => {
   }
 
   return (
-    <div className="fixed inset-0 z-[60] flex flex-col bg-neutral-950 font-mono text-neutral-200">
+    <div className="absolute inset-0 z-[90] flex flex-col bg-neutral-950 font-mono text-neutral-200" onPointerDown={e => e.stopPropagation()} onPointerUp={e => e.stopPropagation()} onClick={e => e.stopPropagation()}>
       <div className="flex items-center gap-2 border-b border-neutral-800 px-3 py-2.5">
         <button type="button" onClick={onClose} className="min-h-11 shrink-0 rounded bg-neutral-800 px-3 text-xs">
           ← CLOSE
