@@ -1,0 +1,23 @@
+{
+  "version": "horse-authoritative-letters-ui-9oct2026",
+  "commit": "80aaeb3cb356e5bccc6bce506eaf69ea23cd4a2a",
+  "baseUrl": "https://raw.githubusercontent.com/benryaus-cmd/graf-game/80aaeb3cb356e5bccc6bce506eaf69ea23cd4a2a/",
+  "description": "Show server-authoritative HORSE letter awards and end results at existing basketball HUD.",
+  "files": [
+    {
+      "source": "src/multiplayer/basketballSync.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/basketballSync.ts"
+    },
+    {
+      "source": "src/components/BasketballControls.tsx",
+      "target": "src/games/importedGame/upstream/src/components/BasketballControls.tsx"
+    }
+  ],
+  "notes": [
+    "Court result and its already-adopted authoritative state only; no new message or client letter awards.",
+    "Compare previous and next HORSE letters before adopting the result; skip duplicates, snapshots and changed participants.",
+    "Display temporary 1.8 second prominent notices and preserve existing persistent HORSE scoreboard.",
+    "Winner/loser notice only when ended with endReason letters.",
+    "Import only these two files with Node 22 incremental importer; preserve server, host, multiplayer and saved game data."
+  ]
+}
