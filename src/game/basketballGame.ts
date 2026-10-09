@@ -31,7 +31,7 @@ type BasketballWorld = Pick<WorldEngine, 'scene' | 'playerPosition' | 'playerYaw
   velocityY?: number;
 };
 type BallSlot = { group: THREE.Group; shot: ActiveShot | null };
-type ActiveShot = { ball: BasketballBall; localAttempt: number; launchedAtMs: number; slot: BallSlot | null; authoritative: boolean };
+type ActiveShot = { ball: BasketballBall; localAttempt: number; launchedAtMs: number; slot: BallSlot | null; authoritative: boolean; serverConfirmed: boolean };
 type ExploringState = { position: THREE.Vector3; yaw: number; pitch: number; cameraMode: WorldEngine['cameraMode']; velocityY: number | undefined; locked: boolean | undefined };
 
 /** Owns only its pooled presentation; the city's rim and paintable board remain borrowed. */
@@ -221,19 +221,25 @@ export class BasketballGame {
   /** Shared predictions animate immediately, without attempts, results, or coin callbacks. */
   predictSharedShot(launch: ShotLaunch): boolean {
     if (!this.shared || !this.view.active || this.disposed || !this.validLaunch(launch) || this.seen.has(launch.shotId)) return false;
-    this.addShot(launch, 0, false, true);
+    this.addShot(launch, 0, false, true, false);
     return true;
   }
 
-  receiveSharedShot(launch: ShotLaunch, elapsedSeconds = 0, reconcile = false): boolean {
-    if (this.disposed || !this.validLaunch(launch) || !Number.isFinite(elapsedSeconds) || elapsedSeconds < 0 || elapsedSeconds >= LIFE_SECONDS) return false;
+  receiveSharedShot(launch: ShotLaunch, elapsedSeconds = 0, confirmPrediction = false): boolean {
+    if (this.disposed || !this.validLaunch(launch) || !Number.isFinite(elapsedSeconds) || elapsedSeconds < 0) return false;
     const predicted = [...this.shots].find(shot => shot.ball.launch.shotId === launch.shotId);
-    if (reconcile && predicted?.authoritative) {
-      predicted.ball = createBall(launch, elapsedSeconds);
-      predicted.launchedAtMs = this.clock() - elapsedSeconds * 1000;
-      if (predicted.slot) predicted.slot.group.position.fromArray(predicted.ball.position);
+    if (confirmPrediction) {
+      if (!predicted?.authoritative) return false;
+      const local = predicted.ball.launch;
+      if (local.spotId !== launch.spotId || !['origin', 'velocity'].every(key => {
+        const vector = key as 'origin' | 'velocity';
+        return local[vector].every((value, index) => Math.abs(value - launch[vector][index]) <= 1e-5);
+      })) return false;
+      // Confirmation changes authority only; the shooter's ball and local clock continue untouched.
+      predicted.serverConfirmed = true;
       return true;
     }
+    if (elapsedSeconds >= LIFE_SECONDS) return false;
     if (this.seen.has(launch.shotId)) return false;
     this.addShot(launch, elapsedSeconds, false, true);
     return true;
@@ -385,7 +391,7 @@ export class BasketballGame {
     this.burst.geometry.dispose(); this.burst.material.dispose();
   }
 
-  private addShot(launch: ShotLaunch, elapsedSeconds: number, local: boolean, authoritative = false): void {
+  private addShot(launch: ShotLaunch, elapsedSeconds: number, local: boolean, authoritative = false, serverConfirmed = true): void {
     const nowMs = this.clock();
     this.seen.set(launch.shotId, nowMs);
     const ball = createBall(launch, elapsedSeconds);
@@ -394,7 +400,7 @@ export class BasketballGame {
       slot = this.pool.reduce((oldest, candidate) => candidate.shot!.launchedAtMs < oldest.shot!.launchedAtMs ? candidate : oldest);
       slot.shot!.slot = null; // Simulation continues even when its visual is recycled.
     }
-    const shot: ActiveShot = { ball, localAttempt: local ? this.view.attempts + 1 : 0, launchedAtMs: nowMs - elapsedSeconds * 1000, slot, authoritative };
+    const shot: ActiveShot = { ball, localAttempt: local ? this.view.attempts + 1 : 0, launchedAtMs: nowMs - elapsedSeconds * 1000, slot, authoritative, serverConfirmed };
     slot.shot = shot;
     slot.group.visible = true;
     slot.group.position.fromArray(ball.position);

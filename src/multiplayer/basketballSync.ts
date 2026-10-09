@@ -266,7 +266,7 @@ export class BasketballSync {
       const resultSeat = state.seats.find(seat => seat.playerId === message.playerId && seat.epoch === message.seatEpoch);
       const accepted = this.launches.get(canonical(message.seatEpoch, message.sequence));
       const result = seat && accepted && readResult(message.result, seat, message.sequence, accepted.spotId);
-      if (!seat || !resultSeat || resultSeat.sequence !== message.sequence || !result || !accepted || accepted.sequence !== message.sequence || accepted.revision !== null && accepted.revision !== message.revision || this.results.has(result.shotId) || this.scheduled.has(result.shotId)) return;
+      if (!seat || !resultSeat || resultSeat.sequence < message.sequence || !result || !accepted || accepted.sequence !== message.sequence || accepted.revision !== null && message.revision < accepted.revision || this.results.has(result.shotId) || this.scheduled.has(result.shotId)) return;
       const delay = (message.serverTime as number) - connection.serverTime;
       if (delay < 0 && (message.serverTime as number) < accepted.serverTime || delay > 3000) return;
       const apply = () => {
@@ -285,8 +285,9 @@ export class BasketballSync {
     if (revision !== null) this.requestRevision = Math.max(this.requestRevision, revision);
     this.launches.set(shot.launch.shotId, { sequence: shot.sequence, serverTime: shot.serverTime, revision, spotId: shot.launch.spotId });
     while (this.launches.size > 256) { const oldest = this.launches.keys().next().value!; this.launches.delete(oldest); this.results.delete(oldest); }
-    if (elapsedSeconds >= 3) return;
-    this.emit({ type: 'launch', launch: shot.launch, elapsedSeconds, own: shot.playerId === this.connection.playerId,
-      reconcile: shot.playerId === this.connection.playerId && this.pendingShotId === shot.launch.shotId });
+    const confirmPrediction = shot.playerId === this.connection.playerId && this.pendingShotId === shot.launch.shotId;
+    if (!confirmPrediction && elapsedSeconds >= 3) return;
+    this.emit({ type: 'launch', launch: shot.launch, elapsedSeconds: confirmPrediction ? 0 : elapsedSeconds, own: shot.playerId === this.connection.playerId,
+      reconcile: confirmPrediction });
   }
 }

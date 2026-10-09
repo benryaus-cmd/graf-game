@@ -246,3 +246,56 @@ test('scheduled future authority credits exactly when the event clock arrives', 
   assert.equal(own.events.filter(event => event.type === 'result').length, 1);
   for (const client of clients) client.sync.dispose();
 });
+
+
+for (const horse of [false,true]) test(`${horse ? 'HORSE' : 'free shooting'} accepts current result revision after another player shoots`, () => {
+ const {clients,drain,shots,server}=serverHarness(3);
+ try {
+  for(const client of clients){if(horse)client.capabilities.push('basketball_horse_v1');client.receive(null);client.sync.enter();}drain();
+  if(horse){clients[0].sync.inviteHorse('p1',4);drain();clients[1].sync.acceptHorse();drain();}
+  const own=clients[0]; own.sync.shoot(gesture,releaseOffset);drain();
+  clients[2].sync.shoot(gesture,releaseOffset);drain();
+  const {reply,request}=shots[0];const state=server.snapshot(); assert.ok(state.revision>reply.state.revision);
+  own.now=Math.max(own.now,reply.resultServerTime!);state.serverTime=own.now;
+  const result={...scope,type:'court_result',revision:state.revision,serverTime:own.now,playerId:own.playerId,seatEpoch:request.seatEpoch,sequence:request.sequence,result:reply.result,state};
+  own.receive(result);own.receive(result);
+  assert.equal(own.events.filter(e=>e.type==='result').length,1);assert.equal(own.sync.state.pendingShotId,null);
+  assert.equal(own.sync.state.court?.revision,state.revision);assert.equal(own.sync.state.ownSeat?.attempts,1);
+  if(horse)assert.deepEqual(own.sync.state.court?.horse,state.horse);
+ }finally{clients.forEach(c=>c.sync.dispose());}
+});
+
+test('result seat may have a newer sequence but backwards revision and mismatched correlation remain rejected',()=>{
+ const {clients,drain,shots}=serverHarness();clients.forEach(c=>c.sync.enter());drain();const own=clients[0];
+ try{
+ own.sync.shoot(gesture,releaseOffset);drain();const {reply,request}=shots[0];own.now=reply.resultServerTime!;
+ const state=structuredClone(reply.state);state.serverTime=own.now;state.revision++;state.seats[0].sequence++;
+ const result={...scope,type:'court_result',revision:state.revision,serverTime:own.now,playerId:own.playerId,seatEpoch:request.seatEpoch,sequence:request.sequence,result:reply.result,state};
+ for(const bad of [
+ {...result,revision:reply.state.revision-1,state:{...state,revision:reply.state.revision-1}},
+ {...result,state:{...state,revision:state.revision+1}},
+ {...result,playerId:'p1'}, {...result,seatEpoch:Number(request.seatEpoch)+1}, {...result,sequence:Number(request.sequence)+1},
+ {...result,result:{...reply.result!,shotId:'s999-1'}}, {...result,result:{...reply.result!,spotId:4}},
+ {...result,state:{...state,seats:state.seats.map(s=>s.playerId===own.playerId?{...s,sequence:0,attempts:0,makes:0}:s)}},
+ ]){own.receive(bad);assert.equal(own.events.filter(e=>e.type==='result').length,0);}
+ own.receive(result);own.receive(result);assert.equal(own.events.filter(e=>e.type==='result').length,1);
+ assert.equal(own.sync.state.ownSeat?.sequence,2);assert.equal(own.sync.state.pendingShotId,null);
+ }finally{clients.forEach(c=>c.sync.dispose());}
+});
+
+test('delayed own echo confirms with zero visual elapsed while remote echoes keep server age',()=>{
+ const own=new Transport(),server=new CourtSession(scope);own.sync.enter();own.state(server.join(own.playerId,0,own.now).state);
+ const launch=own.sync.shoot(gesture,releaseOffset)!;const request=own.outgoing.at(-1)!;
+ const reply=server.handleRequest(own.playerId,request,own.now);const launchTime=own.now;
+ const newcomer=new Transport('p1');
+ try{
+ own.now+=800;
+ const echo={...scope,type:'court_shot',revision:reply.state.revision,serverTime:launchTime,playerId:own.playerId,seatEpoch:request.seatEpoch,sequence:request.sequence,launch:reply.launch};
+ own.receive(echo);own.receive(echo);
+ const events=own.events.filter(e=>e.type==='launch');assert.equal(events.length,2);
+ const confirmation=events[1];assert.equal(confirmation.type==='launch'&&confirmation.reconcile,true);
+ assert.equal(confirmation.type==='launch'&&confirmation.elapsedSeconds,0);
+ newcomer.now=launchTime+1100;newcomer.sync.enter();newcomer.state(reply.state);newcomer.receive(echo);
+ const event=newcomer.events.find(e=>e.type==='launch');assert.equal(event?.type==='launch'&&event.elapsedSeconds,1.1);
+ }finally{own.sync.dispose();newcomer.sync.dispose();}
+});

@@ -395,7 +395,7 @@ test('a deliberate 225 pixel release stroke can make from all five marks in eith
 
 import { releaseOriginFromOffset } from '../src/game/basketballRelease';
 
-test('shared input encodes the visible prepared ball and prediction reconciles into one authority ball', () => {
+test('shared input launches from the held ball and delayed authority confirms the same uninterrupted local simulation', () => {
   const { world, game, setNow } = setup();
   const soloShots: string[] = [], coinResults: string[] = [];
   game.onShot = shot => soloShots.push(shot.shotId);
@@ -414,12 +414,26 @@ test('shared input encodes the visible prepared ball and prediction reconciles i
   game.syncSharedCounters({ attempts: 1, makes: 1 }, launch.shotId);
   assert.equal(game.getSnapshot().makes, 0, 'state carrying simulated make cannot score while own result is pending');
   assert.equal(game.getSnapshot().attempts, 0);
-  const authoritative = { ...launch, origin: [launch.origin[0] + .01, ...launch.origin.slice(1)] as typeof launch.origin };
-  assert.equal(game.receiveSharedShot(authoritative, .05, true), true);
+  setNow(120);
+  const active = [...(game as unknown as { shots: Set<{ ball: ReturnType<typeof createBall>; launchedAtMs: number; serverConfirmed: boolean }> }).shots][0];
+  const ball = active.ball, age = ball.ageSeconds, position = [...ball.position], velocity = [...ball.velocity], launchedAt = active.launchedAtMs;
+  assert.equal(active.serverConfirmed, false);
+  const authoritative = structuredClone(launch);
+  assert.equal(game.receiveSharedShot(authoritative, .8, true), true);
+  assert.equal(active.ball, ball);
+  assert.equal(ball.ageSeconds, age);
+  assert.deepEqual(ball.position, position);
+  assert.deepEqual(ball.velocity, velocity);
+  assert.equal(active.launchedAtMs, launchedAt);
+  assert.equal(active.serverConfirmed, true);
   let visible = 0;
   world.scene.traverse(object => { if (object.name.startsWith('basketball-flight-') && object.visible) visible++; });
   assert.equal(visible, 1);
-  assert.deepEqual(world.scene.getObjectByName('basketball-flight-0')!.position.toArray(), createBall(authoritative, .05).position);
+  assert.deepEqual(world.scene.getObjectByName('basketball-flight-0')!.position.toArray(), position);
+  setNow(240);
+  assert.equal(active.ball, ball);
+  assert.ok(ball.ageSeconds > age);
+  assert.notDeepEqual(ball.position, position);
   assert.equal(game.receiveSharedShot(authoritative), false);
   setNow(3000);
   assert.equal(game.getSnapshot().attempts, 0);
@@ -481,4 +495,21 @@ test('leaving shared court clears predictions and preserves solo counters and ev
   assert.ok(game.shoot({ dx: 0, dy: 0, durationMs: 140 }));
   assert.equal(game.getSnapshot().attempts, previous.attempts + 1);
   game.dispose();
+});
+
+
+test('own confirmation rejects mismatched launch parameters and never respawns an expired prediction', () => {
+ const { game, world, setNow } = setup(); game.enterShared(2);
+ const input=game.getSharedShotInput(gesture)!;
+ const launch={...launchFromFlick(2,gesture,releaseOriginFromOffset(2,input.releaseOffset)!)!,shotId:'s9-1'};
+ game.predictSharedShot(launch); setNow(100);
+ const position=world.scene.getObjectByName('basketball-flight-0')!.position.toArray();
+ for (const bad of [{...launch,spotId:1},{...launch,origin:[launch.origin[0]+.01,launch.origin[1],launch.origin[2]]},{...launch,velocity:[launch.velocity[0]+.01,launch.velocity[1],launch.velocity[2]]}]) {
+  assert.equal(game.receiveSharedShot(bad as typeof launch,.5,true),false);
+  assert.deepEqual(world.scene.getObjectByName('basketball-flight-0')!.position.toArray(),position);
+ }
+ assert.equal(game.receiveSharedShot(launch,4,true),true,'own confirmation ignores latency even beyond remote visual lifetime');
+ setNow(3100); assert.equal(game.receiveSharedShot(launch,0,true),false);
+ assert.equal(world.scene.getObjectByName('basketball-flight-0')!.visible,false);
+ game.dispose();
 });
