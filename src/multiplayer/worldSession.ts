@@ -138,8 +138,8 @@ export class WorldMultiplayerSession {
   constructor(private world: WorldEngine, private report: (status: MultiplayerStatus) => void,
     private reportView: (view: MultiplayerView) => void = () => {}) {
     this.lastPosition = world.playerPosition.toArray();
-    this.players = new RemotePlayers(world.scene);
-    this.ownSpeech = new SpeechBubble(world.playerAvatar);
+    this.players = new RemotePlayers(world.scene, () => world.playerPosition);
+    this.ownSpeech = new SpeechBubble(world.playerAvatar, () => world.playerPosition);
     this.replay = new PaintReplay(() => this.visibility);
     this.connection = new MultiplayerConnection(MULTIPLAYER_URL, status => {
       if (status.phase === 'disconnected' || status.phase === 'connecting') {
@@ -980,7 +980,7 @@ export class WorldMultiplayerSession {
       this.previewOverlap || this.protection.errorCode === 'protected_area_overlap' || this.protection.errorCode === 'insufficient_credits'
     ));
     this.refreshWalls();
-    this.paint.flush(performance.now()); this.replay.update(); this.players.update(delta);
+    this.paint.flush(performance.now()); this.replay.update(); this.players.update(delta); this.ownSpeech.update();
     for (const id of this.recompose) {
       const wall = this.walls.get(id);
       if (!wall) { this.recompose.delete(id); continue; }

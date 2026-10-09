@@ -33,6 +33,7 @@ import type { AvatarEmote, CameraMode, MovementInput, SkyMode } from '@/game/wor
 import type { BrushHead } from '@/game/sprayHeads';
 import { LiveRadioController } from '@/game/liveRadio';
 import { RADIO_STREAM_URL } from '@/config/radio';
+import { CLIENT_VERSION } from '@/config/clientVersion';
 import ReferenceSheet from '@/components/ReferenceSheet';
 import ReferenceControls from '@/components/ReferenceControls';
 import type { ReferenceSettings } from '@/game/referenceGuide';
@@ -543,7 +544,7 @@ const App = () => {
               onUnlock={() => { closeMenu(); setDeveloperChoice(true); }}
               radioVolume={radioVolume} onRadioVolume={volume => radioController?.setVolume(volume)}
             >
-              <div className="menu-profile">{aippyUser.avatar && <img src={aippyUser.avatar} alt="" referrerPolicy="no-referrer" />}<div><strong>{displayName}</strong><small>GraffCiti</small></div></div>
+              <div className="menu-profile">{aippyUser.avatar && <img src={aippyUser.avatar} alt="" referrerPolicy="no-referrer" />}<div><strong>{displayName}</strong><small>GraffCiti · Client {CLIENT_VERSION}</small></div></div>
               <section className="tool-section"><h3>PLAY</h3><div className="menu-grid">
                 <button type="button" onClick={() => toggleMenu('avatar')}>PROFILE &amp; CLOSET</button>
                 <button type="button" onClick={() => toggleMenu('art')}>NEARBY ART</button>

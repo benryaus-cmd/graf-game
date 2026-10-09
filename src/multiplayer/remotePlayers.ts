@@ -21,7 +21,7 @@ export interface PickedPlayer { playerId: string; username: string; nickName: st
 export class RemotePlayers {
   private players = new Map<string, RemotePlayer>();
   private actions = new Set<string>();
-  constructor(private scene: THREE.Scene) {}
+  constructor(private scene: THREE.Scene, private listenerPosition?: () => THREE.Vector3) {}
   get count(): number { return this.players.size; }
   roster(): PickedPlayer[] { return [...this.players.keys()].map(id => this.get(id)!); }
   joined(value: unknown, ownId: string | null): void {
@@ -127,12 +127,13 @@ export class RemotePlayers {
       remote.avatar.position.set(state.position[0], state.position[1] - EYE_HEIGHT, state.position[2]);
       remote.avatar.rotation.y = state.rotation[1] + Math.PI;
       updatePlayerAvatar(remote.avatar, delta, state.movement !== 'idle', state.jumping === true || state.flightState === 'flying' || state.flightState === 'levitating');
+      remote.bubble?.update();
     }
   }
   say(playerId: string, text: string): void {
     const remote = this.players.get(playerId);
     if (!remote) return;
-    remote.bubble ??= new SpeechBubble(remote.avatar);
+    remote.bubble ??= new SpeechBubble(remote.avatar, this.listenerPosition);
     remote.bubble.show(text);
   }
   left(playerId: string): void {
