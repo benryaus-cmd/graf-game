@@ -5,7 +5,7 @@ export function addPosterOverlay(
   wall: PaintWall,
   artwork: PosterArtwork,
   image: HTMLImageElement,
-): void {
+): THREE.Mesh {
   const texture = new THREE.Texture(image);
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.generateMipmaps = true;
@@ -35,5 +35,6 @@ export function addPosterOverlay(
   mesh.translateZ(0.006);
   mesh.renderOrder = 90;
   mesh.userData.posterArtwork = true;
-  (wall.layers[0]?.mesh ?? wall.mesh).add(mesh);
+  wall.mesh.add(mesh);
+  return mesh;
 }
