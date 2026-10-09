@@ -72,8 +72,15 @@ const App = () => {
   const [multiplayerStatus, setMultiplayerStatus] = useState<MultiplayerStatus>({ phase: 'solo', playerCount: 0 });
   const [multiplayerView, setMultiplayerView] = useState<MultiplayerView>({ chat: [], revision: 0, accountFeaturesAvailable: false, worldItemCount: 0 });
   const [multiplayerRequest, setMultiplayerRequest] = useState<MultiplayerRequest | null>(null);
+  const [multiplayerConsentOpen, setMultiplayerConsentOpen] = useState(false);
+  const confirmedMultiplayerJoin = useRef(false);
   const requestMultiplayer = (action: MultiplayerRequest['action'], text?: string, role?: ServerRole, colour?: string, protectionEnabled?: boolean, creator?: MultiplayerRequest['creator']) => {
     if(action==='join'&&!canJoinMultiplayer(mapId))return;
+    if (action === 'join' && !confirmedMultiplayerJoin.current) {
+      setMultiplayerConsentOpen(true);
+      return;
+    }
+    if (action === 'join') confirmedMultiplayerJoin.current = false;
     if (action === 'inspect' || action === 'inspect-artwork') { setPaintMode(false); requestWorkspace('exit'); setViewMode('first'); }
     if (action === 'join' || action === 'leave') { setReference(null); poster.cancel(); requestWorkspace('clear'); }
     setMultiplayerRequest(previous => ({ action, text, role, colour, protectionEnabled, creator, sequence: (previous?.sequence ?? 0) + 1 }));
@@ -165,7 +172,7 @@ const App = () => {
   const [eyedropperNotice, setEyedropperNotice] = useState('');
   const [activeMenu, setActiveMenu] = useState<HudMenu>(null);
   const [sheetCollapsed, setSheetCollapsed] = useState(false);
-  const menuBlocking = newMapPrompt || (!!activeMenu && !sheetCollapsed);
+  const menuBlocking = newMapPrompt || multiplayerConsentOpen || (!!activeMenu && !sheetCollapsed);
   const [movement, setMovement] = useState<MovementInput>({ x: 0, y: 0 });
   const [lookInput, setLookInput] = useState<MovementInput>({ x: 0, y: 0 });
   const [jumpSignal, setJumpSignal] = useState(0);
@@ -563,6 +570,19 @@ const App = () => {
               </div>{multiplayerStatus.notice && <p className="ui-notice" role="status">{multiplayerStatus.notice}</p>}</section>}
               <section className="tool-section"><h3>RADIO</h3>{radioController && <RadioControl controller={radioController} url={RADIO_STREAM_URL} initialVolume={musicVolume} onInteraction={() => { if (!tutorialReview && tutorialStep === 'radio') setTutorialStep('multiplayer'); }} />}</section>
             </SettingsModal>
+          )}
+          {multiplayerConsentOpen && (
+            <div role="presentation" style={{position:'absolute',inset:0,zIndex:200,background:'rgba(0,0,0,.78)',display:'flex',alignItems:'center',justifyContent:'center',padding:16}} onPointerDown={event=>event.stopPropagation()} onClick={event=>event.stopPropagation()}>
+              <section role="dialog" aria-modal="true" aria-labelledby="multiplayer-consent-heading" style={{width:'min(400px,100%)',maxHeight:'100%',overflowY:'auto',background:'#20251f',color:'#f5f2e6',padding:20,border:'1px solid #899184',borderRadius:12,boxShadow:'0 12px 36px #000a',textAlign:'center'}}>
+                <h2 id="multiplayer-consent-heading" style={{fontSize:18,fontWeight:900,margin:'0 0 14px'}}>MULTIPLAYER NOTICE</h2>
+                <p style={{fontSize:14,lineHeight:1.5,margin:'0 0 14px'}}>Multiplayer includes other players and user-created content. Content is moderated, but some material or conversations may be inappropriate.</p>
+                <p style={{fontSize:14,fontWeight:800,margin:'0 0 18px'}}>I understand and confirm that I am an adult (18+).</p>
+                <div style={{display:'flex',gap:10,justifyContent:'center',flexWrap:'wrap'}}>
+                  <button type="button" onClick={()=>setMultiplayerConsentOpen(false)} style={{flex:'1 1 110px',minHeight:46,borderRadius:8,border:'1px solid #737a71',background:'#333b33',color:'#fff'}}>GO BACK</button>
+                  <button type="button" onClick={()=>{setMultiplayerConsentOpen(false);confirmedMultiplayerJoin.current=true;requestMultiplayer('join');}} style={{flex:'1 1 110px',minHeight:46,borderRadius:8,border:'1px solid #deb66f',background:'#b5853d',color:'#141611',fontWeight:900}}>I'M 18+ · CONTINUE</button>
+                </div>
+              </section>
+            </div>
           )}
           {developerChoice && <GameSheet title="DEVELOPER TOOLS" onClose={() => setDeveloperChoice(false)}><div className="menu-grid"><button onClick={() => { setDeveloperChoice(false); setDevViewerOpen(true); }}>PROJECT FILE VIEWER</button><button onClick={() => { setDeveloperChoice(false); setLiveSettingsOpen(true); }}>LIVE GAME SETTINGS</button></div></GameSheet>}
           {liveSettingsOpen && <DeveloperPanel onClose={() => setLiveSettingsOpen(false)} onFiles={() => { setLiveSettingsOpen(false); setDevViewerOpen(true); }} onMorningPreset={()=>{setSky('pastel');saveMapSky(mapId,'pastel');setRenderSettings({...MORNING_PRESET});}} />}
