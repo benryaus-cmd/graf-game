@@ -253,7 +253,7 @@ button { color: inherit; -webkit-tap-highlight-color: transparent; }
 
 /* Welcome screen fills the same available game container. */
 .cover-screen, .cover-art, .cover-shade { position: absolute; inset: 0; width: 100%; height: 100%; }
-.cover-art { object-fit: cover; object-position: center; }
+.cover-art { object-fit: contain; object-position: center; background: #101210; }
 .cover-shade { background: linear-gradient(180deg, #10121000 30%, #101210d9 100%); }
 .cover-content { position: absolute; left: max(24px, env(safe-area-inset-left)); right: max(24px, env(safe-area-inset-right)); bottom: max(24px, env(safe-area-inset-bottom)); display: grid; justify-items: start; gap: 12px; }
 .cover-kicker { font-size: 10px; letter-spacing: .18em; }
