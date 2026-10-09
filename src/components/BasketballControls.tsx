@@ -151,7 +151,7 @@ export function BasketballControls({view,shared,playerNames = {},onInviteHorse,o
       </div>
     </div>
     <div className="basketball-score"><span><b>{view.makes}</b>/{view.attempts} made</span><span>{sharedMode ? "Shared court" : <><b>{view.streak}</b> streak</>}</span></div>
-    {horseNotice && <p className="basketball-horse-notice" role="status" aria-live="assertive">{horseNotice}</p>}
+    {horseNotice && <p className="basketball-horse-notice" style={{position:"absolute",left:"50%",top:"37%",transform:"translateX(-50%)",zIndex:30,width:"max-content",maxWidth:"90%",padding:"12px 18px",borderRadius:10,background:"rgba(15,18,16,.93)",border:"2px solid #e2b85a",boxShadow:"0 6px 28px #000a",color:"#ffdf8a",fontWeight:900,fontSize:"clamp(16px,4vw,23px)",textAlign:"center",pointerEvents:"none"}} role="status" aria-live="assertive">{horseNotice}</p>}
     <p className={`basketball-result ${outcome==='make'?'is-make':''}`} aria-live="polite">{status}</p>
     <button className="basketball-leave" data-basketball-ui onClick={onLeave}>LEAVE</button>
     <div className="basketball-spots" data-basketball-ui aria-label={sharedMode ? "Server assigned shooting spot" : "Choose shooting spot"}>{BASKETBALL_COURT.spots.map((spot,index)=><button key={spot.id} disabled={sharedMode} aria-label={`Spot ${index+1}`} aria-pressed={view.spotId===spot.id} onClick={()=>onSpot(spot.id)}>{index+1}</button>)}</div>
