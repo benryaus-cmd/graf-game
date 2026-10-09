@@ -1,10 +1,11 @@
 import { useSyncExternalStore } from 'react';
+import { normalizeCharacterModelId, type CharacterModelId } from './characterCatalog';
 
-export interface AssetPreviewPreference { model: 'original' | 'hoodie'; building: boolean }
+export interface AssetPreviewPreference { model: CharacterModelId; building: boolean }
 const KEY = 'graffciti.asset-preview.v1';
 export function normalizeAssetPreviewPreference(value: unknown): AssetPreviewPreference {
   const input = value as Partial<AssetPreviewPreference> | null;
-  return { model: input?.model === 'hoodie' ? 'hoodie' : 'original', building: input?.building !== false };
+  return { model: normalizeCharacterModelId(input?.model), building: input?.building !== false };
 }
 function load(): AssetPreviewPreference {
   try { return normalizeAssetPreviewPreference(JSON.parse(localStorage.getItem(KEY) ?? 'null')); }
@@ -19,5 +20,5 @@ export function setAssetPreviewPreference(value: AssetPreviewPreference): void {
   listeners.forEach(callback => callback());
 }
 export function useAssetPreviewPreference(): AssetPreviewPreference {
-  return useSyncExternalStore(subscribe, () => preference);
+  return useSyncExternalStore(subscribe, () => preference, () => preference);
 }

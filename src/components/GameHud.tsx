@@ -4,6 +4,7 @@ import PosterPlacementHud from '@/components/PosterPlacementHud';
 import type { PosterPlacementRequest } from '@/game/usePosterPlacement';
 import EmoteSheet from '@/components/EmoteSheet';
 import AvatarMenu from '@/components/AvatarMenu';
+import type { CharacterModelState } from '@/game/assetPreview';
 import SkyMenu from '@/components/SkyMenu';
 import type { ShopItem, GameProgress } from '@/game/progression';
 import type { CameraMode, MovementInput, SkyMode, AvatarEmote } from '@/game/worldTypes';
@@ -16,6 +17,8 @@ export type HudMenu = 'paint' | 'bots' | 'avatar' | 'sky' | 'chat' | 'art' | 'pl
 type PaintTool = 'paint' | 'eraser' | 'off' | 'admin';
 interface PaintLayerControl { name: string; visible: boolean }
 interface GameHudProps {
+  characterState?: CharacterModelState | null;
+  onCharacterPreview?: () => void;
   canAdminPaint?: boolean;
   adminFreePaint?: boolean;
   radioController?: LiveRadioController | null;
@@ -81,6 +84,7 @@ const GameHud = (props: GameHudProps) => (
     {props.activeMenu === 'sky' && <SkyMenu sky={props.sky} open panelColor={props.panelColor} onToggle={() => props.onMenuToggle('sky')} onClose={props.onMenuClose} onSelect={props.onSkySelect} />}
     {props.activeMenu === 'avatar' && (
       <AvatarMenu
+        characterState={props.characterState} onCharacterPreview={props.onCharacterPreview}
         progress={props.progress} panelColor={props.panelColor} onClose={props.onMenuClose}
         onPurchase={props.onPurchase} onEquip={props.onEquip} onEmote={props.onEmote}
         purchasesDisabled={props.purchasesDisabled}

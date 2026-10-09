@@ -62,7 +62,7 @@ export function attachWorldControls(
     });
   };
   const paint = (event: PointerEvent) => {
-    if (world.activityLocked || world.paintWorkspace?.selection?.moving) return;
+    if (settings.current.paused || world.activityLocked || world.paintWorkspace?.selection?.moving) return;
     if (!world.paintWorkspace?.selection && !adminFreePaint()) return;
     const selection = world.paintWorkspace?.selection;
     if (!adminFreePaint() && (!selection?.started || (world.multiplayerActive && !selection.purchaseApproved))) return;
@@ -120,7 +120,7 @@ export function attachWorldControls(
     }
   };
   const onPointerDown = (event: PointerEvent) => {
-    if (world.activityLocked || pointerId !== null || (event.pointerType === 'mouse' && (!event.isPrimary || event.button !== 0))) return;
+    if (settings.current.paused || world.activityLocked || pointerId !== null || (event.pointerType === 'mouse' && (!event.isPrimary || event.button !== 0))) return;
     if (settings.current.eyedropperActive) {
       endStroke();
       world.onColorPick?.(sampleVisibleWorldColour(world, event));
@@ -149,7 +149,7 @@ export function attachWorldControls(
     }
   };
   const onPointerMove = (event: PointerEvent) => {
-    if (world.activityLocked || pointerId !== event.pointerId) return;
+    if (settings.current.paused || world.activityLocked || pointerId !== event.pointerId) return;
     if (settings.current.eyedropperActive) { endStroke(); return; }
     if (settings.current.paintMode && !posterState.current) {
       if (world.paintWorkspace?.selection?.moving) { moveWorkspaceAtPointer(event); return; }
@@ -184,14 +184,15 @@ export function attachWorldControls(
   world.renderer.setAnimationLoop((time) => {
     timer.update(time);
     const delta = Math.min(timer.getDelta(), 0.045);
+    if (settings.current.paused && (keys.size > 0 || pointerId !== null)) world.cancelWorldInput?.();
     const workspaceActive = !!world.paintWorkspace?.active;
-    if (!world.activityLocked && heldPaintPointer && pointerId !== null && settings.current.paintMode && !settings.current.eyedropperActive && !posterState.current && !selectingWorkspace && time - lastHeldPaintAt >= 1000 / 30) {
+    if (!settings.current.paused && !world.activityLocked && heldPaintPointer && pointerId !== null && settings.current.paintMode && !settings.current.eyedropperActive && !posterState.current && !selectingWorkspace && time - lastHeldPaintAt >= 1000 / 30) {
       lastHeldPaintAt = time;
       paint(heldPaintPointer);
     }
     if (!workspaceActive && !world.activityLocked) {
       const look = settings.current.lookInput;
-      if (look && world.cameraMode !== 'map') {
+      if (!settings.current.paused && look && world.cameraMode !== 'map') {
         const turn = settings.current.lookSensitivity * 480 * delta;
         world.playerYaw -= THREE.MathUtils.clamp(look.x, -1, 1) * turn;
         world.playerPitch = THREE.MathUtils.clamp(
@@ -207,7 +208,7 @@ export function attachWorldControls(
     world.onMultiplayerFrame?.(delta, settings.current);
     advanceWeather(world, delta);
     const poster = posterState.current;
-    if (poster && !world.activityLocked) {
+    if (poster && !settings.current.paused && !world.activityLocked) {
       refreshWalls();
       const valid = updatePosterPreview(world, poster, wallMeshes, wallLookup, raycaster, pointer);
       if (valid !== poster.lastReportedValid) {

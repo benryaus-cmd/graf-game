@@ -9,8 +9,11 @@ import { EYE_HEIGHT } from '../game/playerPhysics';
 import { interpolatePlayer } from './playerSync';
 import { readPlayer, readPlayerState, type PlayerState, type Message } from './protocol';
 import { elementPointerPoint } from '../game/pointerCoordinates';
+import { AssetPreview } from '../game/assetPreview';
+import { normalizeCharacterModelId } from '../game/characterCatalog';
 
 interface RemotePlayer {
+  model: AssetPreview;
   bubble?: SpeechBubble; avatar: THREE.Group; current: PlayerState | null; target: PlayerState | null; name: string;
   username?: string; role?: ServerRole; appearance?: string; lastEmote?: string;
 }
@@ -27,6 +30,7 @@ export class RemotePlayers {
     let remote = this.players.get(player.playerId);
     if (!remote) {
       const avatar = createPlayerAvatar(this.scene);
+      const model = new AssetPreview(this.scene, avatar);
       avatar.visible = false;
       const name = player.nickName || player.displayName || (player.username ? '@' + player.username : 'PLAYER');
       const username = player.username?.replace(/^@/, '');
@@ -47,7 +51,7 @@ export class RemotePlayers {
       const texture = new THREE.CanvasTexture(labelCanvas);
       const label = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, depthWrite: false }));
       label.position.set(0, 2.65, 0); label.scale.set(2.4, showHandle ? 0.53 : 0.45, 1); avatar.add(label);
-      remote = { avatar, current: null, target: null, name, username, role: isRole((player as typeof player & { role?: unknown }).role) ? (player as typeof player & { role: ServerRole }).role : undefined };
+      remote = { avatar, model, current: null, target: null, name, username, role: isRole((player as typeof player & { role?: unknown }).role) ? (player as typeof player & { role: ServerRole }).role : undefined };
       this.players.set(player.playerId, remote);
     }
     if (player.username) remote.username = player.username.replace(/^@/, '');
@@ -110,6 +114,7 @@ export class RemotePlayers {
         const top = SHOP_ITEMS.find(i => i.id === 'top:' + cosmetics.top);
         const bottom = SHOP_ITEMS.find(i => i.id === 'bottom:' + cosmetics.bottom);
         applyAvatarAppearance(remote.avatar, { outfit, accessory, topColor: top?.color ?? '#e87851', bottomColor: bottom?.color ?? '#353a40' });
+        void remote.model.configure({ model: normalizeCharacterModelId(cosmetics.characterModel), building: false });
         remote.appearance = JSON.stringify(cosmetics);
       }
       const parts = remote.avatar.userData.parts;
@@ -134,6 +139,7 @@ export class RemotePlayers {
     const player = this.players.get(playerId);
     if (!player) return;
     player.bubble?.dispose();
+    player.model.dispose();
     this.scene.remove(player.avatar);
     const geometry = new Set<THREE.BufferGeometry>(); const materials = new Set<THREE.Material>(); const textures = new Set<THREE.Texture>();
     player.avatar.traverse(object => {

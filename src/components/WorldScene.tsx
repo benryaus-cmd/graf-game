@@ -32,7 +32,8 @@ import { workspaceWorldBounds } from '@/game/paintWorkspaceFeedback';
 import type { AdminAction, AdminActionOptions } from '@/multiplayer/adminActions';
 import { ReferenceGuide, type ReferenceSettings } from '@/game/referenceGuide';
 import { PieceEditGrace } from '@/game/pieceEditGrace';
-import { AssetPreview } from '@/game/assetPreview';
+import { AssetPreview, type CharacterModelState } from '@/game/assetPreview';
+import { CourtyardPortals, BASKETBALL_PORTAL_LANDING, BASKETBALL_PORTAL_YAW } from '@/game/courtyardPortals';
 import { useAssetPreviewPreference } from '@/game/assetPreviewPreference';
 import { EraserGuide } from '@/game/eraserGuide';
 import { SoloPaintHistory } from '@/game/soloPaintHistory';
@@ -44,6 +45,9 @@ export interface MultiplayerRequest { action: 'join' | 'leave' | 'chat' | 'resyn
 interface WorldSceneProps {
   mapId:MapId;
   paused?: boolean;
+  onCharacterPortal?: () => void;
+  onMultiplayerPortal?: () => void;
+  onCharacterModelState?: (state: CharacterModelState) => void;
   onBasketballActiveChange?: (active: boolean) => void;
   onBasketballScore?: () => void;
   onSoloHistoryChange?: (history: PaintWorkspaceHistory) => void;
@@ -83,6 +87,8 @@ const WorldScene = (props: WorldSceneProps) => {
   basketballCallbacks.current = {active: props.onBasketballActiveChange, score: props.onBasketballScore};
   const previewPreference = useAssetPreviewPreference();
   const assetPreviewRef = useRef<AssetPreview | null>(null);
+  const portalProps = useRef(props);
+  portalProps.current = props;
   const eraserGuideRef = useRef<EraserGuide | null>(null);
   const soloHistoryRef = useRef<SoloPaintHistory | null>(null);
   const soloHistoryCallbackRef = useRef(props.onSoloHistoryChange);
@@ -107,6 +113,7 @@ const WorldScene = (props: WorldSceneProps) => {
   const posterValidityRef = useRef(props.onPosterValidity);
   const posterPlacedRef = useRef(props.onPosterPlaced);
   const liveRef = useRef<LiveSettings>({
+    paused: props.paused,
     adminFreePaint: props.adminFreePaint,
     brushHead: props.brushHead,
     eyedropperActive: props.eyedropperActive,
@@ -121,6 +128,7 @@ const WorldScene = (props: WorldSceneProps) => {
     multiplayerStatusRef.current = props.onMultiplayerStatus;
     multiplayerViewRef.current = props.onMultiplayerView;
     liveRef.current = {
+      paused: props.paused,
       adminFreePaint: props.adminFreePaint,
       brushHead: props.brushHead,
       eyedropperActive: props.eyedropperActive,
@@ -163,6 +171,7 @@ const WorldScene = (props: WorldSceneProps) => {
     applyRenderSettings();
     const stopRenderSettings = subscribeRenderSettings(applyRenderSettings);
     const assetPreview = new AssetPreview(world.scene, world.playerAvatar);
+    assetPreview.onModelState = state => portalProps.current.onCharacterModelState?.(state);
     assetPreviewRef.current = assetPreview;
     const eraserGuide = new EraserGuide(world.scene, world.renderer.domElement);
     eraserGuideRef.current = eraserGuide;
@@ -180,7 +189,8 @@ const WorldScene = (props: WorldSceneProps) => {
       workspaceCallbackRef.current({ selected: !!selection, active: !!workspace?.active, width: selection?.width ?? 0, height: selection?.height ?? 0, zoom: workspace?.camera.zoom ?? 1, sizeLinked: selection?.sizeLinked ?? true, started: !!selection?.started, moving: !!selection?.moving, hasPaint: !!selection?.hasPaint, editableUntil: workspace?.editableUntil, bounds });
     };
     world.onColorPick = colour => colorPickCallbackRef.current(colour);
-    const multiplayer = new WorldMultiplayerSession(world, status => { soloHistory.setAllowed(status.phase === 'solo'); multiplayerStatusRef.current(status); }, view => {
+    let connectionPhase: MultiplayerStatus['phase'] = 'solo';
+    const multiplayer = new WorldMultiplayerSession(world, status => { connectionPhase = status.phase; soloHistory.setAllowed(status.phase === 'solo'); multiplayerStatusRef.current(status); }, view => {
       setCourtPlayerNames(Object.fromEntries((view.onlinePlayers ?? []).map(player => [player.playerId, player.nickName.trim() || (player.username ? '@' + player.username : 'Player')])));
       multiplayerViewRef.current(view);
     });
@@ -239,8 +249,26 @@ const WorldScene = (props: WorldSceneProps) => {
     }
     if (basketball) {
       basketball.onResult = result => { if (result.outcome === 'make') basketballCallbacks.current.score?.(); };
-      world.onBasketballFrame = nowMs => basketball.update(nowMs);
     }
+    const portals = props.mapId === 'map2' ? new CourtyardPortals(world.scene, action => {
+      if (action === 'characters') portalProps.current.onCharacterPortal?.();
+      else if (action === 'multiplayer') portalProps.current.onMultiplayerPortal?.();
+      else {
+        world.playerPosition.fromArray(BASKETBALL_PORTAL_LANDING);
+        world.playerYaw = BASKETBALL_PORTAL_YAW;
+        world.playerPitch = 0;
+        world.velocityY = 0;
+      }
+    }) : null;
+    world.onBasketballFrame = nowMs => {
+      basketball?.update(nowMs);
+      const p = portalProps.current;
+      portals?.update(world.playerPosition, {
+        enabled: !p.paused && p.viewMode !== 'map' && !p.paintMode && !p.eyedropperActive && !p.posterPlacement
+          && !p.reference?.moving && !world.activityLocked && !world.paintWorkspace?.active && !world.paintWorkspace?.selection?.moving,
+        solo: connectionPhase === 'solo' || connectionPhase === 'disconnected',
+      });
+    };
     const savePaint = () => world.savePaint();
     const saveWhenHidden = () => { if (document.visibilityState === 'hidden') savePaint(); };
     window.addEventListener('pagehide', savePaint);
@@ -272,6 +300,7 @@ const WorldScene = (props: WorldSceneProps) => {
       courtRef.current = null;
       basketball?.dispose();
       basketballRef.current = null;
+      portals?.dispose();
       world.onBasketballFrame = undefined;
       basketballCallbacks.current.active?.(false);
       stopControls();
@@ -406,8 +435,8 @@ const WorldScene = (props: WorldSceneProps) => {
     const world = worldRef.current;
     if (!world || world.jumpSignal === props.jumpSignal) return;
     world.jumpSignal = props.jumpSignal;
-    jumpWorld(world, props.jumpPower);
-  }, [props.jumpSignal, props.jumpPower]);
+    if (!props.paused) jumpWorld(world, props.jumpPower);
+  }, [props.jumpSignal, props.jumpPower, props.paused]);
 
   useEffect(() => {
     const world = worldRef.current;
@@ -435,6 +464,7 @@ const WorldScene = (props: WorldSceneProps) => {
   useEffect(() => { referenceRef.current?.set(props.reference ?? null); }, [props.reference]);
 
   useEffect(() => {
+    if (props.paused) worldRef.current?.cancelWorldInput?.();
     if (props.paused || props.viewMode === 'map' || props.paintMode || props.eyedropperActive || props.posterPlacement || props.reference?.moving) {
       courtRef.current?.leave();
       basketballRef.current?.leave();

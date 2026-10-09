@@ -3,6 +3,7 @@ import type { ServerRole } from './permissions';
 import type { ProtectionQuote } from './protectionSync';
 import type { OwnerReferenceRecord } from './ownerReferences';
 import type { SharedArtwork } from './artworkSync';
+import { normalizeCharacterModelId, type CharacterModelId } from '../game/characterCatalog';
 export interface ProtectionStatus { creditBalance: number | null; quote: ProtectionQuote | null; quotes: { unprotected: ProtectionQuote | null; protected: ProtectionQuote | null }; purchased: boolean; protectionEnabled: boolean; pendingQuote: boolean; pendingPurchase: boolean; protectedUntil: number | null; notice: string | null }
 
 export interface StrokePoint { x: number; y: number; z: number; pressure: number }
@@ -12,7 +13,7 @@ export interface SharedStroke {
   operation?: 'paint' | 'erase'; opacity?: number; layerIndex?: number; face?: string;
   sequence?: number; revision?: number;
 }
-export interface PlayerCosmetics { outfit: string; top: string; bottom: string; accessory: string }
+export interface PlayerCosmetics { outfit: string; top: string; bottom: string; accessory: string; characterModel?: CharacterModelId }
 export interface PlayerState {
   position: number[]; rotation: number[]; movement?: string; tool?: string; jumping?: boolean;
   animation?: string; emote?: string; visibleHeldItem?: string; flightState?: string; cosmetics?: PlayerCosmetics;
@@ -84,7 +85,8 @@ export function readCosmetics(value: unknown): PlayerCosmetics | undefined {
   if (!value || typeof value !== 'object') return undefined;
   const v = value as Record<string, unknown>;
   if (!['outfit','top','bottom','accessory'].every(k => typeof v[k] === 'string' && (v[k] as string).length <= 40)) return undefined;
-  return { outfit: v.outfit as string, top: v.top as string, bottom: v.bottom as string, accessory: v.accessory as string };
+  return { outfit: v.outfit as string, top: v.top as string, bottom: v.bottom as string, accessory: v.accessory as string,
+    ...(v.characterModel !== undefined ? { characterModel: normalizeCharacterModelId(v.characterModel) } : {}) };
 }
 export function readPlayer(value: unknown): SharedPlayer | null {
   const p = value as SharedPlayer & { id?: string };

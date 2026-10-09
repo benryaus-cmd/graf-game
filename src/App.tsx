@@ -13,6 +13,8 @@ import ProtectionControls from '@/components/ProtectionControls';
 import GraffitiPieces from '@/components/GraffitiPieces';
 import PaintWorkspaceHud, { type PaintWorkspaceView, type PaintWorkspaceAction, type PaintWorkspaceHistory } from '@/components/PaintWorkspaceHud';
 import { EmoteViewReturn } from '@/game/emoteViewReturn';
+import { useAssetPreviewPreference } from '@/game/assetPreviewPreference';
+import type { CharacterModelState } from '@/game/assetPreview';
 import MultiplayerControls from '@/components/MultiplayerControls';
 import PlayerInteractionCard from '@/components/PlayerInteractionCard';
 import { useUserInfo } from '@aippy/runtime/user';
@@ -62,6 +64,8 @@ const App = () => {
   const [mapId,setMapId]=useState<MapId>(getMapId);
   const [newMapPrompt, setNewMapPrompt] = useState(false);
   const [basketballActive,setBasketballActive]=useState(false);
+  const characterPreference = useAssetPreviewPreference();
+  const [characterState, setCharacterState] = useState<CharacterModelState | null>(null);
   const aippyUser = useUserInfo();
   const displayName = aippyDisplayName(aippyUser);
   const [multiplayerStatus, setMultiplayerStatus] = useState<MultiplayerStatus>({ phase: 'solo', playerCount: 0 });
@@ -403,7 +407,7 @@ const App = () => {
     if (!next) { setEyedropperNotice('No readable paint here. Tap a painted spot.'); return; }
     selectColor(next); setEyedropperActive(false); setEyedropperNotice('');
   };
-  const cosmetics = useMemo(() => ({ outfit: progress.outfit, top: progress.top, bottom: progress.bottom, accessory: progress.accessory }), [progress.outfit, progress.top, progress.bottom, progress.accessory]);
+  const cosmetics = useMemo(() => ({ outfit: progress.outfit, top: progress.top, bottom: progress.bottom, accessory: progress.accessory, characterModel: characterPreference.model }), [progress.outfit, progress.top, progress.bottom, progress.accessory, characterPreference.model]);
   const layerVisibility = useMemo(() => layers.map(layer => layer.visible), [layers]);
   const jumpLabel = progress.outfit === 'jax' ? 'FLY' : progress.outfit === 'ringmaster' ? 'LEVITATE'
     : progress.outfit === 'pomni' ? 'HIGH JUMP' : 'JUMP';
@@ -454,6 +458,9 @@ const App = () => {
         <>
           <WorldScene key={mapId} mapId={mapId}
             paused={menuBlocking || developerChoice || devViewerOpen || liveSettingsOpen}
+            onCharacterModelState={setCharacterState}
+            onCharacterPortal={() => { setMovement({ x: 0, y: 0 }); setLookInput({ x: 0, y: 0 }); setViewMode('third'); setSheetCollapsed(false); setActiveMenu('avatar'); }}
+            onMultiplayerPortal={() => { setMovement({ x: 0, y: 0 }); setLookInput({ x: 0, y: 0 }); if (aippyUser.isLoading) { setSheetCollapsed(false); setActiveMenu('settings'); } else requestMultiplayer('join'); }}
             onBasketballActiveChange={active => { if (active) emoteViewReturn.current.cancel(); setBasketballActive(active); }} onBasketballScore={() => playBasketSwish(radioVolume)}
             onSoloHistoryChange={setSoloHistory}
             reference={reference} onReferenceMove={(x, y) => setReference(current => current ? { ...current, x, y } : null)}
@@ -475,6 +482,7 @@ const App = () => {
             onSpray={playSpray} onPaint={earnPaintCoin}
           />
           <GameHud
+            characterState={characterState} onCharacterPreview={() => setViewMode('third')}
             eyedropperActive={eyedropperActive} onEyedropper={() => { setMovement({ x: 0, y: 0 }); setLookInput({ x: 0, y: 0 }); setEyedropperNotice('Tap existing paint to pick its colour.'); setEyedropperActive(true); }}
             brushHead={brushHead} onBrushHeadChange={setBrushHead}
             menuCollapsed={sheetCollapsed} hideTouchControls={basketballActive || workspaceView.active || menuBlocking || eyedropperActive || !!reference?.moving}

@@ -1,9 +1,8 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import type { AssetPreviewPreference } from '@/game/assetPreviewPreference';
-
-// Pinned models are hosted separately: Aippy's single-file HTML must not embed GLB bytes.
-const ASSET_BASE = 'https://raw.githubusercontent.com/benryaus-cmd/graf-game/77b8bb73af715da9dbd691dbddae109316e394fd/public/assets/preview/';
+import { getCharacterModel, normalizeCharacterModelId, type CharacterModelId } from './characterCatalog';
+import { CharacterModelPool, type CharacterModelLease } from './characterModelPool';
 export type Model = { scene: THREE.Group; animations: THREE.AnimationClip[] };
 type Load = (url: string, signal: AbortSignal) => Promise<Model>;
 export async function loadModel(url: string, signal: AbortSignal): Promise<Model> {
@@ -42,19 +41,25 @@ function fit(root: THREE.Group, dimension: 'x' | 'y', size: number): void {
   root.position.sub(new THREE.Vector3(center.x, scaled.min.y, center.z));
 }
 const controllers = new WeakMap<THREE.Group, AssetPreview>();
+const characterModels = new CharacterModelPool(loadModel, release);
+export interface CharacterModelState { model: CharacterModelId; phase: 'loading' | 'ready' | 'error' }
 export function updateAssetPreviewAvatar(avatar: THREE.Group, delta: number, walking: boolean, airborne: boolean): void {
   controllers.get(avatar)?.animate(delta, walking, airborne);
 }
 
 export class AssetPreview {
+  onModelState?: (state: CharacterModelState) => void;
   private readonly base = new THREE.Group();
   private character: THREE.Group | null = null;
   private mixer: THREE.AnimationMixer | null = null;
   private actions = new Map<string, THREE.AnimationAction>();
   private currentAction = '';
   private closed = false;
-  private requests = { character: null as AbortController | null };
-  private wanted: AssetPreviewPreference = { model: 'original', building: false };
+  private request: AbortController | null = null;
+  private requestModel: CharacterModelId = 'original';
+  private pending: Promise<void> | null = null;
+  private currentModel: CharacterModelId = 'original';
+  private characterLease: CharacterModelLease | null = null;
 
   constructor(private readonly scene: THREE.Scene, private readonly avatar: THREE.Group, private readonly load: Load = loadModel) {
     this.base.name = 'existing-avatar';
@@ -62,39 +67,71 @@ export class AssetPreview {
     controllers.set(avatar, this);
   }
 
-  async configure(preference: AssetPreviewPreference): Promise<void> {
+  async configure(preference: { model: CharacterModelId; building?: boolean } | AssetPreviewPreference): Promise<void> {
     if (this.closed) return;
-    this.wanted = preference;
-    if (preference.model === 'original') {
-      this.requests.character?.abort(); this.requests.character = null;
-      this.base.visible = true;
-      if (this.character) this.character.visible = false;
-    } else if (this.character) { this.character.visible = true; this.base.visible = false; }
-    if (preference.model === 'hoodie' && !this.character && !this.requests.character) await this.request('character');
+    const wanted = normalizeCharacterModelId(preference.model);
+    if (this.request && this.requestModel === wanted) { await this.pending; return; }
+    if (this.character && this.currentModel === wanted && !this.request) return;
+    this.request?.abort(); this.request = null;
+    this.clearCharacter();
+    if (wanted === 'original') {
+      this.onModelState?.({ model: wanted, phase: 'ready' });
+      return;
+    }
+    const controller = new AbortController();
+    this.request = controller; this.requestModel = wanted;
+    this.onModelState?.({ model: wanted, phase: 'loading' });
+    this.pending = this.requestCharacter(wanted, controller);
+    await this.pending;
   }
 
-  private async request(kind: 'character'): Promise<void> {
-    const controller = new AbortController(); this.requests[kind] = controller;
-    let model: Model | undefined;
+  private async requestCharacter(id: CharacterModelId, controller: AbortController): Promise<void> {
+    let lease: CharacterModelLease | undefined;
     try {
-      model = await this.load(`${ASSET_BASE}male-hoodie.glb`, controller.signal);
-      if (this.closed || controller.signal.aborted || this.requests[kind] !== controller) { release(model.scene); return; }
-      fit(model.scene, 'y', 1.9); model.scene.name = 'quaternius-hoodie';
+      const definition = getCharacterModel(id);
+      if (!definition.url) throw Error('Character model unavailable');
+      if (this.load === loadModel) lease = await characterModels.acquire(definition.url, controller.signal);
+      else {
+        const model = await this.load(definition.url, controller.signal);
+        lease = { model, release: () => release(model.scene) };
+      }
+      if (this.closed || controller.signal.aborted || this.request !== controller) { lease.release(); return; }
+      const model = lease.model;
+      fit(model.scene, 'y', 1.9); model.scene.name = `quaternius-${id}`;
+      this.characterLease = lease; this.currentModel = id;
       this.character = model.scene; this.avatar.add(model.scene);
       this.mixer = new THREE.AnimationMixer(model.scene);
       model.animations.forEach(clip => this.actions.set(clip.name, this.mixer!.clipAction(clip)));
-      this.base.visible = this.wanted.model !== 'hoodie'; model.scene.visible = !this.base.visible;
+      this.base.visible = false;
       this.animate(0, false, false);
+      this.onModelState?.({ model: id, phase: 'ready' });
     } catch {
-      if (model) release(model.scene);
-      // Optional visuals must never block the city, player movement or painting.
-    } finally { if (this.requests[kind] === controller) this.requests[kind] = null; }
+      if (this.characterLease === lease) this.clearCharacter();
+      else lease?.release();
+      if (!this.closed && !controller.signal.aborted && this.request === controller) {
+        this.base.visible = true;
+        this.onModelState?.({ model: id, phase: 'error' });
+      }
+    } finally {
+      if (this.request === controller) { this.request = null; this.pending = null; }
+    }
+  }
+
+  private clearCharacter() {
+    this.mixer?.stopAllAction();
+    if (this.character) this.mixer?.uncacheRoot(this.character);
+    this.characterLease?.release();
+    this.characterLease = null; this.character = null; this.mixer = null;
+    this.actions.clear(); this.currentAction = ''; this.currentModel = 'original';
+    this.base.visible = true;
   }
 
   animate(delta: number, walking: boolean, airborne: boolean): void {
     if (!this.character?.visible || !this.avatar.visible || !this.mixer) return;
     const emote = this.avatar.userData.activeEmote as { name: string; elapsed: number } | null;
-    const name = emote?.name === 'joy' ? 'Wave' : walking && !airborne ? 'Walk' : 'Idle';
+    const clips = getCharacterModel(this.currentModel).animations ?? { idle: 'Idle', walk: 'Walk', jump: 'Jump', wave: 'Wave' };
+    const wanted = emote?.name === 'joy' && clips.wave ? clips.wave : airborne && clips.jump ? clips.jump : walking && !airborne ? clips.walk : clips.idle;
+    const name = this.actions.has(wanted) ? wanted : this.actions.has(clips.idle) ? clips.idle : this.actions.keys().next().value ?? '';
     if (name !== this.currentAction) {
       const next = this.actions.get(name), previous = this.actions.get(this.currentAction);
       if (next) { next.reset().play(); if (previous) next.crossFadeFrom(previous, 0.15, false); }
@@ -105,8 +142,8 @@ export class AssetPreview {
 
   dispose(): void {
     if (this.closed) return;
-    this.closed = true; Object.values(this.requests).forEach(request => request?.abort());
-    this.mixer?.stopAllAction(); if (this.character) { this.mixer?.uncacheRoot(this.character); release(this.character); }
+    this.closed = true; this.request?.abort(); this.request = null;
+    this.clearCharacter();
     this.avatar.add(...this.base.children); this.base.removeFromParent(); controllers.delete(this.avatar);
   }
 }

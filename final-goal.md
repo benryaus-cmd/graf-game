@@ -175,7 +175,13 @@ Provide nearby text chat, a compact chat button and clear speaker identification
 
 Use coherent rigged GLB/glTF characters with several distinct appearances and a streetwear direction. Fix scale, feet/ground contact, materials, hand/can attachment and animation blending. Avoid twisted limbs, floating parts and sliding. Share textures/meshes where useful, but each animated instance needs its own skeleton.
 
-Asset shortlist, not imported assets:
+Implemented character selection: ten animated CC0 Quaternius Ultimate Animated Characters (Casual, Casual 2, Casual 3, Suit and Worker, each with female/male variants), plus the existing Original and Hoodie. The closet uses real previews and remembers the device choice. Each player has independent bones and animation blending; shared templates are cached with a bounded idle budget. Original retains the existing clothing/gear system; imported characters retain their authored outfits. Models and all 17 supplied clips are audited in `public/assets/characters/RESOURCE_AUDIT.md`.
+
+The town courtyard has three entry-triggered portals: Characters opens the closet, Basketball lands beside the court, and Multiplayer joins the existing town connection from solo. Portals require stepping off before retriggering and respect menus, paint activities and basketball locks. The Original local map remains separate.
+
+Multiplayer character selection adds the optional allowlisted `state.cosmetics.characterModel` to existing player state. Remote clients can render it, but the server must validate and preserve it in relay/snapshots before live peers see the selection. See `docs/characters-portals-server-handoff-9oct2026.md`; no new endpoint, message type or capability is needed. Hand/can attachments and dedicated painting clips for these imported rigs remain future polish.
+
+Further asset shortlist:
 
 | Source | Direction and caveat |
 | --- | --- |
@@ -280,7 +286,7 @@ Daily cleanup is now part of the destination: a piece gets a 24-hour evaluation 
 
 This client pass adds a directly accessible Paint/Explore switch, compact top colour control, independent right-look input, portrait viewport rotation with corresponding pointer mapping, coalesced painting samples, close-range/obstruction targeting, and a handmade transparent tag workspace with undo/redo and a bounded browser-local design library. The AI poster creation interface is replaced by manual drawing. Saved tags use the existing persistent binary upload/placement path when multiplayer is connected.
 
-Performance work bounds remote image downloads, indexes artwork by loaded surfaces and budgets paint reconstruction across frames. These are targeted protections; they do not prove a phone frame-rate or unrestricted world capacity. The client now selects a bounded wall rectangle before painting and offers a front-on isolated view of the same live wall. This rectangle is explicitly unprotected: it is not a server claim. Handmade tag drawing has fine, marker, spray, roller and drip heads. World spray still uses its existing brush. Piece creation/completion, nearby piece inspection, likes/window display and server removal are integrated with protocol v2. Four-hour claims, paid expansions/overpainting, wall drizzle exceptions/layers, engagement credits, trading, collectibles and upgraded licensed character models remain unfinished. No AA/AAA production claim is made solely from a successful build.
+Performance work bounds remote image downloads, indexes artwork by loaded surfaces and budgets paint reconstruction across frames. These are targeted protections; they do not prove a phone frame-rate or unrestricted world capacity. The client now selects a bounded wall rectangle before painting and offers a front-on isolated view of the same live wall. This rectangle is explicitly unprotected: it is not a server claim. Handmade tag drawing has fine, marker, spray, roller and drip heads. World spray still uses its existing brush. Piece creation/completion, nearby piece inspection, likes/window display and server removal are integrated with protocol v2. Four-hour claims, paid expansions/overpainting, wall drizzle exceptions/layers, engagement credits, trading, collectibles and rig-specific painting animations remain unfinished. No AA/AAA production claim is made solely from a successful build.
 
 ## Latest artist controls and radio update
 

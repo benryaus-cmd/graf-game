@@ -3,8 +3,12 @@ import { useState } from 'react';
 import GameSheet from './GameSheet';
 import { setAssetPreviewPreference, useAssetPreviewPreference } from '@/game/assetPreviewPreference';
 import { SHOP_ITEMS, type GameProgress, type ShopCategory, type ShopItem } from '@/game/progression';
+import { CHARACTER_MODELS } from '@/game/characterCatalog';
+import type { CharacterModelState } from '@/game/assetPreview';
 
 interface AvatarMenuProps {
+  characterState?: CharacterModelState | null;
+  onCharacterPreview?: () => void;
   progress: GameProgress;
   panelColor: string;
   purchasesDisabled: boolean;
@@ -29,7 +33,7 @@ const EMOTES: Array<{ id: AvatarEmote; icon: string; label: string }> = [
   { id: 'spin', icon: '⟳', label: 'SPIN' },
 ];
 
-const AvatarMenu = ({ progress, panelColor, purchasesDisabled, onClose, onPurchase, onEquip, onEmote }: AvatarMenuProps) => {
+const AvatarMenu = ({ progress, panelColor, purchasesDisabled, onClose, onPurchase, onEquip, onEmote, characterState, onCharacterPreview }: AvatarMenuProps) => {
   const [category, setCategory] = useState<ShopCategory | 'emote'>('outfit');
   const preview = useAssetPreviewPreference();
   const items = category === 'emote' ? [] : SHOP_ITEMS.filter((item) => item.category === category);
@@ -39,16 +43,16 @@ const AvatarMenu = ({ progress, panelColor, purchasesDisabled, onClose, onPurcha
     <GameSheet title="STREET CLOSET" subtitle="Your look" onClose={onClose} closeLabel="Close closet" className="avatar-sheet">
       <div className="closet-balance"><span>🪙</span> {progress.coins} SOLO COINS <small>{purchasesDisabled ? 'SOLO SHOP PAUSED' : 'EARN BY PAINTING'}</small></div>
       {purchasesDisabled && <p className="closet-footnote">Inventory, purchases, pickups and trading are unavailable until verified Aippy accounts are connected. You can still wear your existing solo looks.</p>}
-      <div className="closet-items" aria-label="Character model">
-        <button type="button" className={`closet-item ${preview.model === 'original' ? 'closet-item-selected' : ''}`} aria-pressed={preview.model === 'original'} onClick={() => setAssetPreviewPreference({ ...preview, model: 'original' })}>
-          <span className="closet-copy"><b>EXISTING CHARACTER</b><small>Your equipped clothes and gear</small></span><span className="closet-action">{preview.model === 'original' ? 'ON' : 'WEAR'}</span>
-        </button>
-        <button type="button" className={`closet-item ${preview.model === 'hoodie' ? 'closet-item-selected' : ''}`} aria-pressed={preview.model === 'hoodie'} onClick={() => setAssetPreviewPreference({ ...preview, model: 'hoodie' })}>
-          <span className="closet-copy"><b>HOODIE CHARACTER</b><small>Free Quaternius model · preview on this device</small></span><span className="closet-action">{preview.model === 'hoodie' ? 'ON' : 'TRY'}</span>
-        </button>
-
+      <h3 className="character-heading">CHOOSE YOUR CHARACTER</h3>
+      <div className="character-grid" aria-label="Character model">
+        {CHARACTER_MODELS.map(model => <button type="button" key={model.id} className={`character-card ${preview.model === model.id ? 'closet-item-selected' : ''}`} aria-label={`Wear ${model.label}`} aria-pressed={preview.model === model.id} onClick={() => { setAssetPreviewPreference({ ...preview, model: model.id }); onCharacterPreview?.(); }}>
+          {model.thumbnail ? <img src={model.thumbnail} alt="" loading="lazy" /> : <span className="character-icon" aria-hidden="true">{model.id === 'original' ? '▦' : '♟'}</span>}
+          <b>{model.label}</b><small>{preview.model === model.id ? 'SELECTED' : 'WEAR'}</small>
+        </button>)}
       </div>
-      {preview.model === 'hoodie' && <p className="closet-footnote">See your character in third person. This device preview uses its own clothes; your existing outfit, abilities and multiplayer appearance are preserved. The original character stays visible until the model loads.</p>}
+      <p className="closet-footnote">Free characters, each with their own clothes. Choose Original to use your equipped clothes and gear.</p>
+      {characterState?.model === preview.model && characterState.phase === 'loading' && <p className="character-status" role="status">Loading your character…</p>}
+      {characterState?.model === preview.model && characterState.phase === 'error' && <p className="character-status" role="status">Couldn’t load this character. <button type="button" onClick={() => setAssetPreviewPreference({ ...preview })}>TRY AGAIN</button></p>}
       <nav className="closet-tabs" aria-label="Closet categories">
         {TABS.map((tab) => (
           <button

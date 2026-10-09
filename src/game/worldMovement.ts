@@ -43,6 +43,7 @@ export function advanceWorld(
   forward -= Number(keys.has('KeyS') || keys.has('ArrowDown'));
   let side = settings.movement.x + Number(keys.has('KeyD') || keys.has('ArrowRight'));
   side -= Number(keys.has('KeyA') || keys.has('ArrowLeft'));
+  if (settings.paused) { keys.clear(); forward = 0; side = 0; }
   const magnitude = Math.hypot(forward, side);
   if (magnitude > 1) {
     forward /= magnitude;
@@ -80,7 +81,8 @@ export function advanceWorld(
     world.playerPosition.z,
   );
   world.playerAvatar.rotation.y = world.playerYaw + Math.PI;
-  updatePlayerAvatar(world.playerAvatar, delta, magnitude > 0.08, world.abilityActive);
+  const airborne = world.abilityActive || Math.abs(world.velocityY) > 0.1 || world.playerPosition.y > floor + EYE_HEIGHT + 0.04;
+  updatePlayerAvatar(world.playerAvatar, delta, magnitude > 0.08, airborne);
   updateBunnyCompanion(world.bunnyGroup, world.playerPosition, world.playerYaw, delta, magnitude > 0.08);
   advanceCityBots(world, delta);
   updateCameras(world);

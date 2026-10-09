@@ -179,6 +179,7 @@ export interface LookInput {
 }
 
 export interface LiveSettings {
+  paused?: boolean;
   adminFreePaint?: boolean;
   brushHead?: BrushHead;
   eyedropperActive?: boolean;
