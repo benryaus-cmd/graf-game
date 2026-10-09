@@ -1,0 +1,24 @@
+{
+  "version": "basketball-smooth-concurrency-9oct2026",
+  "commit": "eccc425aca47e54abb869c3e563e42b4e7e7e8e6",
+  "baseUrl": "https://raw.githubusercontent.com/benryaus-cmd/graf-game/eccc425aca47e54abb869c3e563e42b4e7e7e8e6/",
+  "description": "Own shared basketball/HORSE echoes confirm the existing local ball without repositioning; results accept newer court revisions and seat sequences.",
+  "files": [
+    {
+      "source": "src/game/basketballGame.ts",
+      "target": "src/games/importedGame/upstream/src/game/basketballGame.ts"
+    },
+    {
+      "source": "src/multiplayer/basketballSync.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/basketballSync.ts"
+    }
+  ],
+  "notes": [
+    "Use Node 22 and the existing incremental downloader; download both listed files as raw bytes before replacing exact target paths.",
+    "Preserve settings, saves, artwork, all unlisted files, importer, aliases, host wrapper and dependencies. No full re-import or server changes.",
+    "Own matching canonical shots keep the same local ball, position, velocity, age and launch clock. The authoritative echo only marks server confirmation; rejection removes prediction, and results remain authoritative.",
+    "Remote shots retain server elapsed time. Result revision may advance after launch; backwards authority and invalid correlation, spot, timing or duplicates remain rejected.",
+    "Keep existing schemas, court version 1, releaseOffset, physics and capabilities. Server must not advertise basketball_horse_v1 until its matching scheduling update and full live tests pass.",
+    "Verified: 448 tests, application TypeScript, lint, upstream and Aippy host builds, plus 17 shared court/HORSE Chromium checks with zero page errors. Browser server authority is mocked."
+  ]
+}
