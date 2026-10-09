@@ -139,7 +139,7 @@ export class WorldMultiplayerSession {
     private reportView: (view: MultiplayerView) => void = () => {}) {
     this.lastPosition = world.playerPosition.toArray();
     this.players = new RemotePlayers(world.scene, () => world.playerPosition);
-    this.ownSpeech = new SpeechBubble(world.playerAvatar, () => world.playerPosition);
+    this.ownSpeech = new SpeechBubble(world.playerAvatar, () => world.playerPosition, undefined, 2.0);
     this.replay = new PaintReplay(() => this.visibility);
     this.connection = new MultiplayerConnection(MULTIPLAYER_URL, status => {
       if (status.phase === 'disconnected' || status.phase === 'connecting') {
