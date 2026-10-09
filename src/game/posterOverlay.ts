@@ -17,7 +17,11 @@ export function addPosterOverlay(
   const material = new THREE.MeshBasicMaterial({
     map: texture,
     transparent: true,
+    depthTest: true,
     depthWrite: false,
+    polygonOffset: true,
+    polygonOffsetFactor: -4,
+    polygonOffsetUnits: -4,
     side: THREE.DoubleSide,
     toneMapped: false,
   });
@@ -27,6 +31,8 @@ export function addPosterOverlay(
   );
   mesh.position.fromArray(artwork.position);
   mesh.quaternion.fromArray(artwork.quaternion);
+  // Render clear of the wall along the plane normal; keep persisted placement unchanged.
+  mesh.translateZ(0.006);
   mesh.renderOrder = 90;
   mesh.userData.posterArtwork = true;
   (wall.layers[0]?.mesh ?? wall.mesh).add(mesh);
