@@ -1,0 +1,19 @@
+{
+  "version": "flatten-overlay-depth-9oct2026",
+  "clientVersion": 9,
+  "commit": "b47d6b59fdd923fe82d5f0fc10fd6f5467a7a107",
+  "baseUrl": "https://raw.githubusercontent.com/benryaus-cmd/graf-game/b47d6b59fdd923fe82d5f0fc10fd6f5467a7a107/",
+  "description": "Fix invisible saved flattened graffiti by rendering artwork clear of coplanar wall surfaces.",
+  "files": [
+    {
+      "source": "src/game/posterOverlay.ts",
+      "target": "src/games/importedGame/upstream/src/game/posterOverlay.ts"
+    }
+  ],
+  "notes": [
+    "Render-only local +Z offset of 0.006 after the saved quaternion, polygonOffset factor/units -4. Keep depthTest true, depthWrite false and DoubleSide.",
+    "No changes to persisted transforms, flatten/upload messages, server persistence or protocol. Existing saved pieces receive the fix when reconstructed.",
+    "Verified 467 tests, typecheck, lint, source and Aippy fixture builds. Fetched exact live piece 08c8ca40-12ce-4418-95b7-1dd05509193e in a fresh server snapshot and downloaded its actual image; browser ArtworkSync/WebGL fixture verified visibility, snapshot resync, fresh reconstruction without repainting and foreground wall occlusion.",
+    "Use Node 22 and the existing incremental downloader. Replace only the listed exact live target. Preserve settings, saves, all unlisted files, importer, aliases, host wrapper and dependencies. Reconnect/resync after loading."
+  ]
+}
