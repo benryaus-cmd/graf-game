@@ -19,13 +19,15 @@ function updateCameras(world: WorldEngine): void {
     world.camera.rotation.set(world.playerPitch, world.playerYaw, 0);
   } else {
     world.playerAvatar.visible = true;
-    const distance = 5.6;
+    // Closer over-the-shoulder third-person framing; movement and collision stay unchanged.
+    const distance = 2.8;
     world.camera.position.set(
       position.x + Math.sin(world.playerYaw) * distance,
       position.y + 1.1 - Math.sin(world.playerPitch) * distance,
       position.z + Math.cos(world.playerYaw) * distance,
     );
-    world.camera.lookAt(position.x, position.y - 0.42, position.z);
+    // Aim above the player to frame their avatar in the lower half of the screen.
+    world.camera.lookAt(position.x, position.y + 0.25, position.z);
   }
   world.mapCamera.position.set(position.x, position.y + 48, position.z);
   world.mapCamera.lookAt(position.x, position.y - EYE_HEIGHT, position.z);
