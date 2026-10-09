@@ -1,0 +1,23 @@
+Quaternius — Ultimate Animated Character Pack (November 2019)
+CC0 1.0 Universal (public-domain dedication)
+https://creativecommons.org/publicdomain/zero/1.0/
+
+Official creator page:
+https://quaternius.com/packs/ultimatedanimatedcharacter.html
+Official download folder:
+https://drive.google.com/drive/folders/1sNi1AfenfPRrvRt5yfaj5QMMd6KKcUJ5
+Official announcement confirming CC0:
+https://www.patreon.com/quaternius/posts/ultimate-pack-31403272
+
+These ten character GLBs are mirrored from the Quaternius contributor catalog
+at https://gameatude.com/about. Exact URLs, official Drive glTF file IDs,
+SHA-256 hashes, actual clip names and geometry counts are in manifest.json.
+Actual model thumbnails were downloaded from the same credited catalog.
+Original official Drive downloads returned quota-exceeded HTML, including
+both glTF and FBX endpoints. The mirror GLBs are complete animated re-exports
+of the selected pack models, with their authored materials and skeletons.
+All 17 original animation clips are preserved; no invented clips or geometry.
+No external texture/buffer URLs or Google Drive requests are used at runtime.
+
+Optional attribution: Character models and animations by Quaternius (CC0).
+This asset dedication is separate from the application's code license.
