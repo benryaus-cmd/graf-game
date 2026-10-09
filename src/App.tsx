@@ -3,7 +3,7 @@ import { setRenderSettings } from '@/game/renderSettings';
 import { SheetCollapseContext } from '@/components/GameSheet';
 import PlayersSheet from '@/components/PlayersSheet';
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
-import menuBackground from '@/assets/graffciti-menu.webp';
+import hubsideCover from '@/assets/hubside-cover.avif';
 import { createPortal } from 'react-dom';
 import { aippyTweaks } from '@aippy/runtime/tweaks';
 import GameHud, { type HudMenu } from '@/components/GameHud';
@@ -44,7 +44,7 @@ import { TUTORIAL_ORDER, nextTutorialStep, tutorialStartStep, tutorialObservedSt
 const ProjectFileViewer = lazy(() => import('@/components/ProjectFileViewer'));
 
 const tweaks = aippyTweaks(tweaksConfig);
-const COVER_IMAGE_URL = menuBackground;
+const COVER_IMAGE_URL = hubsideCover;
 const COLORS = ['#ff4d43', '#ff65a5', '#45d7df', '#ffd34e', '#b9e84e', '#f7f2dc'];
 const CAMERA_LABELS: Record<CameraMode, string> = {
   first: 'FIRST PERSON', third: 'THIRD PERSON', map: 'MAP VIEW',
@@ -449,12 +449,12 @@ const App = () => {
       onClickCapture={startAudioOnFirstClick}
     >
       {!hasJoined ? (
-        <section className="cover-screen" aria-label="Welcome to GraffCiti">
-          <img className="cover-art" src={COVER_IMAGE_URL} alt="Graffiti-covered city alley" />
+        <section className="cover-screen" aria-label="Welcome to HubSide">
+          <img className="cover-art" src={COVER_IMAGE_URL} alt="HubSide game cover showing graffiti and basketball in an urban world" />
           <div className="cover-shade" />
           <div className="cover-content">
             <span className="cover-kicker">AN OPEN CREATIVE WORLD</span>
-            <h1>GraffCiti</h1>
+            <h1 className="sr-only">HubSide</h1>
             <p>Find your corner. Make it yours.</p>
             <button type="button" className="cover-enter" onClick={() => setHasJoined(true)}>
               ENTER THE WORLD <span aria-hidden="true">↗</span>
@@ -552,7 +552,7 @@ const App = () => {
               onUnlock={() => { closeMenu(); setDeveloperChoice(true); }}
               radioVolume={radioVolume} onRadioVolume={volume => radioController?.setVolume(volume)}
             >
-              <div className="menu-profile">{aippyUser.avatar && <img src={aippyUser.avatar} alt="" referrerPolicy="no-referrer" />}<div><strong>{displayName}</strong><small>GraffCiti · Client {CLIENT_VERSION}</small></div></div>
+              <div className="menu-profile">{aippyUser.avatar && <img src={aippyUser.avatar} alt="" referrerPolicy="no-referrer" />}<div><strong>{displayName}</strong><small>HubSide · Client {CLIENT_VERSION}</small></div></div>
               <section className="tool-section"><h3>PLAY</h3><div className="menu-grid">
                 <button type="button" onClick={() => toggleMenu('avatar')}>PROFILE &amp; CLOSET</button>
                 <button type="button" onClick={() => toggleMenu('art')}>NEARBY ART</button>
