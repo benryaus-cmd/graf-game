@@ -1,0 +1,19 @@
+{
+  "version": "multiplayer-adult-notice-9oct2026",
+  "commit": "866e4fef757d0e4404c68248177f6a83ec983154",
+  "baseUrl": "https://raw.githubusercontent.com/benryaus-cmd/graf-game/866e4fef757d0e4404c68248177f6a83ec983154/",
+  "description": "Require an 18+ acknowledgement before multiplayer join from any existing entry point.",
+  "files": [
+    {
+      "source": "src/App.tsx",
+      "target": "src/games/importedGame/upstream/src/App.tsx"
+    }
+  ],
+  "notes": [
+    "All existing join triggers route through one acknowledgement modal; Back does not join.",
+    "Continue explicitly confirms 18+ then uses existing join request; no server or protocol changes.",
+    "Notice is shown again for each new multiplayer join attempt.",
+    "No age verification or persistent consent record is claimed.",
+    "Only import this one file."
+  ]
+}
