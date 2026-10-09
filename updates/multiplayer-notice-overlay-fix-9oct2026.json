@@ -1,0 +1,16 @@
+{
+  "version": "multiplayer-notice-overlay-fix-9oct2026",
+  "commit": "67debef6b4d56056433af1091f59cb7cd13fe804",
+  "baseUrl": "https://raw.githubusercontent.com/benryaus-cmd/graf-game/67debef6b4d56056433af1091f59cb7cd13fe804/",
+  "files": [
+    {
+      "source": "src/App.tsx",
+      "target": "src/games/importedGame/upstream/src/App.tsx"
+    }
+  ],
+  "notes": [
+    "Render acknowledgement via React portal in document.body as a fixed top-level overlay so settings/game stacking cannot obscure it.",
+    "Existing multiplayer join requests still held until I UNDERSTAND CONTINUE.",
+    "No server changes, protocol changes or saved data changes."
+  ]
+}
