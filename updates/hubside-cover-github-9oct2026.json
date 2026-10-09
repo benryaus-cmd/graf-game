@@ -1,0 +1,22 @@
+{
+  "version": "hubside-cover-github-9oct2026",
+  "commit": "9b6478a70d3db584f09b5a7fdf78592fbb5cabf6",
+  "baseUrl": "https://raw.githubusercontent.com/benryaus-cmd/graf-game/9b6478a70d3db584f09b5a7fdf78592fbb5cabf6/",
+  "fileCount": 2,
+  "files": [
+    {
+      "source": "src/assets/hubside-cover.avif",
+      "target": "src/games/importedGame/upstream/src/assets/hubside-cover.avif"
+    },
+    {
+      "source": "src/App.tsx",
+      "target": "src/games/importedGame/upstream/src/App.tsx"
+    }
+  ],
+  "notes": [
+    "The supplied HubSide promotional image is stored in the GitHub repo as a real binary asset.",
+    "The welcome screen imports this asset through the same Vite asset pipeline used by the original cover. No Aippy-host public file required.",
+    "Preserve all other files and the root Aippy host wrapper, importer and dependencies.",
+    "Do not replace unrelated Aippy host src/App.tsx, package.json, or public assets."
+  ]
+}
