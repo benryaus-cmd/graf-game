@@ -1,0 +1,22 @@
+{
+  "version": "flatten-canonical-wall-parent-9oct2026",
+  "commit": "7b9b9cdd5fa37d979765b50836fba84c797dbdb4",
+  "baseUrl": "https://raw.githubusercontent.com/benryaus-cmd/graf-game/7b9b9cdd5fa37d979765b50836fba84c797dbdb4/",
+  "description": "Mount persisted flattened artwork on canonical wall mesh even when blank quarter paint layers are detached.",
+  "files": [
+    {
+      "source": "src/game/posterOverlay.ts",
+      "target": "src/games/importedGame/upstream/src/game/posterOverlay.ts"
+    },
+    {
+      "source": "src/multiplayer/artworkSync.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/artworkSync.ts"
+    }
+  ],
+  "notes": [
+    "Client only; no changes to stored placement transforms, flatten protocol, or server.",
+    "Preserves depth-offset and polygon-offset visibility settings.",
+    "Regression test committed at tests/flattenCanonicalParent.test.ts (GitHub source test, not an Aippy import file).",
+    "Use existing Node 22 incremental importer; download two raw files and replace exact targets."
+  ]
+}
