@@ -1,0 +1,41 @@
+{
+  "version": "characters-chat-client9-9oct2026",
+  "clientVersion": 9,
+  "commit": "71609d1ac7df9b1bb737daead63537ad1ee8e55f",
+  "baseUrl": "https://raw.githubusercontent.com/benryaus-cmd/graf-game/71609d1ac7df9b1bb737daead63537ad1ee8e55f/",
+  "description": "Random saved Quaternius starting characters, compact world-space nearby chat bubbles, and visible Client 9 menu label.",
+  "files": [
+    {
+      "source": "src/App.tsx",
+      "target": "src/games/importedGame/upstream/src/App.tsx"
+    },
+    {
+      "source": "src/config/clientVersion.ts",
+      "target": "src/games/importedGame/upstream/src/config/clientVersion.ts"
+    },
+    {
+      "source": "src/game/assetPreviewPreference.ts",
+      "target": "src/games/importedGame/upstream/src/game/assetPreviewPreference.ts"
+    },
+    {
+      "source": "src/game/speechBubble.ts",
+      "target": "src/games/importedGame/upstream/src/game/speechBubble.ts"
+    },
+    {
+      "source": "src/multiplayer/remotePlayers.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/remotePlayers.ts"
+    },
+    {
+      "source": "src/multiplayer/worldSession.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/worldSession.ts"
+    }
+  ],
+  "notes": [
+    "Use Node 22 and the existing incremental downloader. Download six files as raw bytes and replace each exact target path; create the listed clientVersion source file if needed.",
+    "Preserve settings, saves, artwork, all unlisted files, importer, aliases, host wrapper and dependencies. No full re-import or server changes.",
+    "Valid saved characters, including Original and Hoodie, are preserved. Missing or invalid preferences choose and save one of the ten Quaternius characters; later closet choices use the existing local save and multiplayer cosmetics field.",
+    "Chat bubbles follow rendered avatars, size to text and wrap long messages, use world depth so distant artwork cannot cover nearer bubbles, and are visible within 15 metres.",
+    "Client release number 9 is visible in the game menu. Multiplayer and basketball wire/schema versions are unchanged.",
+    "Verified: 466 tests, application typecheck, lint, upstream build and incremental host build. Phone-size browser verified character choice/reload and Client 9 label; actual WebGL verified distant-art layering, nearby wall occlusion and 15m visibility."
+  ]
+}
