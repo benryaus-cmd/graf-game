@@ -15,6 +15,7 @@ export class SpeechBubble {
     private avatar: THREE.Group | undefined,
     private listenerPosition?: () => THREE.Vector3,
     private distance = SPEECH_BUBBLE_DISTANCE,
+    private heightAboveFeet = 2.35,
   ) {}
   show(value: string): void {
     this.dispose();
@@ -51,7 +52,7 @@ export class SpeechBubble {
     // covering speech. Real nearer walls still occlude it through the usual depth test.
     const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, depthTest: true, depthWrite: true, alphaTest: .05, toneMapped: false }));
     const height = canvas.height / PIXELS_PER_METRE;
-    sprite.scale.set(canvas.width / PIXELS_PER_METRE, height, 1); sprite.position.set(0, 3.05 + height / 2, 0);
+    sprite.scale.set(canvas.width / PIXELS_PER_METRE, height, 1); sprite.position.set(0, this.heightAboveFeet + height / 2, 0);
     sprite.raycast = () => {};
     this.avatar.add(sprite); this.sprite = sprite;
     this.update();
