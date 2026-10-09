@@ -10,7 +10,8 @@ export interface CourtConnection { connected: boolean; playerId: string | null; 
 export type CourtListener = (message: Message | null, connection: CourtConnection) => void;
 export interface CourtTransport { readonly courtConnection: CourtConnection; subscribeCourt(listener: CourtListener): () => void; sendCourt(message: Message): boolean }
 export const BASKETBALL_HORSE_CAPABILITY = 'basketball_horse_v1';
-export interface BasketballSyncView { connected: boolean; available: boolean; entered: boolean; court: CourtState | null; ownSeat: CourtSeat | null; pendingShotId: string | null; notice: string | null; horseAvailable: boolean; horsePending: boolean; shootingSpotId: number | null }
+export interface HorseFeedback { revision: number; letters: {playerId:string; value:string}[]; winnerId: string | null; }
+export interface BasketballSyncView { horseFeedback: HorseFeedback | null; connected: boolean; available: boolean; entered: boolean; court: CourtState | null; ownSeat: CourtSeat | null; pendingShotId: string | null; notice: string | null; horseAvailable: boolean; horsePending: boolean; shootingSpotId: number | null }
 type HorseIntent = { type: 'horse_invite'; inviteeId: string; spotId: number } | { type: 'horse_accept' };
 const horseMember = (horse: HorseState | null | undefined, playerId: string | null) => !!horse && (horse.inviterId === playerId || horse.inviteeId === playerId);
 export type BasketballSyncEvent =
@@ -97,6 +98,7 @@ export class BasketballSync {
   private horseRetries = 0;
   private horseTimer: ReturnType<typeof setTimeout> | null = null;
   private notice: string | null = null;
+  private horseFeedback: HorseFeedback | null = null;
   private joinRetries = 0;
   private leaving = false;
   private leaveRetries = 0;
@@ -114,7 +116,7 @@ export class BasketballSync {
   }
   get state(): BasketballSyncView {
     return { connected: this.connection.connected, available: this.available(), entered: this.entered,
-      court: this.court ? structuredClone(this.court) : null, ownSeat: this.ownSeat() ? { ...this.ownSeat()! } : null, pendingShotId: this.pendingShotId, notice: this.notice,
+      court: this.court ? structuredClone(this.court) : null, horseFeedback: this.horseFeedback, ownSeat: this.ownSeat() ? { ...this.ownSeat()! } : null, pendingShotId: this.pendingShotId, notice: this.notice,
       horseAvailable: this.horseAvailable(), horsePending: !!this.horseIntent, shootingSpotId: this.shootingSpot() };
   }
   subscribe(listener: (view: BasketballSyncView, event?: BasketballSyncEvent) => void): () => void {
@@ -206,7 +208,7 @@ export class BasketballSync {
     this.connection = connection;
     if (changed || !this.available()) {
       const hadCourt = this.entered || this.leaving || !!this.court || !!this.pendingShotId;
-      this.entered = false; this.leaving = false; this.court = null; this.requestRevision = 0; this.pendingShotId = null; this.notice = null; this.clearHorseRequest(); this.clearLeaveRecovery(); this.clearFlight();
+      this.entered = false; this.leaving = false; this.court = null; this.horseFeedback = null; this.requestRevision = 0; this.pendingShotId = null; this.notice = null; this.clearHorseRequest(); this.clearLeaveRecovery(); this.clearFlight();
       if (changed || wasConnected !== connection.connected || hadCourt) this.emit({ type: 'reset' }); return;
     }
     if (!message) { this.emit(); return; }
@@ -272,7 +274,23 @@ export class BasketballSync {
       const apply = () => {
         this.scheduled.delete(result.shotId);
         if (!this.entered || !this.available() || this.results.has(result.shotId) || !this.court?.seats.some(s => s.playerId === message.playerId && s.epoch === message.seatEpoch)) return;
-        this.results.add(result.shotId); this.adopt(state);
+        const previousHorse = this.court.horse;
+        if (!this.adopt(state)) return;
+        const nextHorse = this.court?.horse;
+        // Presentation only: a physical court_result, never a snapshot, may award feedback.
+        // Require an existing active challenge and identical participants to avoid resync/new-game false positives.
+        if (previousHorse && nextHorse && previousHorse.phase !== 'ended' &&
+            previousHorse.inviterId === nextHorse.inviterId && previousHorse.inviteeId === nextHorse.inviteeId &&
+            (previousHorse.phase === 'match' || nextHorse.phase === 'ended')) {
+          const letters = [nextHorse.inviterId, nextHorse.inviteeId].flatMap(playerId => {
+            const before = previousHorse.letters[playerId] ?? '';
+            const after = nextHorse.letters[playerId] ?? '';
+            return after.length === before.length + 1 && after.startsWith(before) ? [{playerId, value:after}] : [];
+          });
+          const winnerId = nextHorse.phase === 'ended' && nextHorse.endReason === 'letters' ? nextHorse.winnerId : null;
+          if (letters.length || winnerId) this.horseFeedback = {revision:state.revision,letters,winnerId};
+        }
+        this.results.add(result.shotId);
         if (this.pendingShotId === result.shotId) { this.pendingShotId = null; this.clearPendingTimer(); }
         this.emit({ type: 'result', playerId: message.playerId as string, result });
       };
