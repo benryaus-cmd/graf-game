@@ -8,12 +8,9 @@ importers:
 
   .:
     dependencies:
-      '@ai-sdk/react':
-        specifier: ^3.0.269
-        version: 3.0.289(react@19.3.0)(zod@4.6.5)
       '@aippy/runtime':
         specifier: ^0.4.1
-        version: 0.4.1(@ai-sdk/react@3.0.289(react@19.3.0)(zod@4.6.5))(ai@6.0.286(zod@4.6.5))(react@19.3.0)(typescript@5.9.3)(zod@4.6.5)
+        version: 0.4.1(ai@6.0.286(zod@4.6.5))(react@19.3.0)(typescript@5.9.3)(zod@4.6.5)
       ai:
         specifier: ^6.0.266
         version: 6.0.286(zod@4.6.5)
@@ -102,12 +99,6 @@ packages:
   '@ai-sdk/provider@3.0.16':
     resolution: {integrity: sha512-9Av6kg0t/IN/dcYAAmEJ4B9OPhcEJqwSR+GfHEA8olRkindXpUHadc3p3cyvgFUQFTVm1G5thtsmgZ9yVb2w3A==}
     engines: {node: '>=18'}
-
-  '@ai-sdk/react@3.0.289':
-    resolution: {integrity: sha512-WBP8AHYyIH1uJIHolWZVwDNHqk6+rcJjkwSjxXu5/dkCLboWa0uJE9TuMZC/DekLIOP9gVH5PvWYtAI6jI0U6g==}
-    engines: {node: '>=18'}
-    peerDependencies:
-      react: ^18 || ~19.0.1 || ~19.1.2 || ^19.2.1
 
   '@aippy/runtime@0.4.1':
     resolution: {integrity: sha512-YuRSfVunwg+XMYFw2uytwTMVCnLkB+gQd7SY3g6MeHKI9YBQ6C8SNZS8Zaz/rh4XX0sx3fJG1/2no7iTdUAy5w==}
@@ -1620,25 +1611,13 @@ snapshots:
     dependencies:
       json-schema: 0.4.0
 
-  '@ai-sdk/react@3.0.289(react@19.3.0)(zod@4.6.5)':
-    dependencies:
-      '@ai-sdk/provider-utils': 4.0.51(zod@4.6.5)
-      ai: 6.0.286(zod@4.6.5)
-      react: 19.3.0
-      swr: 2.5.1(react@19.3.0)
-      throttleit: 2.1.0
-    transitivePeerDependencies:
-      - zod
-
-  '@aippy/runtime@0.4.1(@ai-sdk/react@3.0.289(react@19.3.0)(zod@4.6.5))(ai@6.0.286(zod@4.6.5))(react@19.3.0)(typescript@5.9.3)(zod@4.6.5)':
+  '@aippy/runtime@0.4.1(ai@6.0.286(zod@4.6.5))(react@19.3.0)(typescript@5.9.3)(zod@4.6.5)':
     dependencies:
       '@ai-sdk/openai-compatible': 2.0.75(zod@4.6.5)
       ai: 6.0.286(zod@4.6.5)
       react: 19.3.0
       typescript: 5.9.3
       ua-parser-js: 2.0.10
-    optionalDependencies:
-      '@ai-sdk/react': 3.0.289(react@19.3.0)(zod@4.6.5)
     transitivePeerDependencies:
       - zod
 
