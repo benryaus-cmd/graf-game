@@ -24,3 +24,11 @@
 @media (prefers-reduced-motion: reduce) { .basketball-result.is-make { animation: none; } .basketball-feedback { transition: none; } }
 
 .basketball-screen.is-grabbing { cursor: grabbing; }
+
+.basketball-spots button:disabled { cursor: default; opacity: .45; }
+.basketball-spots button:disabled[aria-pressed="true"] { opacity: 1; }
+.basketball-notice { margin: 0; font-size: 10px; font-weight: 600; }
+.basketball-waiting { display: flex; align-items: center; gap: 10px; font-size: 10px; }
+.basketball-waiting button { background: transparent; color: inherit; border: 1px solid #b3c0a655; border-radius: 4px; padding: 4px 6px; }
+
+.basketball-entry-notice { position: absolute; z-index: 12; left: 50%; bottom: max(76px, calc(env(safe-area-inset-bottom) + 66px)); transform: translateX(-50%); margin: 0; color: #ffbe78; background: #151b19c9; padding: 4px 7px; border-radius: 5px; font-size: 10px; white-space: nowrap; pointer-events: none; }

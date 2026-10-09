@@ -23,7 +23,7 @@ test('protocol 2 join carries separate Aippy identity fields and preserves the s
   assert.deepEqual(socket.sent[0], {
     type: 'join', protocol: 2, roomId: 'public', displayName: 'Pink',
     username: 'pink-user', nickName: 'Pink',
-    networkRevision: 6, capabilities: ['spatial_interest_v1', 'spatial_world_delta_v1', 'player_directory_v1'],
+    networkRevision: 6, capabilities: ['spatial_interest_v1', 'spatial_world_delta_v1', 'player_directory_v1', 'basketball_court_v1'],
   });
   assert.equal(connection.playerId, 'assigned-server-uuid');
   connection.disconnect();

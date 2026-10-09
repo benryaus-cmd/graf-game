@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { BASKETBALL_MAX_FLICK_SPEED, basketballFlickSpeed, type BasketballGesture } from '@/game/basketballPhysics';
 import type { BasketballView } from '@/game/basketballGame';
+import type { BasketballSyncView } from '@/multiplayer/basketballSync';
 import { BASKETBALL_COURT } from '@/game/basketballCourt';
 import { elementPointerIsRotated, elementPointerPoint } from '@/game/pointerCoordinates';
 import { BasketballFlickTracker, type BasketballScreenPoint } from '@/game/basketballGesture';
@@ -85,6 +86,7 @@ export function attachBasketballFlickPad(pad: HTMLElement, shoot: (gesture: Bask
 
 interface BasketballControlsProps {
   view: BasketballView | null;
+  shared?: BasketballSyncView | null;
   exploring: boolean;
   paused: boolean;
   onEnter: () => void;
@@ -94,17 +96,23 @@ interface BasketballControlsProps {
   onBallTarget:()=>BasketballBallTarget|null;
   onBallMove:(point:BasketballScreenPoint|null)=>void;
 }
-export function BasketballControls({view,exploring,paused,onEnter,onLeave,onSpot,onShoot,onBallTarget,onBallMove}:BasketballControlsProps) {
+export function BasketballControls({view,shared,exploring,paused,onEnter,onLeave,onSpot,onShoot,onBallTarget,onBallMove}:BasketballControlsProps) {
+  const sharedMode = !!shared?.connected && shared.available;
   const pad=useRef<HTMLDivElement>(null),shoot=useRef(onShoot),ballTarget=useRef(onBallTarget),ballMove=useRef(onBallMove);
   shoot.current=onShoot;ballTarget.current=onBallTarget;ballMove.current=onBallMove;
   useEffect(()=>{
-    if(!pad.current || !view?.active || paused) return;
+    if(!pad.current || !view?.active || paused || (sharedMode && (!shared.ownSeat || !!shared.pendingShotId))) return;
     return attachBasketballFlickPad(pad.current,gesture=>shoot.current(gesture),{target:()=>ballTarget.current(),move:point=>ballMove.current(point)});
-  },[view?.active,view?.spotId,paused]);
+  },[view?.active,view?.spotId,paused,sharedMode,shared?.ownSeat?.epoch,shared?.pendingShotId]);
   if(!view || paused) return null;
-  if(!view.active) return view.nearby && exploring ? <button className="basketball-enter" onClick={onEnter}>PLAY BASKETBALL</button> : null;
+  if(!view.active) {
+    if (!view.nearby || !exploring) return null;
+    const waiting = sharedMode && shared.entered && !shared.ownSeat;
+    if (waiting) return <div className="basketball-enter basketball-waiting" role="status"><span>Waiting for court spot…</span><button onClick={onLeave}>Cancel</button></div>;
+    return <div className="basketball-entry"><button className="basketball-enter" onClick={onEnter}>{sharedMode ? 'JOIN SHARED COURT' : shared?.connected ? 'SOLO PRACTICE' : 'PLAY BASKETBALL'}</button>{sharedMode && shared.notice && <p className="basketball-entry-notice" role="status">Court: {shared.notice}</p>}</div>;
+  }
   const outcome=view.recentResult?.outcome;
-  const status=outcome==='make' ? 'BUCKET!' : outcome==='miss' ? 'Try again' : 'Grab ball, flick up';
+  const status=sharedMode && shared.pendingShotId ? 'Waiting for court…' : (sharedMode ? shared.notice : null) ?? (outcome==='make' ? 'BUCKET!' : outcome==='miss' ? 'Try again' : 'Grab ball, flick up');
   return <section className="basketball-controls" aria-label="Basketball shooting controls">
     <div className="basketball-screen" ref={pad} role="group" aria-label="Grab the ball, flick upward and release">
       <div className="basketball-feedback" aria-hidden="true">
@@ -112,9 +120,9 @@ export function BasketballControls({view,exploring,paused,onEnter,onLeave,onSpot
         <small data-basketball-feedback>Grab ball, flick up</small>
       </div>
     </div>
-    <div className="basketball-score"><span><b>{view.makes}</b>/{view.attempts} made</span><span><b>{view.streak}</b> streak</span></div>
+    <div className="basketball-score"><span><b>{view.makes}</b>/{view.attempts} made</span><span>{sharedMode ? "Shared court" : <><b>{view.streak}</b> streak</>}</span></div>
     <p className={`basketball-result ${outcome==='make'?'is-make':''}`} aria-live="polite">{status}</p>
     <button className="basketball-leave" data-basketball-ui onClick={onLeave}>LEAVE</button>
-    <div className="basketball-spots" data-basketball-ui aria-label="Choose shooting spot">{BASKETBALL_COURT.spots.map((spot,index)=><button key={spot.id} aria-label={`Spot ${index+1}`} aria-pressed={view.spotId===spot.id} onClick={()=>onSpot(spot.id)}>{index+1}</button>)}</div>
+    <div className="basketball-spots" data-basketball-ui aria-label={sharedMode ? "Server assigned shooting spot" : "Choose shooting spot"}>{BASKETBALL_COURT.spots.map((spot,index)=><button key={spot.id} disabled={sharedMode} aria-label={`Spot ${index+1}`} aria-pressed={view.spotId===spot.id} onClick={()=>onSpot(spot.id)}>{index+1}</button>)}</div>
   </section>;
 }

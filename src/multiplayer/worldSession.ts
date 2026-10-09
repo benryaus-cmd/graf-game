@@ -41,8 +41,32 @@ import { pulsePieceBounds } from './piecePulse';
 import { OwnerReferences, type OwnerReferenceDraft } from './ownerReferences';
 import { readAdminArtRemovalProgress } from './adminArtRemoval';
 import { readSpatialStatus, readSpatialDelta, readStrokeHistory, readGestureUndone, readGestureRedone } from './spatialProtocol';
+import type { CourtConnection, CourtListener } from './basketballSync';
+import { BASKETBALL_CAPABILITY, readCourtRequest } from '../game/basketballSession';
+import { BASKETBALL_COURT } from '../game/basketballCourt';
+import { MAIN_ROOM_ID, MAIN_WORLD_ID } from './config';
 
 export class WorldMultiplayerSession {
+  private courtListeners = new Set<CourtListener>();
+  get courtConnection(): CourtConnection {
+    return { connected: this.connection.connected, playerId: this.connection.playerId,
+      capabilities: [...this.connection.capabilities], roomId: this.connection.admittedRoomId,
+      worldId: this.connection.admittedWorldId, serverTime: this.connection.serverTime };
+  }
+  subscribeCourt(listener: CourtListener): () => void {
+    this.courtListeners.add(listener); listener(null, this.courtConnection);
+    return () => this.courtListeners.delete(listener);
+  }
+  sendCourt(message: Message): boolean {
+    const context = this.courtConnection;
+    const request = readCourtRequest(message);
+    return !!request && request.type.startsWith('court_') && request.roomId === MAIN_ROOM_ID && request.mapId === BASKETBALL_COURT.mapId && request.courtId === BASKETBALL_COURT.id &&
+      context.connected && this.connection.protocol === 2 && context.roomId === MAIN_ROOM_ID && context.worldId === MAIN_WORLD_ID &&
+      context.capabilities.includes(BASKETBALL_CAPABILITY) && this.connection.send(message);
+  }
+  private emitCourt(message: Message | null = null): void {
+    for (const listener of this.courtListeners) listener(message, this.courtConnection);
+  }
   private connection: MultiplayerConnection;
   private paint: PaintSync;
   private replay: PaintReplay;
@@ -127,6 +151,7 @@ export class WorldMultiplayerSession {
         this.emitView();
       }
       this.emit(status);
+      this.emitCourt();
     }, message => this.message(message));
     this.chat = new ChatSync(message => this.connection.send(message), () => this.emitView(), message => {
       if (message.playerId === this.connection.playerId) {
@@ -720,6 +745,7 @@ export class WorldMultiplayerSession {
   }
 
   private message(message: Message): void {
+    if (message.type.startsWith('court_')) { this.emitCourt(message); return; }
     const spatialStatus = readSpatialStatus(message);
     if (spatialStatus) { this.spatialEnabled = spatialStatus.enabled; this.emitView(); return; }
     const spatialDelta = readSpatialDelta(message);

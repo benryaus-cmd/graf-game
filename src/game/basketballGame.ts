@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { BASKETBALL_COURT } from './basketballCourt';
 import { createBall, launchFromFlick, stepBall } from './basketballPhysics';
 import type { BasketballBall, BasketballGesture, ShotLaunch, ShotResult } from './basketballPhysics';
+import { encodeReleaseOffset, type ReleaseOffset } from './basketballRelease';
 import { EYE_HEIGHT } from './playerPhysics';
 import type { WorldEngine } from './worldTypes';
 
@@ -29,7 +30,7 @@ type BasketballWorld = Pick<WorldEngine, 'scene' | 'playerPosition' | 'playerYaw
   velocityY?: number;
 };
 type BallSlot = { group: THREE.Group; shot: ActiveShot | null };
-type ActiveShot = { ball: BasketballBall; localAttempt: number; launchedAtMs: number; slot: BallSlot | null };
+type ActiveShot = { ball: BasketballBall; localAttempt: number; launchedAtMs: number; slot: BallSlot | null; authoritative: boolean };
 type ExploringState = { position: THREE.Vector3; yaw: number; pitch: number; cameraMode: WorldEngine['cameraMode']; velocityY: number | undefined; locked: boolean | undefined };
 
 /** Owns only its pooled presentation; the city's rim and paintable board remain borrowed. */
@@ -57,6 +58,9 @@ export class BasketballGame {
   private completedStreak = 0;
   private latestResolvedAttempt = 0;
   private view: BasketballView = { nearby: false, active: false, spotId: null, attempts: 0, makes: 0, streak: 0, recentResult: null };
+  private shared = false;
+  private soloScore: Pick<BasketballView, 'attempts' | 'makes' | 'streak'> | null = null;
+  private readonly sharedResults = new Set<string>();
   private previous: ExploringState | null = null;
   private feedbackAtMs = -Infinity;
   private feedbackSwish = false;
@@ -185,6 +189,78 @@ export class BasketballGame {
     return true;
   }
 
+  /** The mark is supplied only by an authoritative court seat. */
+  enterShared(spotId: number): boolean {
+    if (this.disposed || !BASKETBALL_COURT.spots.some(spot => spot.id === spotId)) return false;
+    if (!this.shared) {
+      if (this.view.active) this.leave();
+      this.soloScore = { attempts: this.view.attempts, makes: this.view.makes, streak: this.view.streak };
+      this.view.attempts = this.view.makes = this.view.streak = 0;
+      this.sharedResults.clear();
+      this.shared = true;
+    }
+    return this.enter(spotId);
+  }
+
+  getSharedShotInput(gesture: BasketballGesture): { gesture: BasketballGesture; releaseOffset: ReleaseOffset } | null {
+    if (!this.shared || this.disposed || !this.view.active || this.view.spotId === null) return null;
+    this.positionHeld();
+    const releaseOffset = encodeReleaseOffset(this.view.spotId, this.held.position.toArray());
+    return releaseOffset ? { gesture: { ...gesture }, releaseOffset } : null;
+  }
+
+  /** Shared predictions animate immediately, without attempts, results, or coin callbacks. */
+  predictSharedShot(launch: ShotLaunch): boolean {
+    if (!this.shared || !this.view.active || this.disposed || !this.validLaunch(launch) || this.seen.has(launch.shotId)) return false;
+    this.addShot(launch, 0, false, true);
+    return true;
+  }
+
+  receiveSharedShot(launch: ShotLaunch, elapsedSeconds = 0, reconcile = false): boolean {
+    if (this.disposed || !this.validLaunch(launch) || !Number.isFinite(elapsedSeconds) || elapsedSeconds < 0 || elapsedSeconds >= LIFE_SECONDS) return false;
+    const predicted = [...this.shots].find(shot => shot.ball.launch.shotId === launch.shotId);
+    if (reconcile && predicted?.authoritative) {
+      predicted.ball = createBall(launch, elapsedSeconds);
+      predicted.launchedAtMs = this.clock() - elapsedSeconds * 1000;
+      if (predicted.slot) predicted.slot.group.position.fromArray(predicted.ball.position);
+      return true;
+    }
+    if (this.seen.has(launch.shotId)) return false;
+    this.addShot(launch, elapsedSeconds, false, true);
+    return true;
+  }
+
+  rejectSharedShot(shotId?: string): void {
+    for (const shot of this.shots) {
+      if (!shot.authoritative || (shotId && shot.ball.launch.shotId !== shotId)) continue;
+      if (shot.slot) { shot.slot.group.visible = false; shot.slot.shot = null; }
+      this.shots.delete(shot);
+      this.seen.delete(shot.ball.launch.shotId);
+    }
+    if (shotId) this.seen.delete(shotId);
+  }
+
+  syncSharedCounters(seat: { attempts: number; makes: number }, pendingShotId: string | null = null): void {
+    if (!this.shared || pendingShotId) return;
+    if (![seat.attempts, seat.makes].every(value => Number.isSafeInteger(value) && value >= 0) || seat.makes > seat.attempts) return;
+    this.view.attempts = seat.attempts;
+    this.view.makes = seat.makes;
+    this.publish();
+  }
+
+  presentSharedResult(result: ShotResult, own: boolean): boolean {
+    if (this.disposed || !own || !this.shared || !this.view.active || this.sharedResults.has(result.shotId)) return false;
+    if (result.courtId !== BASKETBALL_COURT.id || !['make', 'miss'].includes(result.outcome)) return false;
+    this.sharedResults.add(result.shotId);
+    if (this.sharedResults.size > 1024) this.sharedResults.delete(this.sharedResults.values().next().value!);
+    this.view.recentResult = result;
+    this.resultAtMs = this.clock();
+    this.view.streak = result.outcome === 'make' ? this.view.streak + 1 : 0;
+    if (result.outcome === 'make') this.presentResult(result, 0, this.resultAtMs);
+    this.publish();
+    return true;
+  }
+
   leave(): void {
     if (!this.view.active) return;
     this.world.cancelWorldInput?.();
@@ -216,6 +292,14 @@ export class BasketballGame {
     } else this.world.activityLocked = false;
     this.previous = null;
     this.view.active = false;
+    if (this.shared) {
+      if (this.soloScore) Object.assign(this.view, this.soloScore);
+      this.soloScore = null;
+      this.shared = false;
+      this.sharedResults.clear();
+      this.completedThrough = this.latestResolvedAttempt = this.view.attempts;
+      this.completedStreak = this.view.streak;
+    }
     this.view.spotId = null;
     this.heldScreenPosition = null;
     this.held.visible = false;
@@ -223,7 +307,7 @@ export class BasketballGame {
   }
 
   shoot(gesture: BasketballGesture): ShotLaunch | null {
-    if (this.disposed || !this.view.active || this.view.spotId === null) return null;
+    if (this.shared || this.disposed || !this.view.active || this.view.spotId === null) return null;
     this.positionHeld();
     const launch = launchFromFlick(this.view.spotId, gesture, this.held.position.toArray());
     if (!launch) return null;
@@ -245,7 +329,7 @@ export class BasketballGame {
     for (const shot of this.shots) {
       const targetAge = Math.max(0, (nowMs - shot.launchedAtMs) / 1000);
       const result = stepBall(shot.ball, Math.max(0, targetAge - shot.ball.ageSeconds));
-      if (result) this.presentResult(result, shot.localAttempt, nowMs);
+      if (result && !shot.authoritative) this.presentResult(result, shot.localAttempt, nowMs);
       if (shot.slot) {
         const group = shot.slot.group;
         group.position.fromArray(shot.ball.position);
@@ -292,7 +376,7 @@ export class BasketballGame {
     this.burst.geometry.dispose(); this.burst.material.dispose();
   }
 
-  private addShot(launch: ShotLaunch, elapsedSeconds: number, local: boolean): void {
+  private addShot(launch: ShotLaunch, elapsedSeconds: number, local: boolean, authoritative = false): void {
     const nowMs = this.clock();
     this.seen.set(launch.shotId, nowMs);
     const ball = createBall(launch, elapsedSeconds);
@@ -301,7 +385,7 @@ export class BasketballGame {
       slot = this.pool.reduce((oldest, candidate) => candidate.shot!.launchedAtMs < oldest.shot!.launchedAtMs ? candidate : oldest);
       slot.shot!.slot = null; // Simulation continues even when its visual is recycled.
     }
-    const shot: ActiveShot = { ball, localAttempt: local ? this.view.attempts + 1 : 0, launchedAtMs: nowMs - elapsedSeconds * 1000, slot };
+    const shot: ActiveShot = { ball, localAttempt: local ? this.view.attempts + 1 : 0, launchedAtMs: nowMs - elapsedSeconds * 1000, slot, authoritative };
     slot.shot = shot;
     slot.group.visible = true;
     slot.group.position.fromArray(ball.position);

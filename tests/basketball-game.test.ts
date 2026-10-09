@@ -373,3 +373,94 @@ test('a deliberate 225 pixel release stroke can make from all five marks in eith
   game.dispose();
  }
 });
+
+
+import { releaseOriginFromOffset } from '../src/game/basketballRelease';
+
+test('shared input encodes the visible prepared ball and prediction reconciles into one authority ball', () => {
+  const { world, game, setNow } = setup();
+  const soloShots: string[] = [], coinResults: string[] = [];
+  game.onShot = shot => soloShots.push(shot.shotId);
+  game.onResult = result => coinResults.push(result.shotId);
+  assert.equal(game.enterShared(3), true);
+  game.setHeldBallScreenPosition({ x: .52, y: .43 });
+  const input = game.getSharedShotInput({ dx: 0, dy: 0, durationMs: 140 })!;
+  assert.ok(input);
+  const actual = world.scene.getObjectByName('basketball-held')!.position.toArray();
+  const reconstructed = releaseOriginFromOffset(3, input.releaseOffset)!;
+  reconstructed.forEach((value, index) => assert.ok(Math.abs(value - actual[index]) < 1e-10));
+  const launch = { ...launchFromFlick(3, input.gesture, reconstructed)!, shotId: 's4-1' };
+  assert.equal(game.predictSharedShot(launch), true);
+  assert.equal(game.predictSharedShot(launch), false);
+  assert.equal(game.getSnapshot().attempts, 0);
+  game.syncSharedCounters({ attempts: 1, makes: 1 }, launch.shotId);
+  assert.equal(game.getSnapshot().makes, 0, 'state carrying simulated make cannot score while own result is pending');
+  assert.equal(game.getSnapshot().attempts, 0);
+  const authoritative = { ...launch, origin: [launch.origin[0] + .01, ...launch.origin.slice(1)] as typeof launch.origin };
+  assert.equal(game.receiveSharedShot(authoritative, .05, true), true);
+  let visible = 0;
+  world.scene.traverse(object => { if (object.name.startsWith('basketball-flight-') && object.visible) visible++; });
+  assert.equal(visible, 1);
+  assert.deepEqual(world.scene.getObjectByName('basketball-flight-0')!.position.toArray(), createBall(authoritative, .05).position);
+  assert.equal(game.receiveSharedShot(authoritative), false);
+  setNow(3000);
+  assert.equal(game.getSnapshot().attempts, 0);
+  assert.equal(game.getSnapshot().recentResult, null);
+  assert.deepEqual(soloShots, []);
+  assert.deepEqual(coinResults, []);
+  assert.equal(game.shoot(gesture), null, 'shared failures cannot fall back to solo');
+  game.dispose();
+});
+
+test('shared rejection removes prediction and only authoritative seat/result update shared score once', () => {
+  const { world, game, setNow } = setup();
+  let coins = 0;
+  game.onResult = () => coins++;
+  game.enterShared(2);
+  const input = game.getSharedShotInput(gesture)!;
+  const launch = { ...launchFromFlick(2, gesture, releaseOriginFromOffset(2, input.releaseOffset)!)!, shotId: 's5-1' };
+  game.predictSharedShot(launch);
+  game.rejectSharedShot(launch.shotId);
+  assert.equal(world.scene.getObjectByName('basketball-flight-0')!.visible, false);
+  assert.equal(game.predictSharedShot(launch), true, 'rejection permits canonical sequence retry without dropping the ball');
+  game.rejectSharedShot(launch.shotId);
+  game.syncSharedCounters({ attempts: 0, makes: 0 });
+  setNow(3000);
+  assert.equal(game.getSnapshot().attempts, 0);
+  assert.equal(game.getSnapshot().makes, 0);
+  const result = { courtId: launch.courtId, version: 1 as const, spotId: 2, shotId: 's5-2', outcome: 'make' as const, swish: true };
+  assert.equal(game.presentSharedResult(result, false), false, 'remote results give no local feedback');
+  assert.equal(game.getSnapshot().recentResult, null);
+  game.syncSharedCounters({ attempts: 1, makes: 1 });
+  assert.equal(game.presentSharedResult(result, true), true);
+  assert.equal(game.presentSharedResult(result, true), false);
+  assert.equal(game.getSnapshot().attempts, 1);
+  assert.equal(game.getSnapshot().makes, 1);
+  assert.equal(game.getSnapshot().streak, 1);
+  assert.equal(coins, 0);
+  game.dispose();
+});
+
+test('leaving shared court clears predictions and preserves solo counters and every normal release', () => {
+  const { world, game, setNow } = setup();
+  game.enter(2);
+  const solo = game.shoot({ dx: 0, dy: 0, durationMs: 140 })!;
+  assert.ok(solo, 'static grabbed release still launches');
+  setNow(3000);
+  const previous = game.getSnapshot();
+  game.enterShared(4);
+  const input = game.getSharedShotInput(gesture)!;
+  const launch = { ...launchFromFlick(4, gesture, releaseOriginFromOffset(4, input.releaseOffset)!)!, shotId: 's6-1' };
+  game.predictSharedShot(launch);
+  game.syncSharedCounters({ attempts: 5, makes: 3 });
+  game.leave();
+  assert.equal(game.getSharedShotInput(gesture), null);
+  assert.equal(game.getSnapshot().attempts, previous.attempts);
+  assert.equal(game.getSnapshot().makes, previous.makes);
+  assert.equal(game.getSnapshot().streak, previous.streak);
+  world.scene.traverse(object => { if (object.name.startsWith('basketball-flight-')) assert.equal(object.visible, false); });
+  game.enter(0);
+  assert.ok(game.shoot({ dx: 0, dy: 0, durationMs: 140 }));
+  assert.equal(game.getSnapshot().attempts, previous.attempts + 1);
+  game.dispose();
+});

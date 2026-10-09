@@ -3,6 +3,7 @@ import test from 'node:test';
 import { CourtSession, HorseSession, readCourtRequest } from '../src/game/basketballSession';
 
 const scope = { roomId: 'map2-local', mapId: 'map2', courtId: 'map2-basketball' };
+const releaseOffset = { right: -.32, up: 1.48, forward: .81 };
 const gesture = { dx: 0, dy: .2884, durationMs: 140 };
 const result = (shotId: string, outcome: 'make' | 'miss', spotId = 2) => ({
   shotId, outcome, spotId, version: 1 as const, courtId: scope.courtId, swish: outcome === 'make',
@@ -21,8 +22,8 @@ function acceptedHorse() {
 test('a stationary normal release is an accepted attempted drop, not a reset',()=>{
   const court=joined(1),seat=court.snapshot().seats[0]!;
   const drop={dx:0,dy:0,durationMs:140};
-  assert.ok(readCourtRequest({type:'court_shot',...scope,version:1,revision:court.snapshot().revision,shotId:`s${seat.epoch}-1`,sequence:1,seatEpoch:seat.epoch,gesture:drop}));
-  const reply=court.shoot('p0',{shotId:`s${seat.epoch}-1`,sequence:1,seatEpoch:seat.epoch,gesture:drop},court.snapshot().revision,0);
+  assert.ok(readCourtRequest({type:'court_shot',...scope,version:1,revision:court.snapshot().revision,shotId:`s${seat.epoch}-1`,sequence:1,seatEpoch:seat.epoch,releaseOffset,gesture:drop}));
+  const reply=court.shoot('p0',{shotId:`s${seat.epoch}-1`,sequence:1,seatEpoch:seat.epoch,releaseOffset,gesture:drop},court.snapshot().revision,0);
   assert.equal(reply.ok,true);assert.deepEqual(reply.launch?.velocity,[0,0,0]);
   assert.equal(reply.result?.outcome,'miss');assert.equal(court.snapshot().seats[0]!.attempts,1);
 });
@@ -52,13 +53,13 @@ test('stale revisions do not change seats and repeated join is idempotent', () =
 test('court scores shots from deterministic simulation and refuses duplicate IDs or old sequences', () => {
   const court = joined(1);
   const seat = court.snapshot().seats[0]!;
-  const first = court.shoot('p0', { shotId: `s${seat.epoch}-1`, sequence: 1, seatEpoch: seat.epoch, gesture }, court.snapshot().revision, 1000);
+  const first = court.shoot('p0', { shotId: `s${seat.epoch}-1`, sequence: 1, seatEpoch: seat.epoch, releaseOffset, gesture }, court.snapshot().revision, 1000);
   assert.equal(first.ok, true);
   assert.ok(first.launch);
-  assert.equal(first.result?.outcome, 'miss','staged server fallback has no actual raised release position');
+  assert.equal(first.result?.outcome, 'miss');
   const revision = court.snapshot().revision;
-  assert.equal(court.shoot('p0', { shotId: `s${seat.epoch}-1`, sequence: 2, seatEpoch: seat.epoch, gesture }, revision, 5000).reason, 'duplicate');
-  assert.equal(court.shoot('p0', { shotId: 'other', sequence: 1, seatEpoch: seat.epoch, gesture }, revision, 5000).reason, 'sequence');
+  assert.equal(court.shoot('p0', { shotId: `s${seat.epoch}-1`, sequence: 2, seatEpoch: seat.epoch, releaseOffset, gesture }, revision, 5000).reason, 'duplicate');
+  assert.equal(court.shoot('p0', { shotId: 'other', sequence: 1, seatEpoch: seat.epoch, releaseOffset, gesture }, revision, 5000).reason, 'sequence');
   assert.equal(court.snapshot().revision, revision);
   assert.equal(court.snapshot().seats[0]!.makes, 0);
 });
@@ -68,9 +69,9 @@ test('old seat epochs and invalid flicks cannot consume a new shot', () => {
   court.leave('p0', court.snapshot().revision, 0);
   court.join('p0', court.snapshot().revision, 0);
   const revision = court.snapshot().revision;
-  assert.equal(court.shoot('p0', { shotId: 'old', sequence: 1, seatEpoch: oldEpoch, gesture }, revision, 0).reason, 'seat');
+  assert.equal(court.shoot('p0', { shotId: 'old', sequence: 1, seatEpoch: oldEpoch, releaseOffset, gesture }, revision, 0).reason, 'seat');
   const epoch = court.snapshot().seats[0]!.epoch;
-  assert.equal(court.shoot('p0', { shotId: `s${epoch}-1`, sequence: 1, seatEpoch: epoch, gesture: { ...gesture, dy: -1 } }, revision, 0).reason, 'gesture');
+  assert.equal(court.shoot('p0', { shotId: `s${epoch}-1`, sequence: 1, seatEpoch: epoch, releaseOffset, gesture: { ...gesture, dy: -1 } }, revision, 0).reason, 'gesture');
   assert.equal(court.snapshot().revision, revision);
 });
 test('only the invitee accepts, and a setting miss passes the turn without letters', () => {
@@ -130,7 +131,7 @@ test('a reserved HORSE mark blocks new allocation and off-turn shots without mov
   court.join('p2', court.snapshot().revision, 0);
   assert.equal(court.snapshot().seats.find(seat => seat.playerId === 'p2')?.spotId, 3);
   const matcher = court.snapshot().seats.find(seat => seat.playerId === 'p1')!;
-  assert.equal(court.shoot('p1', { shotId: 'turn', sequence: 1, seatEpoch: matcher.epoch, gesture }, court.snapshot().revision, 0).reason, 'turn');
+  assert.equal(court.shoot('p1', { shotId: 'turn', sequence: 1, seatEpoch: matcher.epoch, releaseOffset, gesture }, court.snapshot().revision, 0).reason, 'turn');
 });
 test('court parser requires bounded scoped versioned commands and never reads a made flag', () => {
   const base = { ...scope, type: 'court_join', version: 1, revision: 0 };
@@ -138,11 +139,11 @@ test('court parser requires bounded scoped versioned commands and never reads a 
   assert.equal(readCourtRequest({ ...base, version: 2 }), null);
   assert.equal(readCourtRequest({ ...base, roomId: 'x'.repeat(65) }), null);
   assert.equal(readCourtRequest({ ...base, revision: -1 }), null);
-  const shot = { ...base, type: 'court_shot', shotId: 's1-1', sequence: 1, seatEpoch: 1, gesture, made: true };
+  const shot = { ...base, type: 'court_shot', shotId: 's1-1', sequence: 1, seatEpoch: 1, releaseOffset, gesture, made: true };
   const parsed = readCourtRequest(shot);
   assert.equal(parsed?.type, 'court_shot');
   assert.equal('made' in parsed!, false);
-  assert.equal(readCourtRequest({ ...shot, gesture: { ...gesture, dx: Infinity } }), null);
+  assert.equal(readCourtRequest({ ...shot, releaseOffset, gesture: { ...gesture, dx: Infinity } }), null);
   assert.equal(readCourtRequest({ ...shot, sequence: Number.MAX_SAFE_INTEGER + 1 }), null);
 });
 test('authenticated command dispatch rejects another room and lets stale clients request current state', () => {
@@ -156,7 +157,7 @@ test('authenticated command dispatch rejects another room and lets stale clients
 test('simulation misses do not increment makes and the same seat cannot launch again before expiry', () => {
   const court = joined(1);
   const epoch = court.snapshot().seats[0]!.epoch;
-  const shot = { shotId: `s${epoch}-1`, sequence: 1, seatEpoch: epoch, gesture: { ...gesture, dy: .2 } };
+  const shot = { shotId: `s${epoch}-1`, sequence: 1, seatEpoch: epoch, releaseOffset, gesture: { ...gesture, dy: .2 } };
   assert.equal(court.shoot('p0', shot, court.snapshot().revision, 0).result?.outcome, 'miss');
   assert.equal(court.snapshot().seats[0]!.makes, 0);
   assert.equal(court.shoot('p0', { ...shot, shotId: 'early', sequence: 2 }, court.snapshot().revision, 2000).reason, 'busy');
@@ -172,12 +173,12 @@ test('invalid server timestamps and parser payload arrays do not change state', 
 test('shot IDs are bound to seat epochs and sequences so cache eviction cannot replay an old ID', () => {
   const court = joined(1);
   const epoch = court.snapshot().seats[0]!.epoch;
-  assert.equal(court.shoot('p0', { shotId: 'reused-id', sequence: 1, seatEpoch: epoch, gesture }, court.snapshot().revision, 0).reason, 'invalid');
+  assert.equal(court.shoot('p0', { shotId: 'reused-id', sequence: 1, seatEpoch: epoch, releaseOffset, gesture }, court.snapshot().revision, 0).reason, 'invalid');
   for (let sequence = 1; sequence <= 257; sequence++) {
-    assert.equal(court.shoot('p0', { shotId: `s${epoch}-${sequence}`, sequence, seatEpoch: epoch, gesture }, court.snapshot().revision, sequence * 3000).ok, true);
+    assert.equal(court.shoot('p0', { shotId: `s${epoch}-${sequence}`, sequence, seatEpoch: epoch, releaseOffset, gesture }, court.snapshot().revision, sequence * 3000).ok, true);
   }
   const revision = court.snapshot().revision;
-  assert.equal(court.shoot('p0', { shotId: `s${epoch}-1`, sequence: 258, seatEpoch: epoch, gesture }, revision, 258 * 3000).reason, 'invalid');
+  assert.equal(court.shoot('p0', { shotId: `s${epoch}-1`, sequence: 258, seatEpoch: epoch, releaseOffset, gesture }, revision, 258 * 3000).reason, 'invalid');
   assert.equal(court.snapshot().seats[0]!.attempts, 257);
 });
 test('joins racing with the same revision receive stale snapshots and allocate unique seats on retry', () => {

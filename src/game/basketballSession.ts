@@ -1,3 +1,5 @@
+import { readReleaseOffset, releaseOriginFromOffset } from './basketballRelease';
+import type { ReleaseOffset } from './basketballRelease';
 import { BASKETBALL_COURT } from './basketballCourt';
 import { BASKETBALL_LIFETIME_SECONDS, createBall, launchFromFlick, stepBall } from './basketballPhysics';
 import type { BasketballGesture, ShotLaunch, ShotResult } from './basketballPhysics';
@@ -11,7 +13,7 @@ export interface CourtScope { roomId: string; mapId: string; courtId: string }
 type ScopedRequest = CourtScope & { version: 1; revision: number };
 export type CourtRequest = ScopedRequest & (
   | { type: 'court_join' | 'court_leave' | 'court_state' }
-  | { type: 'court_shot'; shotId: string; sequence: number; seatEpoch: number; gesture: BasketballGesture }
+  | { type: 'court_shot'; shotId: string; sequence: number; seatEpoch: number; gesture: BasketballGesture; releaseOffset: ReleaseOffset }
   | { type: 'horse_invite'; inviteeId: string; spotId: number }
   | { type: 'horse_accept' }
 );
@@ -56,8 +58,10 @@ export function readCourtRequest(value: unknown): CourtRequest | null {
   if (data.type === 'court_join' || data.type === 'court_leave' || data.type === 'court_state' || data.type === 'horse_accept') return { ...base, type: data.type };
   if (data.type === 'horse_invite' && validId(data.inviteeId) && validSpot(data.spotId)) return { ...base, type: data.type, inviteeId: data.inviteeId, spotId: data.spotId };
   if (data.type === 'court_shot' && validId(data.shotId) && integer(data.sequence) && data.sequence > 0 && integer(data.seatEpoch) && data.seatEpoch > 0 && data.shotId === `s${data.seatEpoch}-${data.sequence}` && validGesture(data.gesture)) {
+    const releaseOffset = readReleaseOffset(data.releaseOffset);
+    if (!releaseOffset) return null;
     const { dx, dy, durationMs } = data.gesture;
-    return { ...base, type: data.type, shotId: data.shotId, sequence: data.sequence, seatEpoch: data.seatEpoch, gesture: { dx, dy, durationMs } };
+    return { ...base, type: data.type, shotId: data.shotId, sequence: data.sequence, seatEpoch: data.seatEpoch, gesture: { dx, dy, durationMs }, releaseOffset };
   }
   return null;
 }
@@ -209,7 +213,7 @@ export class CourtSession {
     if (!accepted.ok) return this.reply(accepted.reason);
     this.horseReadyAt = serverTime; this.advance(serverTime); return this.reply();
   }
-  shoot(playerId: string, shot: { shotId: string; sequence: number; seatEpoch: number; gesture: BasketballGesture }, revision: number, serverTime: number): SessionReply<CourtState> {
+  shoot(playerId: string, shot: { shotId: string; sequence: number; seatEpoch: number; gesture: BasketballGesture; releaseOffset: ReleaseOffset }, revision: number, serverTime: number): SessionReply<CourtState> {
     const error = this.guard(revision, serverTime);
     if (error) return this.reply(error);
     const seat = this.seats.find(seat => seat.playerId === playerId);
@@ -218,12 +222,17 @@ export class CourtSession {
     if (this.seenShots.has(shot.shotId)) return this.reply('duplicate');
     if (shot.sequence <= seat.sequence) return this.reply('sequence');
     if (!validGesture(shot.gesture)) return this.reply('gesture');
+    const releaseOffset = readReleaseOffset(shot.releaseOffset);
+    if (!releaseOffset) return this.reply('invalid');
     const horse = this.horse?.snapshot();
     const participating = horse && horse.phase !== 'ended' && horse.phase !== 'invited' && (playerId === horse.inviterId || playerId === horse.inviteeId);
     if (participating && horse.occupantId !== playerId) return this.reply('turn');
     if (serverTime < seat.readyAt || (participating && serverTime < this.horseReadyAt)) return this.reply('busy');
     if (shot.shotId !== `s${seat.epoch}-${shot.sequence}`) return this.reply('invalid');
-    const launch = launchFromFlick(participating ? horse.spotId : seat.spotId, shot.gesture);
+    const spotId = participating ? horse.spotId : seat.spotId;
+    const origin = releaseOriginFromOffset(spotId, releaseOffset);
+    if (!origin) return this.reply('invalid');
+    const launch = launchFromFlick(spotId, shot.gesture, origin);
     if (!launch) return this.reply('gesture');
     launch.shotId = shot.shotId;
     const ball = createBall(launch);

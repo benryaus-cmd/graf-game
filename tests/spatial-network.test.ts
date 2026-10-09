@@ -16,12 +16,12 @@ class Socket {
 const capabilities=['spatial_interest_v1','spatial_world_delta_v1','player_directory_v1'];
 const hello={type:'hello',protocol:2,playerId:'self',networkRevision:6,minimumNetworkRevision:6,requiredClientCapabilities:capabilities,capabilities};
 
-test('revision-6 join carries real initial position and all three spatial capabilities',()=>{
+test('revision-6 join carries real initial position, spatial capabilities and optional basketball support',()=>{
   const socket=new Socket();const connection=new MultiplayerConnection('wss://test',()=>{},()=>{},()=>socket);
   try {
     connection.connect(' Artist ','public',{username:'artist',nickName:'Artist'},[31,1.72,-48]);
     socket.receive(hello);
-    assert.deepEqual(socket.sent[0],{type:'join',roomId:'public',protocol:2,networkRevision:6,capabilities,spatialInterest:true,position:[31,1.72,-48],username:'artist',nickName:'Artist',displayName:'Artist'});
+    assert.deepEqual(socket.sent[0],{type:'join',roomId:'public',protocol:2,networkRevision:6,capabilities:[...capabilities,'basketball_court_v1'],spatialInterest:true,position:[31,1.72,-48],username:'artist',nickName:'Artist',displayName:'Artist'});
   }finally{connection.disconnect();}
 });
 

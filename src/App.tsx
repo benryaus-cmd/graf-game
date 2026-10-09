@@ -60,6 +60,7 @@ type PaintTool = 'paint' | 'eraser' | 'off' | 'admin';
 
 const App = () => {
   const [mapId,setMapId]=useState<MapId>(getMapId);
+  const [newMapPrompt, setNewMapPrompt] = useState(false);
   const [basketballActive,setBasketballActive]=useState(false);
   const aippyUser = useUserInfo();
   const displayName = aippyDisplayName(aippyUser);
@@ -85,6 +86,9 @@ const App = () => {
   const fogDensity = tweaks.fogDensity.useState();
   const showCrosshair = tweaks.showCrosshair.useState();
   const [hasJoined, setHasJoined] = useState(false);
+  useEffect(() => {
+    if (hasJoined && mapId === 'original') setNewMapPrompt(true);
+  }, [hasJoined, mapId]);
   const [brushSelection, setBrushSelection] = useState<{ value: number; source: number } | null>(null);
   const brushSize = brushSelection?.source === initialBrushSize ? brushSelection.value : Math.max(.1, Math.min(10, initialBrushSize / 3));
   const [opacity, setOpacity] = useState(0.88);
@@ -156,7 +160,7 @@ const App = () => {
   const [eyedropperNotice, setEyedropperNotice] = useState('');
   const [activeMenu, setActiveMenu] = useState<HudMenu>(null);
   const [sheetCollapsed, setSheetCollapsed] = useState(false);
-  const menuBlocking = !!activeMenu && !sheetCollapsed;
+  const menuBlocking = newMapPrompt || (!!activeMenu && !sheetCollapsed);
   const [movement, setMovement] = useState<MovementInput>({ x: 0, y: 0 });
   const [lookInput, setLookInput] = useState<MovementInput>({ x: 0, y: 0 });
   const [jumpSignal, setJumpSignal] = useState(0);
@@ -417,7 +421,7 @@ const App = () => {
               onProtectionEnabledChange={setProtectionEnabled} /> : undefined} />;
 
   const changeMap=(next:MapId)=>{
-    if(next===mapId){closeMenu();return;}
+    if(next===mapId){closeMenu();if(next==='original')setNewMapPrompt(true);return;}
     setBasketballActive(false);
     setMovement({x:0,y:0});setLookInput({x:0,y:0});setPaintMode(false);setEyedropperActive(false);setReference(null);poster.cancel();setWorkspaceRequest(null);setMultiplayerRequest(null);setEmoteSignal(null);setViewMode('first');
     setWorkspaceView({selected:false,active:false,width:0,height:0,zoom:1,sizeLinked:true,started:false,moving:false,hasPaint:false});
@@ -565,7 +569,14 @@ const App = () => {
           )}
         </>
       )}
-      {tutorialStep && <TutorialOverlay
+      {newMapPrompt && <GameSheet title="New map available." onClose={() => setNewMapPrompt(false)}>
+        <p>Join now.</p>
+        <div className="button-row">
+          <button type="button" className="ui-primary" onClick={() => { setNewMapPrompt(false); changeMap('map2'); }}>Yes</button>
+          <button type="button" onClick={() => setNewMapPrompt(false)}>No</button>
+        </div>
+      </GameSheet>}
+      {tutorialStep && !newMapPrompt && <TutorialOverlay
         step={tutorialStep}
         menu={activeMenu}
         reviewing={tutorialReview}

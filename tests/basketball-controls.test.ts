@@ -188,3 +188,42 @@ test('holding the grabbed ball clears recent velocity feedback without storing a
     f.canvas.dispatchEvent(logicalPointer('pointerup',.4,.5));assert.equal(shots.length,1);assert.equal(shots[0].dy,0);
   } finally {stop();restore();}
 });
+
+
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { BasketballControls } from '../src/components/BasketballControls';
+import type { BasketballSyncView } from '../src/multiplayer/basketballSync';
+const controlView = { nearby: true, active: false, spotId: null, attempts: 0, makes: 0, streak: 0, recentResult: null };
+function renderControls(shared?: BasketballSyncView, active = false) {
+  return renderToStaticMarkup(createElement(BasketballControls, {
+    view: { ...controlView, active, spotId: active ? 3 : null }, shared, exploring: true, paused: false,
+    onEnter: () => {}, onLeave: () => {}, onSpot: () => {}, onShoot: () => {}, onBallTarget: () => null, onBallMove: () => {},
+  }));
+}
+const sharedView: BasketballSyncView = { connected: true, available: true, entered: false, ownSeat: null, pendingShotId: null, court: null, notice: null };
+test('shared controls require admitted capability while unsupported town retains solo practice', () => {
+  assert.match(renderControls(), /PLAY BASKETBALL/);
+  const unavailable = renderControls({ ...sharedView, available: false });
+  assert.match(unavailable, /SOLO PRACTICE/);
+  assert.doesNotMatch(unavailable, /JOIN SHARED COURT|basketball-screen/);
+  const activePractice = renderControls({ ...sharedView, available: false }, true);
+  assert.equal((activePractice.match(/aria-label="Spot/g) ?? []).length, 5);
+  assert.doesNotMatch(activePractice, /disabled=""|Shared court/);
+  assert.match(activePractice, /basketball-screen/);
+  assert.match(renderControls(sharedView), /JOIN SHARED COURT/);
+  const waiting = renderControls({ ...sharedView, entered: true });
+  assert.match(waiting, /Waiting for court spot/);
+  assert.match(waiting, /Cancel/);
+  assert.doesNotMatch(waiting, /basketball-screen/);
+  assert.match(renderControls({ ...sharedView, notice: 'full' }), /Court: full/);
+});
+test('shared assigned spots stay disabled and pending authority status leaves solo five spots usable', () => {
+  const shared = renderControls({ ...sharedView, entered: true, pendingShotId: 's4-1', ownSeat: { playerId: 'me', spotId: 3, epoch: 4, sequence: 0, attempts: 0, makes: 0, readyAt: 0 } }, true);
+  assert.equal((shared.match(/disabled=""/g) ?? []).length, 5);
+  assert.match(shared, /Server assigned shooting spot/);
+  assert.match(shared, /Waiting for court/);
+  const solo = renderControls(undefined, true);
+  assert.equal((solo.match(/aria-label="Spot/g) ?? []).length, 5);
+  assert.doesNotMatch(solo, /disabled=""/);
+});

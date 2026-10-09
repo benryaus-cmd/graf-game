@@ -163,7 +163,7 @@ test('upgraded protocol 2 joins using the existing messages and accepts its expa
   socket.receive({ type: 'hello', playerId: 'server-v2-id', protocol: 2, serverTime: 123,
     capabilities: ['presence', 'movement', 'paint', 'eraser', 'chat', 'artwork', 'world_items', 'inventory', 'trading', 'reports', 'resync'] });
   assert.deepEqual(socket.sent[0], { type: 'join', protocol: 2, roomId: 'public', displayName: 'Aippy nickname',
-    networkRevision: 6, capabilities: ['spatial_interest_v1', 'spatial_world_delta_v1', 'player_directory_v1'] });
+    networkRevision: 6, capabilities: ['spatial_interest_v1', 'spatial_world_delta_v1', 'player_directory_v1', 'basketball_court_v1'] });
   socket.receive({ type: 'world_snapshot', protocol: 2, roomId: 'public', playerId: 'server-v2-id',
     revision: 5, sequence: 10, serverTime: 124, playerCount: 1, strokes: [], players: [],
     artworks: [], worldItems: [], graffitiPieces: [], chatHistory: [] });

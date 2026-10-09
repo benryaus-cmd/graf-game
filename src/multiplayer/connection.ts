@@ -10,7 +10,7 @@ export interface SocketLike {
 
 export interface PlayerIdentity { username?: string; nickName?: string }
 export const CLIENT_NETWORK_REVISION = 6;
-export const CLIENT_CAPABILITIES = ['spatial_interest_v1', 'spatial_world_delta_v1', 'player_directory_v1'];
+export const CLIENT_CAPABILITIES = ['spatial_interest_v1', 'spatial_world_delta_v1', 'player_directory_v1', 'basketball_court_v1'];
 const UPDATE_NOTICE = 'Update GraffCiti to use multiplayer. Solo is still available.';
 
 export class MultiplayerConnection {
@@ -18,6 +18,10 @@ export class MultiplayerConnection {
   protocol = 1;
   capabilities: string[] = [];
   connected = false;
+  admittedRoomId: string | null = null;
+  admittedWorldId: string | null = null;
+  private serverClockOffset = 0;
+  get serverTime(): number { return Date.now() + this.serverClockOffset; }
   private socket: SocketLike | null = null;
   private generation = 0;
   private timeout: ReturnType<typeof setTimeout> | null = null;
@@ -89,6 +93,9 @@ export class MultiplayerConnection {
 
         this.clearTimeout();
         this.connected = true;
+        this.admittedRoomId = this.roomId;
+        this.admittedWorldId = typeof message.worldId === 'string' ? message.worldId : null;
+        if (typeof message.serverTime === 'number' && Number.isSafeInteger(message.serverTime) && message.serverTime >= 0) this.serverClockOffset = message.serverTime - Date.now();
 
         const playerCount =
           typeof message.playerCount === 'number'
@@ -122,7 +129,11 @@ export class MultiplayerConnection {
       } else if (message.type === 'ping') {
         this.sendRaw({ type: 'pong', ...(message.timestamp !== undefined ? { timestamp: message.timestamp } : {}) });
       } else if (message.type === 'client_update_required') { this.fail(UPDATE_NOTICE); }
-      else if (this.connected || (!expectedWorldId && this.playerId && ['account_state', 'permissions', 'credit_balance', 'spatial_status', 'chat_mute_state'].includes(message.type))) this.onMessage(message);
+      else if (this.connected || (!expectedWorldId && this.playerId && ['account_state', 'permissions', 'credit_balance', 'spatial_status', 'chat_mute_state'].includes(message.type))) {
+        // Court timestamps describe event time, including scheduled results; they are not clock samples.
+        if (!message.type.startsWith('court_') && typeof message.serverTime === 'number' && Number.isSafeInteger(message.serverTime) && message.serverTime >= 0) this.serverClockOffset = message.serverTime - Date.now();
+        this.onMessage(message);
+      }
     };
     socket.onerror = () => { if (generation === this.generation) this.fail('Connection lost. Offline paint stays local; Reconnect to resync.'); };
     socket.onclose = () => { if (generation === this.generation) this.fail('Disconnected. Offline paint stays local; Reconnect to resync.'); };
@@ -154,6 +165,7 @@ export class MultiplayerConnection {
     this.generation++;
     this.clearTimeout();
     this.connected = false; this.playerId = null; this.sentAt = [];
+    this.admittedRoomId = this.admittedWorldId = null; this.capabilities = []; this.serverClockOffset = 0;
     const socket = this.socket; this.socket = null;
     if (socket) {
       socket.onopen = socket.onmessage = socket.onerror = socket.onclose = null;
