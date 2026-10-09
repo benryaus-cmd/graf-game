@@ -169,7 +169,7 @@ const App = () => {
   const [movement, setMovement] = useState<MovementInput>({ x: 0, y: 0 });
   const [lookInput, setLookInput] = useState<MovementInput>({ x: 0, y: 0 });
   const [jumpSignal, setJumpSignal] = useState(0);
-  const [viewMode, setViewMode] = useState<CameraMode>('first');
+  const [viewMode, setViewMode] = useState<CameraMode>('third');
   const [mapZoom, setMapZoom] = useState(1);
   const [botsEnabled, setBotsEnabled] = useState(false);
   const [nearbyBotIndex, setNearbyBotIndex] = useState<number | null>(null);
@@ -428,7 +428,7 @@ const App = () => {
   const changeMap=(next:MapId)=>{
     if(next===mapId){closeMenu();if(next==='original')setNewMapPrompt(true);return;}
     setBasketballActive(false);
-    setMovement({x:0,y:0});setLookInput({x:0,y:0});setPaintMode(false);setEyedropperActive(false);setReference(null);poster.cancel();setWorkspaceRequest(null);setMultiplayerRequest(null);setEmoteSignal(null);setViewMode('first');
+    setMovement({x:0,y:0});setLookInput({x:0,y:0});setPaintMode(false);setEyedropperActive(false);setReference(null);poster.cancel();setWorkspaceRequest(null);setMultiplayerRequest(null);setEmoteSignal(null);setViewMode('third');
     setWorkspaceView({selected:false,active:false,width:0,height:0,zoom:1,sizeLinked:true,started:false,moving:false,hasPaint:false});
     setMultiplayerStatus({phase:'solo',playerCount:0});setMultiplayerView({chat:[],revision:0,accountFeaturesAvailable:false,worldItemCount:0});
     selectMap(next);setMapId(next);setSky(readMapSky(next));closeMenu();
