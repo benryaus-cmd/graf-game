@@ -1,0 +1,39 @@
+{
+  "version": "horse-client-9oct2026",
+  "commit": "7ea6319f8c5dd834f97d56dea462d62fbc396294",
+  "baseUrl": "https://raw.githubusercontent.com/benryaus-cmd/graf-game/7ea6319f8c5dd834f97d56dea462d62fbc396294/",
+  "description": "Server-gated HORSE invitations, acceptance, authoritative letters and reserved shooting mark; other seated players keep normal free shooting.",
+  "files": [
+    {
+      "source": "src/components/BasketballControls.tsx",
+      "target": "src/games/importedGame/upstream/src/components/BasketballControls.tsx"
+    },
+    {
+      "source": "src/components/WorldScene.tsx",
+      "target": "src/games/importedGame/upstream/src/components/WorldScene.tsx"
+    },
+    {
+      "source": "src/components/basketball.css",
+      "target": "src/games/importedGame/upstream/src/components/basketball.css"
+    },
+    {
+      "source": "src/game/basketballGame.ts",
+      "target": "src/games/importedGame/upstream/src/game/basketballGame.ts"
+    },
+    {
+      "source": "src/multiplayer/basketballSync.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/basketballSync.ts"
+    },
+    {
+      "source": "src/multiplayer/worldSession.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/worldSession.ts"
+    }
+  ],
+  "notes": [
+    "Use Node 22 and the existing incremental downloader. Download all 6 listed files as raw bytes before replacing exact target paths.",
+    "Preserve settings, saves, artwork, unlisted files, importer, aliases, host wrapper, dependencies and server. No full re-import.",
+    "HORSE UI and invite/accept commands require the optional server hello capability basketball_horse_v1 alongside basketball_court_v1. Until then HORSE stays disabled.",
+    "Keep current free-shooting physics, releaseOffset, court version 1, endpoints and normal multiplayer unchanged.",
+    "horse_decline and horse_cancel are documentation proposals only, not implemented wire messages."
+  ]
+}

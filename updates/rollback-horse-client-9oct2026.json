@@ -1,0 +1,32 @@
+{
+  "version": "rollback-horse-client-9oct2026",
+  "commit": "77fffbd50c9ef2b0cf3b68e20884789ecfca6cb3",
+  "baseUrl": "https://raw.githubusercontent.com/benryaus-cmd/graf-game/77fffbd50c9ef2b0cf3b68e20884789ecfca6cb3/",
+  "description": "Restore the six frontend source files preceding the HORSE client update.",
+  "files": [
+    {
+      "source": "src/components/BasketballControls.tsx",
+      "target": "src/games/importedGame/upstream/src/components/BasketballControls.tsx"
+    },
+    {
+      "source": "src/components/WorldScene.tsx",
+      "target": "src/games/importedGame/upstream/src/components/WorldScene.tsx"
+    },
+    {
+      "source": "src/components/basketball.css",
+      "target": "src/games/importedGame/upstream/src/components/basketball.css"
+    },
+    {
+      "source": "src/game/basketballGame.ts",
+      "target": "src/games/importedGame/upstream/src/game/basketballGame.ts"
+    },
+    {
+      "source": "src/multiplayer/basketballSync.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/basketballSync.ts"
+    },
+    {
+      "source": "src/multiplayer/worldSession.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/worldSession.ts"
+    }
+  ]
+}
