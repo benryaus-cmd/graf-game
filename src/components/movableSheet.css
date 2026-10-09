@@ -1,0 +1,9 @@
+.game-sheet-backdrop.sheet-is-movable { display: block; background: transparent; padding: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left)); }
+.game-sheet-backdrop.sheet-is-movable.sheet-is-collapsed { padding-top: max(8px, env(safe-area-inset-top)); }
+.game-sheet-backdrop.sheet-is-movable .game-sheet { position: absolute; top: 96px; right: 8px; width: min(330px, calc(100% - 16px)); max-width: calc(100% - 16px); max-height: calc(100% - 16px); background: var(--ui-surface); }
+.game-sheet-backdrop.sheet-is-movable.paint-sheet .game-sheet { width: min(330px, calc(100% - 16px)); }
+.game-sheet-backdrop.sheet-is-movable .game-sheet-header { cursor: grab; touch-action: none; user-select: none; }
+.game-sheet-backdrop.sheet-is-movable .game-sheet-header:active { cursor: grabbing; }
+.game-sheet-backdrop.sheet-is-movable .game-sheet-header h2::before { content: '⠿'; margin-right: 6px; color: var(--muted); }
+.game-sheet-backdrop.sheet-is-movable .sheet-header-actions { cursor: auto; touch-action: manipulation; }
+.game-sheet-backdrop.sheet-is-movable.sheet-is-collapsed .game-sheet { width: max-content; max-width: min(300px, calc(100% - 16px)); height: auto; }

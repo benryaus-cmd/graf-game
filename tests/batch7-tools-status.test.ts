@@ -33,21 +33,21 @@ const dockProps = {
 
 test('brush size and opacity remain reachable between head selection and colour', () => {
   const { html } = capture(PaintDock, dockProps);
-  assert.ok(html.indexOf('BRUSH SETTINGS') > html.indexOf('aria-label="Brush heads"'));
-  assert.ok(html.indexOf('BRUSH SETTINGS') < html.indexOf('<h3>COLOUR'));
+  assert.ok(html.indexOf('aria-label="Brush settings"') > html.indexOf('aria-label="Brush heads"'));
+  assert.ok(html.indexOf('aria-label="Brush settings"') < html.indexOf('<h3>Colour'));
   assert.match(html, /data-tutorial="brush-heads"/);
 });
 
-test('ERAZE occupies one head slot, invokes the existing eraser action and clears spray selection', () => {
+test('Erase occupies one head slot, invokes the existing eraser action and clears spray selection', () => {
   const actions: string[] = [];
   let closed = 0;
   const { html, nodes } = capture(PaintDock, { ...dockProps, eraseMode: true, onToolChange: tool => actions.push(tool), onClose: () => closed++ });
   assert.ok(!html.includes('>DRIP</button>'));
-  const erase = nodes.filter(node => node.type === 'button' && node.props.children === 'ERAZE');
+  const erase = nodes.filter(node => node.type === 'button' && node.props.children === 'Erase');
   assert.equal(erase.length, 1);
   assert.equal(erase[0].props['aria-pressed'], true);
   assert.deepEqual(erase[0].props.style, { background: '#ffffff', color: '#000000' });
-  assert.ok(!html.includes('paint-head-selected" aria-pressed="true">ROLLER'));
+  assert.ok(!html.includes('paint-head-selected" aria-pressed="true">Roller'));
   erase[0].props.onClick?.();
   assert.deepEqual(actions, ['eraser']);
   assert.equal(closed, 1);
@@ -134,7 +134,7 @@ test('credit status displays compact authoritative balance and preserves its acc
 });
 
 test('each paint head immediately exits eraser without requiring the obsolete SPRAY button',()=>{
- for(const label of ['FINE','SOFT','FAT','MARKER','ROLLER']){
+ for(const label of ['Fine','Soft','Fat','Marker','Roller']){
   let erasing=true;let selected='';
   const {nodes,html}=capture(PaintDock,{...dockProps,eraseMode:true,onToolChange:tool=>{erasing=tool==='eraser';},onBrushHeadChange:head=>{selected=head;}});
   nodes.find(node=>node.type==='button'&&node.props.children===label)!.props.onClick?.();

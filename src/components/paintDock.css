@@ -1,0 +1,58 @@
+/* Compact paint controls. Panel positioning and dragging belong to GameSheet. */
+.paint-sheet.game-sheet-backdrop .game-sheet { width: min(350px, 100%); }
+.paint-sheet .game-sheet .game-sheet-body { padding: 8px 10px; }
+.paint-sheet .game-sheet .sheet-tabs { gap: 4px; margin-bottom: 6px; }
+.paint-sheet .game-sheet button:not(.swatch):not(.layer-select):not(.layer-visibility):not(.sheet-close) {
+  min-height: 32px; padding: 5px 8px; font-size: 12px; line-height: 1.2; border-radius: 6px;
+}
+.paint-sheet .game-sheet .tool-section { margin: 0 0 6px; }
+.paint-sheet .game-sheet .tool-section h3 { margin-bottom: 4px; font-size: 12px; letter-spacing: 0; font-weight: 600; }
+.paint-sheet .game-sheet .paint-brush-strip {
+  display: flex; gap: 4px; overflow-x: auto; overflow-y: hidden; padding: 2px; margin: 0 -2px;
+  scrollbar-width: thin; overscroll-behavior-x: contain; touch-action: pan-x;
+}
+.paint-sheet .game-sheet .paint-brush-strip button:not(.swatch):not(.layer-select):not(.layer-visibility):not(.sheet-close) {
+  flex: 0 0 auto; min-height: 36px; padding: 5px 6px; font-size: 11px; white-space: nowrap;
+}
+.paint-sheet .game-sheet .paint-heads .paint-head-selected { box-shadow: 0 0 0 1px #fff4de88 inset; }
+.paint-sheet .game-sheet .paint-heads .paint-head-selected::before { content: none; }
+.paint-sheet .game-sheet .compact-brush-tuning { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+.paint-sheet .game-sheet .compact-brush-tuning .paint-range {
+  display: grid; grid-template-columns: 96px minmax(0, 1fr); align-items: center; gap: 8px; min-height: 28px;
+}
+.paint-sheet .game-sheet .paint-range > span { font-size: 12px; letter-spacing: 0; }
+.paint-sheet .game-sheet .paint-range b { letter-spacing: 0; font-weight: 500; }
+.paint-sheet .game-sheet .paint-range input[type='range'] { width: 100%; min-width: 0; height: 24px; padding: 0; }
+.paint-sheet .game-sheet .disclosure-button:not(.swatch):not(.layer-select):not(.layer-visibility):not(.sheet-close) {
+  min-height: 26px; padding: 2px 0; border: 0; font-size: 12px; background: transparent;
+}
+.paint-sheet .game-sheet .paint-preview { padding: 3px 0; gap: 6px; }
+.paint-sheet .game-sheet .paint-preview-chip { width: 24px; height: 24px; }
+.paint-sheet .game-sheet .paint-preview-copy { display: flex; align-items: center; gap: 8px; font-size: 11px; }
+.paint-sheet .game-sheet .color-readout { font-size: 11px; }
+.paint-sheet .game-sheet .swatches {
+  grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 4px; padding: 2px; margin: 0 -2px 5px;
+}
+.paint-sheet .game-sheet .swatch { width: 100%; height: 34px; border-radius: 5px; }
+.paint-sheet .game-sheet .swatch-selected { outline-width: 2px; outline-offset: 0; }
+.paint-sheet .game-sheet .colour-actions { display: flex; flex-wrap: nowrap; gap: 4px; }
+.paint-sheet .game-sheet .colour-actions > button { flex: 1 1 auto; min-width: 0; white-space: nowrap; }
+.paint-sheet .game-sheet .hex-control { flex: 0 0 auto; gap: 4px; }
+.paint-sheet .game-sheet .hex-control > span { display: none; }
+.paint-sheet .game-sheet .hex-control input { width: 96px; min-height: 32px; padding: 4px 5px; font-size: 16px; }
+.paint-sheet .game-sheet .recent-colours { gap: 4px; margin-top: 5px; }
+.paint-sheet .game-sheet .recent-colours button:not(.swatch):not(.layer-select):not(.layer-visibility):not(.sheet-close) {
+  width: 32px; min-width: 32px; min-height: 32px; height: 32px; padding: 0;
+}
+.paint-sheet .game-sheet details > summary { min-height: 30px; padding: 3px 0; font-size: 12px; cursor: pointer; }
+.paint-sheet .game-sheet .paint-layers summary small { margin-left: 8px; color: var(--muted); font-size: 11px; }
+.paint-sheet .game-sheet .layer-list { gap: 4px; }
+.paint-sheet .game-sheet .layer-chip { grid-template-columns: 1fr 1fr; }
+.paint-sheet .game-sheet .layer-select, .paint-sheet .game-sheet .layer-visibility { height: 34px; font-size: 12px; }
+.paint-sheet .game-sheet .layer-visibility { border-top: 0; border-left: 1px solid var(--edge); }
+.paint-sheet .game-sheet .paint-add-layer { margin: 5px 0; }
+.paint-sheet .game-sheet .palette-manager .ui-field { margin: 6px 0; font-size: 12px; gap: 4px; }
+.paint-sheet .game-sheet .palette-manager .ui-field input,
+.paint-sheet .game-sheet .palette-manager .ui-field select { min-height: 32px; padding: 5px 8px; font-size: 16px; }
+.paint-sheet .game-sheet button:focus-visible,
+.paint-sheet .game-sheet summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }

@@ -2,6 +2,9 @@ import { createContext, useContext, useEffect, useId, useRef, useState, type Rea
 import { createPortal } from 'react-dom';
 import { useRotatedSheetScroll } from '@/components/useRotatedSheetScroll';
 import { sheetViewport } from '@/components/sheetViewport';
+import { sheetPositionKey } from '@/components/movableSheetLayout';
+import { useMovableSheet } from '@/components/useMovableSheet';
+import './movableSheet.css';
 
 export const SheetCollapseContext = createContext<(collapsed: boolean) => void>(() => {});
 
@@ -23,6 +26,7 @@ export default function GameSheet({ title, subtitle, onClose, children, footer, 
   const scroll = useRotatedSheetScroll();
   const titleId = useId();
   const panel = useRef<HTMLElement>(null);
+  const movable = useMovableSheet(panel, sheetPositionKey(className, title), collapsed);
   const close = useRef(onClose);
   close.current = onClose;
   useEffect(() => {
@@ -73,9 +77,9 @@ export default function GameSheet({ title, subtitle, onClose, children, footer, 
       if (previous?.isConnected) previous.focus({ preventScroll: true });
     };
   }, [collapsed]);
-  const content = <div className={`game-sheet-backdrop ${className}${collapsed ? ' sheet-is-collapsed' : ''}`} onPointerDown={event => event.stopPropagation()} onClick={event => { if (!collapsed && event.target === event.currentTarget) onClose(); }}>
+  const content = <div className={`game-sheet-backdrop sheet-is-movable ${className}${collapsed ? ' sheet-is-collapsed' : ''}`} {...movable.overlay} onPointerDown={event => event.stopPropagation()} onClick={event => { if (!collapsed && event.target === event.currentTarget) onClose(); }}>
     <section ref={panel} className="game-sheet" role={collapsed ? 'region' : 'dialog'} aria-modal={collapsed ? undefined : true} aria-labelledby={titleId}>
-      <header className="game-sheet-header">
+      <header className="game-sheet-header" title="Drag this header to move panel" {...movable.header}>
         <div><h2 id={titleId}>{title}</h2>{subtitle && <p>{subtitle}</p>}</div>
         <div className="sheet-header-actions"><button className="sheet-collapse" type="button" aria-label={`${collapsed ? 'Expand' : 'Collapse'} ${title.toLowerCase()}`} aria-expanded={!collapsed} onClick={() => setCollapsed(value => !value)}>{collapsed ? '▾' : '−'}</button><button className="sheet-close" type="button" aria-label={closeLabel} onClick={onClose}>×</button></div>
       </header>

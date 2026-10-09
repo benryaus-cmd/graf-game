@@ -14,14 +14,14 @@ interface BrushTuningProps {
 }
 
 const BrushTuning = (props: BrushTuningProps) => (
-  <div className="advanced-controls">
+  <div className="advanced-controls compact-brush-tuning">
     <label className="paint-range">
-      <span><b>SIZE</b><i>{props.brushSize.toFixed(1)}</i></span>
+      <span><b>Size</b><i>{props.brushSize.toFixed(1)}</i></span>
       <input type="range" min="0.3" max="30" step="0.3" value={props.brushSize}
         aria-label="Brush size" onChange={event => props.onSizeChange(Number(event.target.value))} />
     </label>
     <label className="paint-range">
-      <span><b>OPACITY</b><i>{Math.round(props.opacity * 100)}%</i></span>
+      <span><b>Opacity</b><i>{Math.round(props.opacity * 100)}%</i></span>
       <input type="range" min="5" max="100" value={Math.round(props.opacity * 100)}
         aria-label="Paint opacity" onChange={event => props.onOpacityChange(Number(event.target.value) / 100)} />
     </label>
@@ -29,12 +29,12 @@ const BrushTuning = (props: BrushTuningProps) => (
     <div className="paint-preview" aria-live="polite">
       <span className="paint-preview-chip" style={{ backgroundColor: props.color, opacity: props.opacity }} />
       <span className="paint-preview-copy">
-        <b>LIVE COLOUR</b>
+        <b>Live colour</b>
         <strong>{props.color.toUpperCase()}</strong>
       </span>
     </div>
     <label className="paint-range hue-range">
-      <span><b>COLOUR</b><i>{Math.round(props.hue)}°</i></span>
+      <span><b>Hue</b><i>{Math.round(props.hue)}°</i></span>
       <input
         type="range"
         min="0"
@@ -45,7 +45,7 @@ const BrushTuning = (props: BrushTuningProps) => (
       />
     </label>
     <label className="paint-range">
-      <span><b>DARKNESS</b><i>{props.darkness}%</i></span>
+      <span><b>Darkness</b><i>{props.darkness}%</i></span>
       <input
         type="range"
         min="0"
@@ -56,7 +56,7 @@ const BrushTuning = (props: BrushTuningProps) => (
       />
     </label>
     <label className="paint-range">
-      <span><b>PALENESS</b><i>{props.paleness}%</i></span>
+      <span><b>Paleness</b><i>{props.paleness}%</i></span>
       <input
         type="range"
         min="0"

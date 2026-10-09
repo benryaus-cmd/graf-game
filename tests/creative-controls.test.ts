@@ -16,8 +16,8 @@ test('canvas controls default to collapsed and stay small while moving', async (
 test('paint picker offers visual colour creation separately from world eyedropper', async () => {
   const { default: Dock } = await import('../src/components/PaintDock');
   const html = renderToStaticMarkup(createElement(Dock, { open: true, color: '#ff0000', brushSize: 3, opacity: 1, layers: [], selectedLayer: 0, onEyedropper() {} } as Parameters<typeof Dock>[0]));
-  assert.match(html, /PICK COLOUR/);
-  assert.match(html, /EYEDROPPER/);
+  assert.match(html, /Pick colour/);
+  assert.match(html, /Sample colour from world/);
 });
 
 test('emote sheet exposes all existing animations through the same action', async () => {

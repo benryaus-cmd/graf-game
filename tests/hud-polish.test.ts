@@ -43,8 +43,8 @@ test('paint tools show every default colour and five layers without MORE; closed
   const html = renderToStaticMarkup(createElement(PaintDock, props));
   assert.equal((html.match(/aria-label="Select paint colour/g) ?? []).length, 16);
   assert.equal((html.match(/class="layer-select"/g) ?? []).length, 5);
-  assert.ok(html.includes('LAYER 3'));
-  assert.ok(html.includes('PICK COLOUR'));
+  assert.ok(html.includes('Layer 3'));
+  assert.ok(html.includes('Pick colour'));
   assert.ok(html.includes('Load saved palette'));
   assert.equal(renderToStaticMarkup(createElement(PaintDock, { ...props, open: false })), '');
 });
@@ -101,6 +101,6 @@ test('selected spray head is explicitly marked and visually targetable', async (
     onLayerAdd() {}, onPosterSizeChange() {}, onStartPosterPlacement() {},
   } as unknown as Parameters<typeof PaintDock>[0];
   const html = renderToStaticMarkup(createElement(PaintDock, props));
-  assert.match(html, /class="paint-head-selected" aria-pressed="true">ROLLER<\/button>/);
-  assert.ok(!html.includes('paint-head-selected" aria-pressed="true">SOFT'));
+  assert.match(html, /class="paint-head-selected" aria-pressed="true">Roller<\/button>/);
+  assert.ok(!html.includes('paint-head-selected" aria-pressed="true">Soft'));
 });

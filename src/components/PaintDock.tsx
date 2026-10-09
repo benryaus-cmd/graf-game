@@ -4,6 +4,7 @@ import BrushTuning from '@/components/BrushTuning';
 import ColorPicker from '@/components/ColorPicker';
 import GameSheet from '@/components/GameSheet';
 import PosterStudio from '@/components/PosterStudio';
+import './paintDock.css';
 import { hexToHsl, paintColor } from '@/game/paintColor';
 import {
   addPaletteColor, DEFAULT_PAINT_PALETTE, deletePalette, loadPaletteSettings, savePalette, setActivePalette,
@@ -13,8 +14,8 @@ import {
 type PaintLayerControl = { name: string; visible: boolean };
 type PaintTool = 'paint' | 'eraser' | 'off';
 const HEADS: Array<{ id: BrushHead; label: string }> = [
-  { id: 'fine', label: 'FINE' }, { id: 'soft', label: 'SOFT' }, { id: 'fat', label: 'FAT' },
-  { id: 'marker', label: 'MARKER' }, { id: 'roller', label: 'ROLLER' },
+  { id: 'fine', label: 'Fine' }, { id: 'soft', label: 'Soft' }, { id: 'fat', label: 'Fat' },
+  { id: 'marker', label: 'Marker' }, { id: 'roller', label: 'Roller' },
 ];
 
 interface PaintDockProps {
@@ -122,40 +123,40 @@ const PaintDock = (props: PaintDockProps) => {
         <button type="button" aria-pressed={posterMode} onClick={() => setPosterMode(true)}>TAGS</button>
       </nav>
       {posterMode ? <PosterStudio size={props.posterSize} onSizeChange={props.onPosterSizeChange} onStartPlacement={props.onStartPosterPlacement} /> : <>
-        <section className="tool-section"><h3>BRUSH</h3>
-          <div className="paint-heads" aria-label="Brush heads" data-tutorial="brush-heads">
+        <section className="tool-section paint-brush-section" aria-label="Brush">
+          <div className="paint-heads paint-brush-strip" aria-label="Brush heads" data-tutorial="brush-heads">
             {HEADS.map(head => { const selected = !props.eraseMode && (props.brushHead ?? 'soft') === head.id; return <button key={head.id} type="button" className={selected ? 'paint-head-selected' : undefined} aria-pressed={selected} onClick={() => { props.onBrushHeadChange?.(head.id); props.onToolChange('paint'); }}>{head.label}</button>; })}
-            <button type="button" className={props.eraseMode ? 'paint-head-selected' : undefined} aria-pressed={props.eraseMode} style={{ background: '#ffffff', color: '#000000' }} onClick={() => { props.onToolChange('eraser'); (props.onClose ?? props.onToggle)(); }}>ERAZE</button>
+            <button type="button" className={props.eraseMode ? 'paint-head-selected' : undefined} aria-pressed={props.eraseMode} style={{ background: '#ffffff', color: '#000000' }} onClick={() => { props.onToolChange('eraser'); (props.onClose ?? props.onToggle)(); }}>Erase</button>
           </div>
         </section>
-        <section className="tool-section"><h3>BRUSH SETTINGS</h3>
+        <section className="tool-section paint-settings-section" aria-label="Brush settings">
           <BrushTuning advanced={tuningOpen} color={props.color} hue={hue} darkness={darkness} paleness={paleness} brushSize={props.brushSize} opacity={props.opacity} onHueChange={updateHue} onSizeChange={props.onBrushSizeChange} onOpacityChange={props.onOpacityChange} onDarknessChange={updateDarkness} onPalenessChange={updatePaleness} />
-          <button type="button" className="disclosure-button" aria-expanded={tuningOpen} onClick={() => setTuningOpen(value => !value)}>{tuningOpen ? 'Less colour tuning' : 'Advanced colour tuning'} <span>{tuningOpen ? '−' : '+'}</span></button>
+          <button type="button" className="disclosure-button" aria-expanded={tuningOpen} onClick={() => setTuningOpen(value => !value)}>{tuningOpen ? 'Hide colour tuning' : 'Colour tuning'} <span>{tuningOpen ? '−' : '+'}</span></button>
         </section>
-        <section className="tool-section"><h3>COLOUR <span className="color-readout"><i style={{ backgroundColor: props.color }} />{props.color.toUpperCase()}</span></h3>
+        <section className="tool-section"><h3>Colour <span className="color-readout"><i style={{ backgroundColor: props.color }} />{props.color.toUpperCase()}</span></h3>
           <div className="swatches" aria-label="Color palette">
             {paletteColors.map(swatch => <button key={swatch} type="button" aria-label={`Select paint colour ${swatch}`} title={swatch} aria-pressed={props.color === swatch} className={`swatch ${props.color === swatch ? 'swatch-selected' : ''}`} style={{ backgroundColor: swatch }} onClick={() => selectBaseColor(swatch)} />)}
-            <button type="button" className="wheel-picker" aria-label="Create custom paint colour" onClick={() => setPickerOpen(value => !value)}>＋</button>
           </div>
           <div className="colour-actions">
-            <button type="button" aria-expanded={pickerOpen} onClick={() => setPickerOpen(value => !value)}>PICK COLOUR</button>
-            {props.onEyedropper && <button type="button" className="ui-button" aria-pressed={!!props.eyedropperActive} onClick={() => { props.onEyedropper?.(); props.onToggle(); }}>EYEDROPPER</button>}
+            <button type="button" aria-label="Create custom paint colour" aria-expanded={pickerOpen} onClick={() => setPickerOpen(value => !value)}>Pick colour</button>
+            {props.onEyedropper && <button type="button" className="ui-button" aria-pressed={!!props.eyedropperActive} aria-label="Sample colour from world" onClick={() => { props.onEyedropper?.(); props.onToggle(); }}>Sample</button>}
             <label className="hex-control"><span>HEX</span><input aria-label="Hex paint colour" value={colorDraft} maxLength={7} spellCheck={false} onBlur={() => setColorDraft(props.color)} onChange={event => { const next = event.target.value.toLowerCase(); setColorDraft(next); if (/^#[0-9a-f]{6}$/.test(next)) selectBaseColor(next); }} /></label>
           </div>
           {pickerOpen && <ColorPicker color={props.color} onChange={previewBaseColor} onCommit={commitColor} />}
           {recentColors.length > 0 && <div className="recent-colours" aria-label="Recent colours">{recentColors.map(recent => <button type="button" key={recent} aria-label={`Reuse ${recent}`} style={{ backgroundColor: recent }} onClick={() => selectBaseColor(recent)} />)}</div>}
         </section>
-        <section className="tool-section"><h3>LAYERS <small>LAYER {props.selectedLayer + 1}</small></h3>
+        <details className="paint-layers"><summary>Layers <small>Layer {props.selectedLayer + 1}</small></summary>
           <div className="layer-list" aria-label="Drawing layers">{props.layers.slice(0, 5).map((layer, index) => <div className={`layer-chip ${props.selectedLayer === index ? 'layer-chip-selected' : ''}`} key={layer.name}>
             <button className="layer-select" type="button" aria-label={`Select ${layer.name}`} aria-pressed={props.selectedLayer === index} onClick={() => props.onLayerSelect(index)}>{index + 1}</button>
             <button className="layer-visibility" type="button" aria-label={`${layer.visible ? 'Hide' : 'Show'} ${layer.name}`} aria-pressed={layer.visible} onClick={() => props.onLayerToggle(index)}>{layer.visible ? '●' : '○'}</button>
           </div>)}</div>
-        </section>
-        <details className="palette-manager"><summary>Manage palettes</summary>
-          <label className="ui-field">PALETTE<select aria-label="Load saved palette" value={paletteSettings.activePaletteId ?? ''} onChange={event => changePalette(event.target.value)}><option value="">DEFAULT PALETTE</option>{paletteSettings.palettes.map(palette => <option key={palette.id} value={palette.id}>{palette.name}</option>)}</select></label>
-          <div className="button-row"><button type="button" onClick={addCurrentColorToPalette}>ADD COLOUR</button><button type="button" disabled={!paletteSettings.activePaletteId} onClick={removeActivePalette} aria-label="Delete selected palette">DELETE</button></div>
-          <label className="ui-field">SAVE CURRENT PALETTE<input aria-label="New palette name" placeholder="Palette name" value={paletteName} maxLength={32} onChange={event => setPaletteName(event.target.value)} /></label>
-          <button type="button" onClick={saveCurrentPalette}>SAVE PALETTE</button>
+          <button type="button" className="paint-add-layer" aria-label="Add drawing layer" disabled={props.layers.length >= 5} onClick={props.onLayerAdd}>+ Add layer</button>
+        </details>
+        <details className="palette-manager"><summary>Saved palettes</summary>
+          <label className="ui-field">Palette<select aria-label="Load saved palette" value={paletteSettings.activePaletteId ?? ''} onChange={event => changePalette(event.target.value)}><option value="">Default palette</option>{paletteSettings.palettes.map(palette => <option key={palette.id} value={palette.id}>{palette.name}</option>)}</select></label>
+          <div className="button-row"><button type="button" onClick={addCurrentColorToPalette}>Add colour</button><button type="button" disabled={!paletteSettings.activePaletteId} onClick={removeActivePalette} aria-label="Delete selected palette">Delete</button></div>
+          <label className="ui-field">Save current palette<input aria-label="New palette name" placeholder="Palette name" value={paletteName} maxLength={32} onChange={event => setPaletteName(event.target.value)} /></label>
+          <button type="button" onClick={saveCurrentPalette}>Save palette</button>
           {paletteMessage && <p className="ui-notice" role="status">{paletteMessage}</p>}
         </details>
       </>}

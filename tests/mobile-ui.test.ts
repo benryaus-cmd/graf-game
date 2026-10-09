@@ -15,7 +15,7 @@ test('paint sheet has a stable title, grouped tools and separate scrolling conte
   assert.match(html, /game-sheet-body/);
   assert.match(html, /aria-label="Brush heads"/);
   assert.match(html, /aria-label="Drawing layers"/);
-  assert.match(html, /Manage palettes/);
+  assert.match(html, /Saved palettes/);
   assert.match(html, /Close paint panel/);
 });
 
