@@ -1,0 +1,1906 @@
+{
+  "version": "full-all-files-9oct2026",
+  "type": "full-snapshot",
+  "repository": "benryaus-cmd/graf-game",
+  "commit": "0e8ec2d6d2fb3f4d376f363b596072563675ae27",
+  "baseUrl": "https://raw.githubusercontent.com/benryaus-cmd/graf-game/0e8ec2d6d2fb3f4d376f363b596072563675ae27/",
+  "fileCount": 472,
+  "description": "Complete tracked repository snapshot pinned to one commit. All files go inside the Aippy importedGame/upstream directory; no host-root replacements.",
+  "files": [
+    {
+      "source": ".github/workflows/tutorial-test.yml",
+      "target": "src/games/importedGame/upstream/.github/workflows/tutorial-test.yml"
+    },
+    {
+      "source": ".gitignore",
+      "target": "src/games/importedGame/upstream/.gitignore"
+    },
+    {
+      "source": "docs/aippy-reconciliation.md",
+      "target": "src/games/importedGame/upstream/docs/aippy-reconciliation.md"
+    },
+    {
+      "source": "docs/asset-preview-7oct2026.md",
+      "target": "src/games/importedGame/upstream/docs/asset-preview-7oct2026.md"
+    },
+    {
+      "source": "docs/atmosphere-controls-8oct2026.md",
+      "target": "src/games/importedGame/upstream/docs/atmosphere-controls-8oct2026.md"
+    },
+    {
+      "source": "docs/basketball-9oct2026.md",
+      "target": "src/games/importedGame/upstream/docs/basketball-9oct2026.md"
+    },
+    {
+      "source": "docs/basketball-fullscreen-9oct2026.md",
+      "target": "src/games/importedGame/upstream/docs/basketball-fullscreen-9oct2026.md"
+    },
+    {
+      "source": "docs/basketball-grab-9oct2026.md",
+      "target": "src/games/importedGame/upstream/docs/basketball-grab-9oct2026.md"
+    },
+    {
+      "source": "docs/basketball-server-handoff.md",
+      "target": "src/games/importedGame/upstream/docs/basketball-server-handoff.md"
+    },
+    {
+      "source": "docs/batch7-client-release.md",
+      "target": "src/games/importedGame/upstream/docs/batch7-client-release.md"
+    },
+    {
+      "source": "docs/characters-portals-server-handoff-9oct2026.md",
+      "target": "src/games/importedGame/upstream/docs/characters-portals-server-handoff-9oct2026.md"
+    },
+    {
+      "source": "docs/characters-portals-verification-9oct2026.md",
+      "target": "src/games/importedGame/upstream/docs/characters-portals-verification-9oct2026.md"
+    },
+    {
+      "source": "docs/city-assets.md",
+      "target": "src/games/importedGame/upstream/docs/city-assets.md"
+    },
+    {
+      "source": "docs/city-streaming-8oct2026.md",
+      "target": "src/games/importedGame/upstream/docs/city-streaming-8oct2026.md"
+    },
+    {
+      "source": "docs/creative-tools-7oct2026.md",
+      "target": "src/games/importedGame/upstream/docs/creative-tools-7oct2026.md"
+    },
+    {
+      "source": "docs/credits-protection-comments-handoff.md",
+      "target": "src/games/importedGame/upstream/docs/credits-protection-comments-handoff.md"
+    },
+    {
+      "source": "docs/fixture-building-7oct2026.md",
+      "target": "src/games/importedGame/upstream/docs/fixture-building-7oct2026.md"
+    },
+    {
+      "source": "docs/fixture-distance-colour-7oct2026.md",
+      "target": "src/games/importedGame/upstream/docs/fixture-distance-colour-7oct2026.md"
+    },
+    {
+      "source": "docs/horse-client-handoff-9oct2026.md",
+      "target": "src/games/importedGame/upstream/docs/horse-client-handoff-9oct2026.md"
+    },
+    {
+      "source": "docs/horse-client-verification-9oct2026.md",
+      "target": "src/games/importedGame/upstream/docs/horse-client-verification-9oct2026.md"
+    },
+    {
+      "source": "docs/main-world-server-handoff-9oct2026.md",
+      "target": "src/games/importedGame/upstream/docs/main-world-server-handoff-9oct2026.md"
+    },
+    {
+      "source": "docs/map2-morning-quarter-8oct2026.md",
+      "target": "src/games/importedGame/upstream/docs/map2-morning-quarter-8oct2026.md"
+    },
+    {
+      "source": "docs/map2-night-polish-8oct2026.md",
+      "target": "src/games/importedGame/upstream/docs/map2-night-polish-8oct2026.md"
+    },
+    {
+      "source": "docs/map2-premium-8oct2026.md",
+      "target": "src/games/importedGame/upstream/docs/map2-premium-8oct2026.md"
+    },
+    {
+      "source": "docs/mobile-ui-design.md",
+      "target": "src/games/importedGame/upstream/docs/mobile-ui-design.md"
+    },
+    {
+      "source": "docs/multiplayer-integration.md",
+      "target": "src/games/importedGame/upstream/docs/multiplayer-integration.md"
+    },
+    {
+      "source": "docs/paint-fixes-7oct2026.md",
+      "target": "src/games/importedGame/upstream/docs/paint-fixes-7oct2026.md"
+    },
+    {
+      "source": "docs/paint-readback-fix-8oct2026.md",
+      "target": "src/games/importedGame/upstream/docs/paint-readback-fix-8oct2026.md"
+    },
+    {
+      "source": "docs/performance-logger-8oct2026.md",
+      "target": "src/games/importedGame/upstream/docs/performance-logger-8oct2026.md"
+    },
+    {
+      "source": "docs/profile-credits-moderation-7oct2026.md",
+      "target": "src/games/importedGame/upstream/docs/profile-credits-moderation-7oct2026.md"
+    },
+    {
+      "source": "docs/reference-social-polish-7oct2026.md",
+      "target": "src/games/importedGame/upstream/docs/reference-social-polish-7oct2026.md"
+    },
+    {
+      "source": "docs/reference-social-server-handoff.md",
+      "target": "src/games/importedGame/upstream/docs/reference-social-server-handoff.md"
+    },
+    {
+      "source": "docs/reference-url-7oct2026.md",
+      "target": "src/games/importedGame/upstream/docs/reference-url-7oct2026.md"
+    },
+    {
+      "source": "docs/server-client-handoff.md",
+      "target": "src/games/importedGame/upstream/docs/server-client-handoff.md"
+    },
+    {
+      "source": "docs/server-report-town-basketball-9oct2026.md",
+      "target": "src/games/importedGame/upstream/docs/server-report-town-basketball-9oct2026.md"
+    },
+    {
+      "source": "docs/server-save-lag-handoff.md",
+      "target": "src/games/importedGame/upstream/docs/server-save-lag-handoff.md"
+    },
+    {
+      "source": "docs/shared-basketball-client-handoff-9oct2026.md",
+      "target": "src/games/importedGame/upstream/docs/shared-basketball-client-handoff-9oct2026.md"
+    },
+    {
+      "source": "docs/shared-basketball-client-plan-9oct2026.md",
+      "target": "src/games/importedGame/upstream/docs/shared-basketball-client-plan-9oct2026.md"
+    },
+    {
+      "source": "docs/shared-basketball-client-verification-9oct2026.md",
+      "target": "src/games/importedGame/upstream/docs/shared-basketball-client-verification-9oct2026.md"
+    },
+    {
+      "source": "docs/skyline-handoff-8oct2026.md",
+      "target": "src/games/importedGame/upstream/docs/skyline-handoff-8oct2026.md"
+    },
+    {
+      "source": "docs/street-light-controls-8oct2026.md",
+      "target": "src/games/importedGame/upstream/docs/street-light-controls-8oct2026.md"
+    },
+    {
+      "source": "docs/superpowers/plans/2026-10-07-batch7-client.md",
+      "target": "src/games/importedGame/upstream/docs/superpowers/plans/2026-10-07-batch7-client.md"
+    },
+    {
+      "source": "docs/superpowers/plans/2026-10-07-fixture-building.md",
+      "target": "src/games/importedGame/upstream/docs/superpowers/plans/2026-10-07-fixture-building.md"
+    },
+    {
+      "source": "docs/superpowers/plans/2026-10-07-mobile-ui.md",
+      "target": "src/games/importedGame/upstream/docs/superpowers/plans/2026-10-07-mobile-ui.md"
+    },
+    {
+      "source": "docs/superpowers/plans/2026-10-08-basketball.md",
+      "target": "src/games/importedGame/upstream/docs/superpowers/plans/2026-10-08-basketball.md"
+    },
+    {
+      "source": "docs/superpowers/plans/2026-10-08-city-streaming.md",
+      "target": "src/games/importedGame/upstream/docs/superpowers/plans/2026-10-08-city-streaming.md"
+    },
+    {
+      "source": "docs/superpowers/plans/2026-10-08-map2-premium.md",
+      "target": "src/games/importedGame/upstream/docs/superpowers/plans/2026-10-08-map2-premium.md"
+    },
+    {
+      "source": "docs/superpowers/plans/2026-10-08-map2.md",
+      "target": "src/games/importedGame/upstream/docs/superpowers/plans/2026-10-08-map2.md"
+    },
+    {
+      "source": "docs/superpowers/specs/2026-10-08-map2-design.md",
+      "target": "src/games/importedGame/upstream/docs/superpowers/specs/2026-10-08-map2-design.md"
+    },
+    {
+      "source": "docs/tutorial-fixes-7oct2026.md",
+      "target": "src/games/importedGame/upstream/docs/tutorial-fixes-7oct2026.md"
+    },
+    {
+      "source": "eslint.config.js",
+      "target": "src/games/importedGame/upstream/eslint.config.js"
+    },
+    {
+      "source": "final-goal.md",
+      "target": "src/games/importedGame/upstream/final-goal.md"
+    },
+    {
+      "source": "HOW_I_DID_IT.md",
+      "target": "src/games/importedGame/upstream/HOW_I_DID_IT.md"
+    },
+    {
+      "source": "index.html",
+      "target": "src/games/importedGame/upstream/index.html"
+    },
+    {
+      "source": "MEMORY.md",
+      "target": "src/games/importedGame/upstream/MEMORY.md"
+    },
+    {
+      "source": "package.json",
+      "target": "src/games/importedGame/upstream/package.json"
+    },
+    {
+      "source": "pnpm-lock.yaml",
+      "target": "src/games/importedGame/upstream/pnpm-lock.yaml"
+    },
+    {
+      "source": "public/assets/characters/casual-female.glb",
+      "target": "src/games/importedGame/upstream/public/assets/characters/casual-female.glb"
+    },
+    {
+      "source": "public/assets/characters/casual-female.webp",
+      "target": "src/games/importedGame/upstream/public/assets/characters/casual-female.webp"
+    },
+    {
+      "source": "public/assets/characters/casual-male.glb",
+      "target": "src/games/importedGame/upstream/public/assets/characters/casual-male.glb"
+    },
+    {
+      "source": "public/assets/characters/casual-male.webp",
+      "target": "src/games/importedGame/upstream/public/assets/characters/casual-male.webp"
+    },
+    {
+      "source": "public/assets/characters/casual2-female.glb",
+      "target": "src/games/importedGame/upstream/public/assets/characters/casual2-female.glb"
+    },
+    {
+      "source": "public/assets/characters/casual2-female.webp",
+      "target": "src/games/importedGame/upstream/public/assets/characters/casual2-female.webp"
+    },
+    {
+      "source": "public/assets/characters/casual2-male.glb",
+      "target": "src/games/importedGame/upstream/public/assets/characters/casual2-male.glb"
+    },
+    {
+      "source": "public/assets/characters/casual2-male.webp",
+      "target": "src/games/importedGame/upstream/public/assets/characters/casual2-male.webp"
+    },
+    {
+      "source": "public/assets/characters/casual3-female.glb",
+      "target": "src/games/importedGame/upstream/public/assets/characters/casual3-female.glb"
+    },
+    {
+      "source": "public/assets/characters/casual3-female.webp",
+      "target": "src/games/importedGame/upstream/public/assets/characters/casual3-female.webp"
+    },
+    {
+      "source": "public/assets/characters/casual3-male.glb",
+      "target": "src/games/importedGame/upstream/public/assets/characters/casual3-male.glb"
+    },
+    {
+      "source": "public/assets/characters/casual3-male.webp",
+      "target": "src/games/importedGame/upstream/public/assets/characters/casual3-male.webp"
+    },
+    {
+      "source": "public/assets/characters/LICENSE.txt",
+      "target": "src/games/importedGame/upstream/public/assets/characters/LICENSE.txt"
+    },
+    {
+      "source": "public/assets/characters/manifest.json",
+      "target": "src/games/importedGame/upstream/public/assets/characters/manifest.json"
+    },
+    {
+      "source": "public/assets/characters/RESOURCE_AUDIT.md",
+      "target": "src/games/importedGame/upstream/public/assets/characters/RESOURCE_AUDIT.md"
+    },
+    {
+      "source": "public/assets/characters/suit-female.glb",
+      "target": "src/games/importedGame/upstream/public/assets/characters/suit-female.glb"
+    },
+    {
+      "source": "public/assets/characters/suit-female.webp",
+      "target": "src/games/importedGame/upstream/public/assets/characters/suit-female.webp"
+    },
+    {
+      "source": "public/assets/characters/suit-male.glb",
+      "target": "src/games/importedGame/upstream/public/assets/characters/suit-male.glb"
+    },
+    {
+      "source": "public/assets/characters/suit-male.webp",
+      "target": "src/games/importedGame/upstream/public/assets/characters/suit-male.webp"
+    },
+    {
+      "source": "public/assets/characters/worker-female.glb",
+      "target": "src/games/importedGame/upstream/public/assets/characters/worker-female.glb"
+    },
+    {
+      "source": "public/assets/characters/worker-female.webp",
+      "target": "src/games/importedGame/upstream/public/assets/characters/worker-female.webp"
+    },
+    {
+      "source": "public/assets/characters/worker-male.glb",
+      "target": "src/games/importedGame/upstream/public/assets/characters/worker-male.glb"
+    },
+    {
+      "source": "public/assets/characters/worker-male.webp",
+      "target": "src/games/importedGame/upstream/public/assets/characters/worker-male.webp"
+    },
+    {
+      "source": "public/assets/city/LICENSE.txt",
+      "target": "src/games/importedGame/upstream/public/assets/city/LICENSE.txt"
+    },
+    {
+      "source": "public/assets/city/tree.gltf",
+      "target": "src/games/importedGame/upstream/public/assets/city/tree.gltf"
+    },
+    {
+      "source": "public/assets/preview/building-license.txt",
+      "target": "src/games/importedGame/upstream/public/assets/preview/building-license.txt"
+    },
+    {
+      "source": "public/assets/preview/building.glb",
+      "target": "src/games/importedGame/upstream/public/assets/preview/building.glb"
+    },
+    {
+      "source": "public/assets/preview/character-license.txt",
+      "target": "src/games/importedGame/upstream/public/assets/preview/character-license.txt"
+    },
+    {
+      "source": "public/assets/preview/male-hoodie.glb",
+      "target": "src/games/importedGame/upstream/public/assets/preview/male-hoodie.glb"
+    },
+    {
+      "source": "public/assets/quarter/1Story_Sign.gltf",
+      "target": "src/games/importedGame/upstream/public/assets/quarter/1Story_Sign.gltf"
+    },
+    {
+      "source": "public/assets/quarter/2Story_Balcony.gltf",
+      "target": "src/games/importedGame/upstream/public/assets/quarter/2Story_Balcony.gltf"
+    },
+    {
+      "source": "public/assets/quarter/2Story_GableRoof.gltf",
+      "target": "src/games/importedGame/upstream/public/assets/quarter/2Story_GableRoof.gltf"
+    },
+    {
+      "source": "public/assets/quarter/2Story_Wide.gltf",
+      "target": "src/games/importedGame/upstream/public/assets/quarter/2Story_Wide.gltf"
+    },
+    {
+      "source": "public/assets/quarter/3Story_Small.gltf",
+      "target": "src/games/importedGame/upstream/public/assets/quarter/3Story_Small.gltf"
+    },
+    {
+      "source": "public/assets/quarter/LICENSE.txt",
+      "target": "src/games/importedGame/upstream/public/assets/quarter/LICENSE.txt"
+    },
+    {
+      "source": "public/robots.txt",
+      "target": "src/games/importedGame/upstream/public/robots.txt"
+    },
+    {
+      "source": "README.md",
+      "target": "src/games/importedGame/upstream/README.md"
+    },
+    {
+      "source": "scripts/generate-fixture-building.mjs",
+      "target": "src/games/importedGame/upstream/scripts/generate-fixture-building.mjs"
+    },
+    {
+      "source": "scripts/generate-quarter-buildings.mjs",
+      "target": "src/games/importedGame/upstream/scripts/generate-quarter-buildings.mjs"
+    },
+    {
+      "source": "scripts/import-github.mjs",
+      "target": "src/games/importedGame/upstream/scripts/import-github.mjs"
+    },
+    {
+      "source": "scripts/import-quaternius-characters.py",
+      "target": "src/games/importedGame/upstream/scripts/import-quaternius-characters.py"
+    },
+    {
+      "source": "scripts/test-multiplayer.mjs",
+      "target": "src/games/importedGame/upstream/scripts/test-multiplayer.mjs"
+    },
+    {
+      "source": "spec.md",
+      "target": "src/games/importedGame/upstream/spec.md"
+    },
+    {
+      "source": "src/App.tsx",
+      "target": "src/games/importedGame/upstream/src/App.tsx"
+    },
+    {
+      "source": "src/assets/graffciti-menu.webp",
+      "target": "src/games/importedGame/upstream/src/assets/graffciti-menu.webp"
+    },
+    {
+      "source": "src/components/AvatarMenu.tsx",
+      "target": "src/games/importedGame/upstream/src/components/AvatarMenu.tsx"
+    },
+    {
+      "source": "src/components/basketball.css",
+      "target": "src/games/importedGame/upstream/src/components/basketball.css"
+    },
+    {
+      "source": "src/components/BasketballControls.tsx",
+      "target": "src/games/importedGame/upstream/src/components/BasketballControls.tsx"
+    },
+    {
+      "source": "src/components/BotControls.tsx",
+      "target": "src/games/importedGame/upstream/src/components/BotControls.tsx"
+    },
+    {
+      "source": "src/components/BrushTuning.tsx",
+      "target": "src/games/importedGame/upstream/src/components/BrushTuning.tsx"
+    },
+    {
+      "source": "src/components/CanvasCredits.tsx",
+      "target": "src/games/importedGame/upstream/src/components/CanvasCredits.tsx"
+    },
+    {
+      "source": "src/components/chatPresentation.ts",
+      "target": "src/games/importedGame/upstream/src/components/chatPresentation.ts"
+    },
+    {
+      "source": "src/components/ColorPicker.tsx",
+      "target": "src/games/importedGame/upstream/src/components/ColorPicker.tsx"
+    },
+    {
+      "source": "src/components/DeveloperPanel.tsx",
+      "target": "src/games/importedGame/upstream/src/components/DeveloperPanel.tsx"
+    },
+    {
+      "source": "src/components/EmoteSheet.tsx",
+      "target": "src/games/importedGame/upstream/src/components/EmoteSheet.tsx"
+    },
+    {
+      "source": "src/components/GameHud.tsx",
+      "target": "src/games/importedGame/upstream/src/components/GameHud.tsx"
+    },
+    {
+      "source": "src/components/GameSheet.tsx",
+      "target": "src/games/importedGame/upstream/src/components/GameSheet.tsx"
+    },
+    {
+      "source": "src/components/GraffitiPieces.tsx",
+      "target": "src/games/importedGame/upstream/src/components/GraffitiPieces.tsx"
+    },
+    {
+      "source": "src/components/LookJoystick.tsx",
+      "target": "src/games/importedGame/upstream/src/components/LookJoystick.tsx"
+    },
+    {
+      "source": "src/components/movableSheet.css",
+      "target": "src/games/importedGame/upstream/src/components/movableSheet.css"
+    },
+    {
+      "source": "src/components/movableSheetLayout.ts",
+      "target": "src/games/importedGame/upstream/src/components/movableSheetLayout.ts"
+    },
+    {
+      "source": "src/components/MovementJoystick.tsx",
+      "target": "src/games/importedGame/upstream/src/components/MovementJoystick.tsx"
+    },
+    {
+      "source": "src/components/MultiplayerChat.tsx",
+      "target": "src/games/importedGame/upstream/src/components/MultiplayerChat.tsx"
+    },
+    {
+      "source": "src/components/MultiplayerControls.tsx",
+      "target": "src/games/importedGame/upstream/src/components/MultiplayerControls.tsx"
+    },
+    {
+      "source": "src/components/paintDock.css",
+      "target": "src/games/importedGame/upstream/src/components/paintDock.css"
+    },
+    {
+      "source": "src/components/PaintDock.tsx",
+      "target": "src/games/importedGame/upstream/src/components/PaintDock.tsx"
+    },
+    {
+      "source": "src/components/PaintWorkspaceHud.tsx",
+      "target": "src/games/importedGame/upstream/src/components/PaintWorkspaceHud.tsx"
+    },
+    {
+      "source": "src/components/PlayerInteractionCard.tsx",
+      "target": "src/games/importedGame/upstream/src/components/PlayerInteractionCard.tsx"
+    },
+    {
+      "source": "src/components/PlayersSheet.tsx",
+      "target": "src/games/importedGame/upstream/src/components/PlayersSheet.tsx"
+    },
+    {
+      "source": "src/components/PosterPlacementHud.tsx",
+      "target": "src/games/importedGame/upstream/src/components/PosterPlacementHud.tsx"
+    },
+    {
+      "source": "src/components/PosterStudio.tsx",
+      "target": "src/games/importedGame/upstream/src/components/PosterStudio.tsx"
+    },
+    {
+      "source": "src/components/ProjectFileViewer.tsx",
+      "target": "src/games/importedGame/upstream/src/components/ProjectFileViewer.tsx"
+    },
+    {
+      "source": "src/components/ProtectionControls.tsx",
+      "target": "src/games/importedGame/upstream/src/components/ProtectionControls.tsx"
+    },
+    {
+      "source": "src/components/RadioControl.tsx",
+      "target": "src/games/importedGame/upstream/src/components/RadioControl.tsx"
+    },
+    {
+      "source": "src/components/ReferenceControls.tsx",
+      "target": "src/games/importedGame/upstream/src/components/ReferenceControls.tsx"
+    },
+    {
+      "source": "src/components/ReferenceSheet.tsx",
+      "target": "src/games/importedGame/upstream/src/components/ReferenceSheet.tsx"
+    },
+    {
+      "source": "src/components/SettingsModal.tsx",
+      "target": "src/games/importedGame/upstream/src/components/SettingsModal.tsx"
+    },
+    {
+      "source": "src/components/sheetViewport.ts",
+      "target": "src/games/importedGame/upstream/src/components/sheetViewport.ts"
+    },
+    {
+      "source": "src/components/SkyMenu.tsx",
+      "target": "src/games/importedGame/upstream/src/components/SkyMenu.tsx"
+    },
+    {
+      "source": "src/components/TutorialOverlay.tsx",
+      "target": "src/games/importedGame/upstream/src/components/TutorialOverlay.tsx"
+    },
+    {
+      "source": "src/components/useMovableSheet.ts",
+      "target": "src/games/importedGame/upstream/src/components/useMovableSheet.ts"
+    },
+    {
+      "source": "src/components/useRotatedSheetScroll.ts",
+      "target": "src/games/importedGame/upstream/src/components/useRotatedSheetScroll.ts"
+    },
+    {
+      "source": "src/components/useSprayAudio.ts",
+      "target": "src/games/importedGame/upstream/src/components/useSprayAudio.ts"
+    },
+    {
+      "source": "src/components/WorldScene.tsx",
+      "target": "src/games/importedGame/upstream/src/components/WorldScene.tsx"
+    },
+    {
+      "source": "src/config/aiConfig.json",
+      "target": "src/games/importedGame/upstream/src/config/aiConfig.json"
+    },
+    {
+      "source": "src/config/assets.json",
+      "target": "src/games/importedGame/upstream/src/config/assets.json"
+    },
+    {
+      "source": "src/config/assets.ts",
+      "target": "src/games/importedGame/upstream/src/config/assets.ts"
+    },
+    {
+      "source": "src/config/clientVersion.ts",
+      "target": "src/games/importedGame/upstream/src/config/clientVersion.ts"
+    },
+    {
+      "source": "src/config/radio.ts",
+      "target": "src/games/importedGame/upstream/src/config/radio.ts"
+    },
+    {
+      "source": "src/config/tweaksConfig.json",
+      "target": "src/games/importedGame/upstream/src/config/tweaksConfig.json"
+    },
+    {
+      "source": "src/dev/projectFileDiscovery.ts",
+      "target": "src/games/importedGame/upstream/src/dev/projectFileDiscovery.ts"
+    },
+    {
+      "source": "src/dev/projectTree.ts",
+      "target": "src/games/importedGame/upstream/src/dev/projectTree.ts"
+    },
+    {
+      "source": "src/dev/zip.ts",
+      "target": "src/games/importedGame/upstream/src/dev/zip.ts"
+    },
+    {
+      "source": "src/game/architecture.ts",
+      "target": "src/games/importedGame/upstream/src/game/architecture.ts"
+    },
+    {
+      "source": "src/game/architecturePlanes.ts",
+      "target": "src/games/importedGame/upstream/src/game/architecturePlanes.ts"
+    },
+    {
+      "source": "src/game/architectureStairs.ts",
+      "target": "src/games/importedGame/upstream/src/game/architectureStairs.ts"
+    },
+    {
+      "source": "src/game/architectureTunnels.ts",
+      "target": "src/games/importedGame/upstream/src/game/architectureTunnels.ts"
+    },
+    {
+      "source": "src/game/architectureWalls.ts",
+      "target": "src/games/importedGame/upstream/src/game/architectureWalls.ts"
+    },
+    {
+      "source": "src/game/assetPreview.ts",
+      "target": "src/games/importedGame/upstream/src/game/assetPreview.ts"
+    },
+    {
+      "source": "src/game/assetPreviewPreference.ts",
+      "target": "src/games/importedGame/upstream/src/game/assetPreviewPreference.ts"
+    },
+    {
+      "source": "src/game/avatarGeometry.ts",
+      "target": "src/games/importedGame/upstream/src/game/avatarGeometry.ts"
+    },
+    {
+      "source": "src/game/basketballCourt.ts",
+      "target": "src/games/importedGame/upstream/src/game/basketballCourt.ts"
+    },
+    {
+      "source": "src/game/basketballGame.ts",
+      "target": "src/games/importedGame/upstream/src/game/basketballGame.ts"
+    },
+    {
+      "source": "src/game/basketballGesture.ts",
+      "target": "src/games/importedGame/upstream/src/game/basketballGesture.ts"
+    },
+    {
+      "source": "src/game/basketballPhysics.ts",
+      "target": "src/games/importedGame/upstream/src/game/basketballPhysics.ts"
+    },
+    {
+      "source": "src/game/basketballRelease.ts",
+      "target": "src/games/importedGame/upstream/src/game/basketballRelease.ts"
+    },
+    {
+      "source": "src/game/basketballSession.ts",
+      "target": "src/games/importedGame/upstream/src/game/basketballSession.ts"
+    },
+    {
+      "source": "src/game/botWallArt.ts",
+      "target": "src/games/importedGame/upstream/src/game/botWallArt.ts"
+    },
+    {
+      "source": "src/game/buildingHorizon.ts",
+      "target": "src/games/importedGame/upstream/src/game/buildingHorizon.ts"
+    },
+    {
+      "source": "src/game/buildingLod.ts",
+      "target": "src/games/importedGame/upstream/src/game/buildingLod.ts"
+    },
+    {
+      "source": "src/game/bunnyMovement.ts",
+      "target": "src/games/importedGame/upstream/src/game/bunnyMovement.ts"
+    },
+    {
+      "source": "src/game/characterCatalog.ts",
+      "target": "src/games/importedGame/upstream/src/game/characterCatalog.ts"
+    },
+    {
+      "source": "src/game/characterModelPool.ts",
+      "target": "src/games/importedGame/upstream/src/game/characterModelPool.ts"
+    },
+    {
+      "source": "src/game/cityAtmosphere.ts",
+      "target": "src/games/importedGame/upstream/src/game/cityAtmosphere.ts"
+    },
+    {
+      "source": "src/game/cityBlockLayout.ts",
+      "target": "src/games/importedGame/upstream/src/game/cityBlockLayout.ts"
+    },
+    {
+      "source": "src/game/cityBots.ts",
+      "target": "src/games/importedGame/upstream/src/game/cityBots.ts"
+    },
+    {
+      "source": "src/game/cityChunkContent.ts",
+      "target": "src/games/importedGame/upstream/src/game/cityChunkContent.ts"
+    },
+    {
+      "source": "src/game/cityChunkPaint.ts",
+      "target": "src/games/importedGame/upstream/src/game/cityChunkPaint.ts"
+    },
+    {
+      "source": "src/game/cityChunkResources.ts",
+      "target": "src/games/importedGame/upstream/src/game/cityChunkResources.ts"
+    },
+    {
+      "source": "src/game/cityChunks.ts",
+      "target": "src/games/importedGame/upstream/src/game/cityChunks.ts"
+    },
+    {
+      "source": "src/game/cityChunkTypes.ts",
+      "target": "src/games/importedGame/upstream/src/game/cityChunkTypes.ts"
+    },
+    {
+      "source": "src/game/cityDetails.ts",
+      "target": "src/games/importedGame/upstream/src/game/cityDetails.ts"
+    },
+    {
+      "source": "src/game/cityHorizon.ts",
+      "target": "src/games/importedGame/upstream/src/game/cityHorizon.ts"
+    },
+    {
+      "source": "src/game/citySkyscraper.ts",
+      "target": "src/games/importedGame/upstream/src/game/citySkyscraper.ts"
+    },
+    {
+      "source": "src/game/cityStreamPolicy.ts",
+      "target": "src/games/importedGame/upstream/src/game/cityStreamPolicy.ts"
+    },
+    {
+      "source": "src/game/cityStreetLamps.ts",
+      "target": "src/games/importedGame/upstream/src/game/cityStreetLamps.ts"
+    },
+    {
+      "source": "src/game/cityStructures.ts",
+      "target": "src/games/importedGame/upstream/src/game/cityStructures.ts"
+    },
+    {
+      "source": "src/game/colorPicker.ts",
+      "target": "src/games/importedGame/upstream/src/game/colorPicker.ts"
+    },
+    {
+      "source": "src/game/companion.ts",
+      "target": "src/games/importedGame/upstream/src/game/companion.ts"
+    },
+    {
+      "source": "src/game/courtyardPortals.ts",
+      "target": "src/games/importedGame/upstream/src/game/courtyardPortals.ts"
+    },
+    {
+      "source": "src/game/createWorld.ts",
+      "target": "src/games/importedGame/upstream/src/game/createWorld.ts"
+    },
+    {
+      "source": "src/game/disposeWorld.ts",
+      "target": "src/games/importedGame/upstream/src/game/disposeWorld.ts"
+    },
+    {
+      "source": "src/game/emoteViewReturn.ts",
+      "target": "src/games/importedGame/upstream/src/game/emoteViewReturn.ts"
+    },
+    {
+      "source": "src/game/eraserGuide.ts",
+      "target": "src/games/importedGame/upstream/src/game/eraserGuide.ts"
+    },
+    {
+      "source": "src/game/fixtureBuilding.ts",
+      "target": "src/games/importedGame/upstream/src/game/fixtureBuilding.ts"
+    },
+    {
+      "source": "src/game/fixtureBuildingFaces.ts",
+      "target": "src/games/importedGame/upstream/src/game/fixtureBuildingFaces.ts"
+    },
+    {
+      "source": "src/game/fixtureBuildingGrain.ts",
+      "target": "src/games/importedGame/upstream/src/game/fixtureBuildingGrain.ts"
+    },
+    {
+      "source": "src/game/generateBotArtwork.ts",
+      "target": "src/games/importedGame/upstream/src/game/generateBotArtwork.ts"
+    },
+    {
+      "source": "src/game/liveRadio.ts",
+      "target": "src/games/importedGame/upstream/src/game/liveRadio.ts"
+    },
+    {
+      "source": "src/game/liveStrokeDistance.ts",
+      "target": "src/games/importedGame/upstream/src/game/liveStrokeDistance.ts"
+    },
+    {
+      "source": "src/game/mapPreference.ts",
+      "target": "src/games/importedGame/upstream/src/game/mapPreference.ts"
+    },
+    {
+      "source": "src/game/morningQuarterAssets.ts",
+      "target": "src/games/importedGame/upstream/src/game/morningQuarterAssets.ts"
+    },
+    {
+      "source": "src/game/morningQuarterContent.ts",
+      "target": "src/games/importedGame/upstream/src/game/morningQuarterContent.ts"
+    },
+    {
+      "source": "src/game/morningQuarterLayout.ts",
+      "target": "src/games/importedGame/upstream/src/game/morningQuarterLayout.ts"
+    },
+    {
+      "source": "src/game/paintColor.ts",
+      "target": "src/games/importedGame/upstream/src/game/paintColor.ts"
+    },
+    {
+      "source": "src/game/paintEyedropper.ts",
+      "target": "src/games/importedGame/upstream/src/game/paintEyedropper.ts"
+    },
+    {
+      "source": "src/game/paintPalettes.ts",
+      "target": "src/games/importedGame/upstream/src/game/paintPalettes.ts"
+    },
+    {
+      "source": "src/game/paintPersistence.ts",
+      "target": "src/games/importedGame/upstream/src/game/paintPersistence.ts"
+    },
+    {
+      "source": "src/game/paintSurfaceLayer.ts",
+      "target": "src/games/importedGame/upstream/src/game/paintSurfaceLayer.ts"
+    },
+    {
+      "source": "src/game/paintTargeting.ts",
+      "target": "src/games/importedGame/upstream/src/game/paintTargeting.ts"
+    },
+    {
+      "source": "src/game/paintWorkspace.ts",
+      "target": "src/games/importedGame/upstream/src/game/paintWorkspace.ts"
+    },
+    {
+      "source": "src/game/paintWorkspaceFeedback.ts",
+      "target": "src/games/importedGame/upstream/src/game/paintWorkspaceFeedback.ts"
+    },
+    {
+      "source": "src/game/performanceLog.ts",
+      "target": "src/games/importedGame/upstream/src/game/performanceLog.ts"
+    },
+    {
+      "source": "src/game/pieceEditGrace.ts",
+      "target": "src/games/importedGame/upstream/src/game/pieceEditGrace.ts"
+    },
+    {
+      "source": "src/game/playerAvatar.ts",
+      "target": "src/games/importedGame/upstream/src/game/playerAvatar.ts"
+    },
+    {
+      "source": "src/game/playerAvatarAppearance.ts",
+      "target": "src/games/importedGame/upstream/src/game/playerAvatarAppearance.ts"
+    },
+    {
+      "source": "src/game/playerAvatarDetails.ts",
+      "target": "src/games/importedGame/upstream/src/game/playerAvatarDetails.ts"
+    },
+    {
+      "source": "src/game/playerAvatarTypes.ts",
+      "target": "src/games/importedGame/upstream/src/game/playerAvatarTypes.ts"
+    },
+    {
+      "source": "src/game/playerPhysics.ts",
+      "target": "src/games/importedGame/upstream/src/game/playerPhysics.ts"
+    },
+    {
+      "source": "src/game/pointerCoordinates.ts",
+      "target": "src/games/importedGame/upstream/src/game/pointerCoordinates.ts"
+    },
+    {
+      "source": "src/game/posterCanvas.ts",
+      "target": "src/games/importedGame/upstream/src/game/posterCanvas.ts"
+    },
+    {
+      "source": "src/game/posterOverlay.ts",
+      "target": "src/games/importedGame/upstream/src/game/posterOverlay.ts"
+    },
+    {
+      "source": "src/game/posterPlacement.ts",
+      "target": "src/games/importedGame/upstream/src/game/posterPlacement.ts"
+    },
+    {
+      "source": "src/game/posterPreview.ts",
+      "target": "src/games/importedGame/upstream/src/game/posterPreview.ts"
+    },
+    {
+      "source": "src/game/posterPreviewMesh.ts",
+      "target": "src/games/importedGame/upstream/src/game/posterPreviewMesh.ts"
+    },
+    {
+      "source": "src/game/progression.ts",
+      "target": "src/games/importedGame/upstream/src/game/progression.ts"
+    },
+    {
+      "source": "src/game/quarterBuildingAssets.ts",
+      "target": "src/games/importedGame/upstream/src/game/quarterBuildingAssets.ts"
+    },
+    {
+      "source": "src/game/quarterPaintSurface.ts",
+      "target": "src/games/importedGame/upstream/src/game/quarterPaintSurface.ts"
+    },
+    {
+      "source": "src/game/referenceGuide.ts",
+      "target": "src/games/importedGame/upstream/src/game/referenceGuide.ts"
+    },
+    {
+      "source": "src/game/referenceImage.ts",
+      "target": "src/games/importedGame/upstream/src/game/referenceImage.ts"
+    },
+    {
+      "source": "src/game/referenceLibrary.ts",
+      "target": "src/games/importedGame/upstream/src/game/referenceLibrary.ts"
+    },
+    {
+      "source": "src/game/renderSettings.ts",
+      "target": "src/games/importedGame/upstream/src/game/renderSettings.ts"
+    },
+    {
+      "source": "src/game/shopCatalog.ts",
+      "target": "src/games/importedGame/upstream/src/game/shopCatalog.ts"
+    },
+    {
+      "source": "src/game/sky.ts",
+      "target": "src/games/importedGame/upstream/src/game/sky.ts"
+    },
+    {
+      "source": "src/game/skyBackdrop.ts",
+      "target": "src/games/importedGame/upstream/src/game/skyBackdrop.ts"
+    },
+    {
+      "source": "src/game/skyEffects.ts",
+      "target": "src/games/importedGame/upstream/src/game/skyEffects.ts"
+    },
+    {
+      "source": "src/game/soloPaintHistory.ts",
+      "target": "src/games/importedGame/upstream/src/game/soloPaintHistory.ts"
+    },
+    {
+      "source": "src/game/speechBubble.ts",
+      "target": "src/games/importedGame/upstream/src/game/speechBubble.ts"
+    },
+    {
+      "source": "src/game/sprayHeads.ts",
+      "target": "src/games/importedGame/upstream/src/game/sprayHeads.ts"
+    },
+    {
+      "source": "src/game/tagBrush.ts",
+      "target": "src/games/importedGame/upstream/src/game/tagBrush.ts"
+    },
+    {
+      "source": "src/game/tagLibrary.ts",
+      "target": "src/games/importedGame/upstream/src/game/tagLibrary.ts"
+    },
+    {
+      "source": "src/game/textureMapping.ts",
+      "target": "src/games/importedGame/upstream/src/game/textureMapping.ts"
+    },
+    {
+      "source": "src/game/tutorial.ts",
+      "target": "src/games/importedGame/upstream/src/game/tutorial.ts"
+    },
+    {
+      "source": "src/game/urbanCourtyard.ts",
+      "target": "src/games/importedGame/upstream/src/game/urbanCourtyard.ts"
+    },
+    {
+      "source": "src/game/useBotArtwork.ts",
+      "target": "src/games/importedGame/upstream/src/game/useBotArtwork.ts"
+    },
+    {
+      "source": "src/game/usePosterPlacement.ts",
+      "target": "src/games/importedGame/upstream/src/game/usePosterPlacement.ts"
+    },
+    {
+      "source": "src/game/worldControls.ts",
+      "target": "src/games/importedGame/upstream/src/game/worldControls.ts"
+    },
+    {
+      "source": "src/game/worldKeyboard.ts",
+      "target": "src/games/importedGame/upstream/src/game/worldKeyboard.ts"
+    },
+    {
+      "source": "src/game/worldMovement.ts",
+      "target": "src/games/importedGame/upstream/src/game/worldMovement.ts"
+    },
+    {
+      "source": "src/game/worldOverlayOrder.ts",
+      "target": "src/games/importedGame/upstream/src/game/worldOverlayOrder.ts"
+    },
+    {
+      "source": "src/game/worldPainting.ts",
+      "target": "src/games/importedGame/upstream/src/game/worldPainting.ts"
+    },
+    {
+      "source": "src/game/worldPerformance.ts",
+      "target": "src/games/importedGame/upstream/src/game/worldPerformance.ts"
+    },
+    {
+      "source": "src/game/worldSceneRequests.ts",
+      "target": "src/games/importedGame/upstream/src/game/worldSceneRequests.ts"
+    },
+    {
+      "source": "src/game/worldTypes.ts",
+      "target": "src/games/importedGame/upstream/src/game/worldTypes.ts"
+    },
+    {
+      "source": "src/index.css",
+      "target": "src/games/importedGame/upstream/src/index.css"
+    },
+    {
+      "source": "src/main.tsx",
+      "target": "src/games/importedGame/upstream/src/main.tsx"
+    },
+    {
+      "source": "src/multiplayer/accountFeatures.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/accountFeatures.ts"
+    },
+    {
+      "source": "src/multiplayer/adminActions.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/adminActions.ts"
+    },
+    {
+      "source": "src/multiplayer/adminArtRemoval.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/adminArtRemoval.ts"
+    },
+    {
+      "source": "src/multiplayer/adminPaint.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/adminPaint.ts"
+    },
+    {
+      "source": "src/multiplayer/artworkAssets.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/artworkAssets.ts"
+    },
+    {
+      "source": "src/multiplayer/artworkSync.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/artworkSync.ts"
+    },
+    {
+      "source": "src/multiplayer/artworkUpload.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/artworkUpload.ts"
+    },
+    {
+      "source": "src/multiplayer/basketballSync.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/basketballSync.ts"
+    },
+    {
+      "source": "src/multiplayer/chat.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/chat.ts"
+    },
+    {
+      "source": "src/multiplayer/chatMute.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/chatMute.ts"
+    },
+    {
+      "source": "src/multiplayer/config.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/config.ts"
+    },
+    {
+      "source": "src/multiplayer/connection.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/connection.ts"
+    },
+    {
+      "source": "src/multiplayer/ownerReferences.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/ownerReferences.ts"
+    },
+    {
+      "source": "src/multiplayer/paintReplay.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/paintReplay.ts"
+    },
+    {
+      "source": "src/multiplayer/paintSync.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/paintSync.ts"
+    },
+    {
+      "source": "src/multiplayer/permissions.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/permissions.ts"
+    },
+    {
+      "source": "src/multiplayer/pieceFlatten.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/pieceFlatten.ts"
+    },
+    {
+      "source": "src/multiplayer/piecePulse.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/piecePulse.ts"
+    },
+    {
+      "source": "src/multiplayer/pieceSync.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/pieceSync.ts"
+    },
+    {
+      "source": "src/multiplayer/playerDirectory.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/playerDirectory.ts"
+    },
+    {
+      "source": "src/multiplayer/playerSync.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/playerSync.ts"
+    },
+    {
+      "source": "src/multiplayer/profile.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/profile.ts"
+    },
+    {
+      "source": "src/multiplayer/protectionSync.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/protectionSync.ts"
+    },
+    {
+      "source": "src/multiplayer/protocol.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/protocol.ts"
+    },
+    {
+      "source": "src/multiplayer/remotePlayers.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/remotePlayers.ts"
+    },
+    {
+      "source": "src/multiplayer/spatialDirectory.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/spatialDirectory.ts"
+    },
+    {
+      "source": "src/multiplayer/spatialProtocol.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/spatialProtocol.ts"
+    },
+    {
+      "source": "src/multiplayer/strokeIndex.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/strokeIndex.ts"
+    },
+    {
+      "source": "src/multiplayer/surfaces.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/surfaces.ts"
+    },
+    {
+      "source": "src/multiplayer/worldOrder.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/worldOrder.ts"
+    },
+    {
+      "source": "src/multiplayer/worldSession.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/worldSession.ts"
+    },
+    {
+      "source": "src/tailwind.config.aippy.json",
+      "target": "src/games/importedGame/upstream/src/tailwind.config.aippy.json"
+    },
+    {
+      "source": "src/types/projectFiles.ts",
+      "target": "src/games/importedGame/upstream/src/types/projectFiles.ts"
+    },
+    {
+      "source": "src/types/virtual-manifest.d.ts",
+      "target": "src/games/importedGame/upstream/src/types/virtual-manifest.d.ts"
+    },
+    {
+      "source": "src/vite-env.d.ts",
+      "target": "src/games/importedGame/upstream/src/vite-env.d.ts"
+    },
+    {
+      "source": "tailwind.config.ts",
+      "target": "src/games/importedGame/upstream/tailwind.config.ts"
+    },
+    {
+      "source": "tests/admin-paint.test.ts",
+      "target": "src/games/importedGame/upstream/tests/admin-paint.test.ts"
+    },
+    {
+      "source": "tests/adminActions.test.ts",
+      "target": "src/games/importedGame/upstream/tests/adminActions.test.ts"
+    },
+    {
+      "source": "tests/asset-preview.test.ts",
+      "target": "src/games/importedGame/upstream/tests/asset-preview.test.ts"
+    },
+    {
+      "source": "tests/atmosphere.test.ts",
+      "target": "src/games/importedGame/upstream/tests/atmosphere.test.ts"
+    },
+    {
+      "source": "tests/basketball-calibration.ts",
+      "target": "src/games/importedGame/upstream/tests/basketball-calibration.ts"
+    },
+    {
+      "source": "tests/basketball-controls.test.ts",
+      "target": "src/games/importedGame/upstream/tests/basketball-controls.test.ts"
+    },
+    {
+      "source": "tests/basketball-game.test.ts",
+      "target": "src/games/importedGame/upstream/tests/basketball-game.test.ts"
+    },
+    {
+      "source": "tests/basketball-gesture.test.ts",
+      "target": "src/games/importedGame/upstream/tests/basketball-gesture.test.ts"
+    },
+    {
+      "source": "tests/basketball-release.test.ts",
+      "target": "src/games/importedGame/upstream/tests/basketball-release.test.ts"
+    },
+    {
+      "source": "tests/basketball-session.test.ts",
+      "target": "src/games/importedGame/upstream/tests/basketball-session.test.ts"
+    },
+    {
+      "source": "tests/basketball-sync.test.ts",
+      "target": "src/games/importedGame/upstream/tests/basketball-sync.test.ts"
+    },
+    {
+      "source": "tests/basketball.test.ts",
+      "target": "src/games/importedGame/upstream/tests/basketball.test.ts"
+    },
+    {
+      "source": "tests/batch7-art-social.test.ts",
+      "target": "src/games/importedGame/upstream/tests/batch7-art-social.test.ts"
+    },
+    {
+      "source": "tests/batch7-session-integration.test.ts",
+      "target": "src/games/importedGame/upstream/tests/batch7-session-integration.test.ts"
+    },
+    {
+      "source": "tests/batch7-tools-status.test.ts",
+      "target": "src/games/importedGame/upstream/tests/batch7-tools-status.test.ts"
+    },
+    {
+      "source": "tests/canvas-payment.test.ts",
+      "target": "src/games/importedGame/upstream/tests/canvas-payment.test.ts"
+    },
+    {
+      "source": "tests/character-menu.test.ts",
+      "target": "src/games/importedGame/upstream/tests/character-menu.test.ts"
+    },
+    {
+      "source": "tests/character-model-pool.test.ts",
+      "target": "src/games/importedGame/upstream/tests/character-model-pool.test.ts"
+    },
+    {
+      "source": "tests/character-multiplayer.test.ts",
+      "target": "src/games/importedGame/upstream/tests/character-multiplayer.test.ts"
+    },
+    {
+      "source": "tests/character-preference.test.ts",
+      "target": "src/games/importedGame/upstream/tests/character-preference.test.ts"
+    },
+    {
+      "source": "tests/chat-mute.test.ts",
+      "target": "src/games/importedGame/upstream/tests/chat-mute.test.ts"
+    },
+    {
+      "source": "tests/city-lifecycle.test.ts",
+      "target": "src/games/importedGame/upstream/tests/city-lifecycle.test.ts"
+    },
+    {
+      "source": "tests/city-performance.test.ts",
+      "target": "src/games/importedGame/upstream/tests/city-performance.test.ts"
+    },
+    {
+      "source": "tests/city-stream.test.ts",
+      "target": "src/games/importedGame/upstream/tests/city-stream.test.ts"
+    },
+    {
+      "source": "tests/courtyard-portals.test.ts",
+      "target": "src/games/importedGame/upstream/tests/courtyard-portals.test.ts"
+    },
+    {
+      "source": "tests/creative-controls.test.ts",
+      "target": "src/games/importedGame/upstream/tests/creative-controls.test.ts"
+    },
+    {
+      "source": "tests/edit-grace.test.ts",
+      "target": "src/games/importedGame/upstream/tests/edit-grace.test.ts"
+    },
+    {
+      "source": "tests/fixture-building.test.ts",
+      "target": "src/games/importedGame/upstream/tests/fixture-building.test.ts"
+    },
+    {
+      "source": "tests/fixtures/protocol2.json",
+      "target": "src/games/importedGame/upstream/tests/fixtures/protocol2.json"
+    },
+    {
+      "source": "tests/fixtures/quarter-v1-addresses.json",
+      "target": "src/games/importedGame/upstream/tests/fixtures/quarter-v1-addresses.json"
+    },
+    {
+      "source": "tests/flattenCanonicalParent.test.ts",
+      "target": "src/games/importedGame/upstream/tests/flattenCanonicalParent.test.ts"
+    },
+    {
+      "source": "tests/hud-polish.test.ts",
+      "target": "src/games/importedGame/upstream/tests/hud-polish.test.ts"
+    },
+    {
+      "source": "tests/identity.test.ts",
+      "target": "src/games/importedGame/upstream/tests/identity.test.ts"
+    },
+    {
+      "source": "tests/live-radio.test.ts",
+      "target": "src/games/importedGame/upstream/tests/live-radio.test.ts"
+    },
+    {
+      "source": "tests/live-stroke-distance.test.ts",
+      "target": "src/games/importedGame/upstream/tests/live-stroke-distance.test.ts"
+    },
+    {
+      "source": "tests/map2.test.ts",
+      "target": "src/games/importedGame/upstream/tests/map2.test.ts"
+    },
+    {
+      "source": "tests/mobile-ui.test.ts",
+      "target": "src/games/importedGame/upstream/tests/mobile-ui.test.ts"
+    },
+    {
+      "source": "tests/movable-sheet.test.ts",
+      "target": "src/games/importedGame/upstream/tests/movable-sheet.test.ts"
+    },
+    {
+      "source": "tests/multiplayer-live.ts",
+      "target": "src/games/importedGame/upstream/tests/multiplayer-live.ts"
+    },
+    {
+      "source": "tests/multiplayer.test.ts",
+      "target": "src/games/importedGame/upstream/tests/multiplayer.test.ts"
+    },
+    {
+      "source": "tests/owner-references.test.ts",
+      "target": "src/games/importedGame/upstream/tests/owner-references.test.ts"
+    },
+    {
+      "source": "tests/paint-dock-compact.test.ts",
+      "target": "src/games/importedGame/upstream/tests/paint-dock-compact.test.ts"
+    },
+    {
+      "source": "tests/paint-eyedropper.test.ts",
+      "target": "src/games/importedGame/upstream/tests/paint-eyedropper.test.ts"
+    },
+    {
+      "source": "tests/paint-gesture-history.test.ts",
+      "target": "src/games/importedGame/upstream/tests/paint-gesture-history.test.ts"
+    },
+    {
+      "source": "tests/paint-retention.test.ts",
+      "target": "src/games/importedGame/upstream/tests/paint-retention.test.ts"
+    },
+    {
+      "source": "tests/paint-targeting.test.ts",
+      "target": "src/games/importedGame/upstream/tests/paint-targeting.test.ts"
+    },
+    {
+      "source": "tests/paint-workspace-controls.test.ts",
+      "target": "src/games/importedGame/upstream/tests/paint-workspace-controls.test.ts"
+    },
+    {
+      "source": "tests/paint-workspace.test.ts",
+      "target": "src/games/importedGame/upstream/tests/paint-workspace.test.ts"
+    },
+    {
+      "source": "tests/paintPalettes.test.ts",
+      "target": "src/games/importedGame/upstream/tests/paintPalettes.test.ts"
+    },
+    {
+      "source": "tests/permissions.test.ts",
+      "target": "src/games/importedGame/upstream/tests/permissions.test.ts"
+    },
+    {
+      "source": "tests/piece-pulse.test.ts",
+      "target": "src/games/importedGame/upstream/tests/piece-pulse.test.ts"
+    },
+    {
+      "source": "tests/pieceSync.test.ts",
+      "target": "src/games/importedGame/upstream/tests/pieceSync.test.ts"
+    },
+    {
+      "source": "tests/player-directory.test.ts",
+      "target": "src/games/importedGame/upstream/tests/player-directory.test.ts"
+    },
+    {
+      "source": "tests/player-surfaces.test.ts",
+      "target": "src/games/importedGame/upstream/tests/player-surfaces.test.ts"
+    },
+    {
+      "source": "tests/pointer-coordinates.test.ts",
+      "target": "src/games/importedGame/upstream/tests/pointer-coordinates.test.ts"
+    },
+    {
+      "source": "tests/poster-depth.test.ts",
+      "target": "src/games/importedGame/upstream/tests/poster-depth.test.ts"
+    },
+    {
+      "source": "tests/protection-sync.test.ts",
+      "target": "src/games/importedGame/upstream/tests/protection-sync.test.ts"
+    },
+    {
+      "source": "tests/reference-library.test.ts",
+      "target": "src/games/importedGame/upstream/tests/reference-library.test.ts"
+    },
+    {
+      "source": "tests/reference-polish.test.ts",
+      "target": "src/games/importedGame/upstream/tests/reference-polish.test.ts"
+    },
+    {
+      "source": "tests/reference-url.test.ts",
+      "target": "src/games/importedGame/upstream/tests/reference-url.test.ts"
+    },
+    {
+      "source": "tests/replay-budget.test.ts",
+      "target": "src/games/importedGame/upstream/tests/replay-budget.test.ts"
+    },
+    {
+      "source": "tests/session-social-rewards.test.ts",
+      "target": "src/games/importedGame/upstream/tests/session-social-rewards.test.ts"
+    },
+    {
+      "source": "tests/skyline-settings.test.ts",
+      "target": "src/games/importedGame/upstream/tests/skyline-settings.test.ts"
+    },
+    {
+      "source": "tests/spatial-network.test.ts",
+      "target": "src/games/importedGame/upstream/tests/spatial-network.test.ts"
+    },
+    {
+      "source": "tests/spatial-streaming.test.ts",
+      "target": "src/games/importedGame/upstream/tests/spatial-streaming.test.ts"
+    },
+    {
+      "source": "tests/speech-bubble.test.ts",
+      "target": "src/games/importedGame/upstream/tests/speech-bubble.test.ts"
+    },
+    {
+      "source": "tests/sprayHeads.test.ts",
+      "target": "src/games/importedGame/upstream/tests/sprayHeads.test.ts"
+    },
+    {
+      "source": "tests/tagBrush.test.ts",
+      "target": "src/games/importedGame/upstream/tests/tagBrush.test.ts"
+    },
+    {
+      "source": "tests/tagLibrary.test.ts",
+      "target": "src/games/importedGame/upstream/tests/tagLibrary.test.ts"
+    },
+    {
+      "source": "tests/tsconfig.json",
+      "target": "src/games/importedGame/upstream/tests/tsconfig.json"
+    },
+    {
+      "source": "tests/tutorial.test.ts",
+      "target": "src/games/importedGame/upstream/tests/tutorial.test.ts"
+    },
+    {
+      "source": "tests/visible-eyedropper.test.ts",
+      "target": "src/games/importedGame/upstream/tests/visible-eyedropper.test.ts"
+    },
+    {
+      "source": "tests/wall-render-batch.test.ts",
+      "target": "src/games/importedGame/upstream/tests/wall-render-batch.test.ts"
+    },
+    {
+      "source": "tests/world-defaults.test.ts",
+      "target": "src/games/importedGame/upstream/tests/world-defaults.test.ts"
+    },
+    {
+      "source": "tests/world-paused-input.test.ts",
+      "target": "src/games/importedGame/upstream/tests/world-paused-input.test.ts"
+    },
+    {
+      "source": "tsconfig.app.json",
+      "target": "src/games/importedGame/upstream/tsconfig.app.json"
+    },
+    {
+      "source": "tsconfig.json",
+      "target": "src/games/importedGame/upstream/tsconfig.json"
+    },
+    {
+      "source": "tsconfig.node.json",
+      "target": "src/games/importedGame/upstream/tsconfig.node.json"
+    },
+    {
+      "source": "updates/admin-protection-radio-drips-6oct2026.json",
+      "target": "src/games/importedGame/upstream/updates/admin-protection-radio-drips-6oct2026.json"
+    },
+    {
+      "source": "updates/art-orientation-settings-6oct2026.json",
+      "target": "src/games/importedGame/upstream/updates/art-orientation-settings-6oct2026.json"
+    },
+    {
+      "source": "updates/asset-preview-7oct2026.json",
+      "target": "src/games/importedGame/upstream/updates/asset-preview-7oct2026.json"
+    },
+    {
+      "source": "updates/asset-preview-aippy-import-7oct2026.txt",
+      "target": "src/games/importedGame/upstream/updates/asset-preview-aippy-import-7oct2026.txt"
+    },
+    {
+      "source": "updates/asset-preview-rollback-7oct2026.json",
+      "target": "src/games/importedGame/upstream/updates/asset-preview-rollback-7oct2026.json"
+    },
+    {
+      "source": "updates/atmosphere-controls-8oct2026-aippy-prompt.txt",
+      "target": "src/games/importedGame/upstream/updates/atmosphere-controls-8oct2026-aippy-prompt.txt"
+    },
+    {
+      "source": "updates/atmosphere-controls-8oct2026-rollback.json",
+      "target": "src/games/importedGame/upstream/updates/atmosphere-controls-8oct2026-rollback.json"
+    },
+    {
+      "source": "updates/atmosphere-controls-8oct2026.json",
+      "target": "src/games/importedGame/upstream/updates/atmosphere-controls-8oct2026.json"
+    },
+    {
+      "source": "updates/basketball-9oct2026-aippy-prompt.txt",
+      "target": "src/games/importedGame/upstream/updates/basketball-9oct2026-aippy-prompt.txt"
+    },
+    {
+      "source": "updates/basketball-9oct2026-rollback.json",
+      "target": "src/games/importedGame/upstream/updates/basketball-9oct2026-rollback.json"
+    },
+    {
+      "source": "updates/basketball-9oct2026.json",
+      "target": "src/games/importedGame/upstream/updates/basketball-9oct2026.json"
+    },
+    {
+      "source": "updates/basketball-fullscreen-9oct2026-aippy-prompt.txt",
+      "target": "src/games/importedGame/upstream/updates/basketball-fullscreen-9oct2026-aippy-prompt.txt"
+    },
+    {
+      "source": "updates/basketball-fullscreen-9oct2026-rollback.json",
+      "target": "src/games/importedGame/upstream/updates/basketball-fullscreen-9oct2026-rollback.json"
+    },
+    {
+      "source": "updates/basketball-fullscreen-9oct2026.json",
+      "target": "src/games/importedGame/upstream/updates/basketball-fullscreen-9oct2026.json"
+    },
+    {
+      "source": "updates/basketball-grab-9oct2026-aippy-prompt.txt",
+      "target": "src/games/importedGame/upstream/updates/basketball-grab-9oct2026-aippy-prompt.txt"
+    },
+    {
+      "source": "updates/basketball-grab-9oct2026-rollback.json",
+      "target": "src/games/importedGame/upstream/updates/basketball-grab-9oct2026-rollback.json"
+    },
+    {
+      "source": "updates/basketball-grab-9oct2026.json",
+      "target": "src/games/importedGame/upstream/updates/basketball-grab-9oct2026.json"
+    },
+    {
+      "source": "updates/basketball-shared-client-9oct2026-aippy-prompt.md",
+      "target": "src/games/importedGame/upstream/updates/basketball-shared-client-9oct2026-aippy-prompt.md"
+    },
+    {
+      "source": "updates/basketball-shared-client-9oct2026-server-prompt.md",
+      "target": "src/games/importedGame/upstream/updates/basketball-shared-client-9oct2026-server-prompt.md"
+    },
+    {
+      "source": "updates/basketball-shared-client-9oct2026.json",
+      "target": "src/games/importedGame/upstream/updates/basketball-shared-client-9oct2026.json"
+    },
+    {
+      "source": "updates/basketball-smooth-concurrency-9oct2026.json",
+      "target": "src/games/importedGame/upstream/updates/basketball-smooth-concurrency-9oct2026.json"
+    },
+    {
+      "source": "updates/basketball-smooth-concurrency-aippy-prompt-9oct2026.txt",
+      "target": "src/games/importedGame/upstream/updates/basketball-smooth-concurrency-aippy-prompt-9oct2026.txt"
+    },
+    {
+      "source": "updates/batch7-client-7oct2026.json",
+      "target": "src/games/importedGame/upstream/updates/batch7-client-7oct2026.json"
+    },
+    {
+      "source": "updates/canvas-economy-6oct2026.json",
+      "target": "src/games/importedGame/upstream/updates/canvas-economy-6oct2026.json"
+    },
+    {
+      "source": "updates/characters-chat-9oct2026.json",
+      "target": "src/games/importedGame/upstream/updates/characters-chat-9oct2026.json"
+    },
+    {
+      "source": "updates/characters-chat-aippy-prompt-9oct2026.txt",
+      "target": "src/games/importedGame/upstream/updates/characters-chat-aippy-prompt-9oct2026.txt"
+    },
+    {
+      "source": "updates/characters-portals-9oct2026.json",
+      "target": "src/games/importedGame/upstream/updates/characters-portals-9oct2026.json"
+    },
+    {
+      "source": "updates/characters-portals-aippy-prompt-9oct2026.txt",
+      "target": "src/games/importedGame/upstream/updates/characters-portals-aippy-prompt-9oct2026.txt"
+    },
+    {
+      "source": "updates/characters-portals-rollback-9oct2026.json",
+      "target": "src/games/importedGame/upstream/updates/characters-portals-rollback-9oct2026.json"
+    },
+    {
+      "source": "updates/characters-portals-server-prompt-9oct2026.txt",
+      "target": "src/games/importedGame/upstream/updates/characters-portals-server-prompt-9oct2026.txt"
+    },
+    {
+      "source": "updates/chat-bubble-head-height-9oct2026.json",
+      "target": "src/games/importedGame/upstream/updates/chat-bubble-head-height-9oct2026.json"
+    },
+    {
+      "source": "updates/city-streaming-8oct2026-aippy-prompt.txt",
+      "target": "src/games/importedGame/upstream/updates/city-streaming-8oct2026-aippy-prompt.txt"
+    },
+    {
+      "source": "updates/city-streaming-8oct2026-rollback.json",
+      "target": "src/games/importedGame/upstream/updates/city-streaming-8oct2026-rollback.json"
+    },
+    {
+      "source": "updates/city-streaming-8oct2026.json",
+      "target": "src/games/importedGame/upstream/updates/city-streaming-8oct2026.json"
+    },
+    {
+      "source": "updates/creative-tools-7oct2026.json",
+      "target": "src/games/importedGame/upstream/updates/creative-tools-7oct2026.json"
+    },
+    {
+      "source": "updates/default-third-person-9oct2026.json",
+      "target": "src/games/importedGame/upstream/updates/default-third-person-9oct2026.json"
+    },
+    {
+      "source": "updates/fixture-building-7oct2026.json",
+      "target": "src/games/importedGame/upstream/updates/fixture-building-7oct2026.json"
+    },
+    {
+      "source": "updates/fixture-building-rollback-7oct2026.json",
+      "target": "src/games/importedGame/upstream/updates/fixture-building-rollback-7oct2026.json"
+    },
+    {
+      "source": "updates/fixture-distance-colour-7oct2026.json",
+      "target": "src/games/importedGame/upstream/updates/fixture-distance-colour-7oct2026.json"
+    },
+    {
+      "source": "updates/fixture-distance-colour-rollback-7oct2026.json",
+      "target": "src/games/importedGame/upstream/updates/fixture-distance-colour-rollback-7oct2026.json"
+    },
+    {
+      "source": "updates/flatten-canonical-wall-parent-9oct2026.json",
+      "target": "src/games/importedGame/upstream/updates/flatten-canonical-wall-parent-9oct2026.json"
+    },
+    {
+      "source": "updates/flatten-overlay-depth-9oct2026.json",
+      "target": "src/games/importedGame/upstream/updates/flatten-overlay-depth-9oct2026.json"
+    },
+    {
+      "source": "updates/flatten-overlay-depth-aippy-prompt-9oct2026.txt",
+      "target": "src/games/importedGame/upstream/updates/flatten-overlay-depth-aippy-prompt-9oct2026.txt"
+    },
+    {
+      "source": "updates/flatten-world-size-9oct2026.json",
+      "target": "src/games/importedGame/upstream/updates/flatten-world-size-9oct2026.json"
+    },
+    {
+      "source": "updates/full-game.json",
+      "target": "src/games/importedGame/upstream/updates/full-game.json"
+    },
+    {
+      "source": "updates/full-upstream-6oct2026.json",
+      "target": "src/games/importedGame/upstream/updates/full-upstream-6oct2026.json"
+    },
+    {
+      "source": "updates/fullupdates0135hrs6Oct26.json",
+      "target": "src/games/importedGame/upstream/updates/fullupdates0135hrs6Oct26.json"
+    },
+    {
+      "source": "updates/graffciti-canvas-radio-6oct2026.json",
+      "target": "src/games/importedGame/upstream/updates/graffciti-canvas-radio-6oct2026.json"
+    },
+    {
+      "source": "updates/horse-authoritative-letters-ui-9oct2026.json",
+      "target": "src/games/importedGame/upstream/updates/horse-authoritative-letters-ui-9oct2026.json"
+    },
+    {
+      "source": "updates/horse-client-9oct2026-aippy-prompt.md",
+      "target": "src/games/importedGame/upstream/updates/horse-client-9oct2026-aippy-prompt.md"
+    },
+    {
+      "source": "updates/horse-client-9oct2026-server-prompt.md",
+      "target": "src/games/importedGame/upstream/updates/horse-client-9oct2026-server-prompt.md"
+    },
+    {
+      "source": "updates/horse-client-9oct2026.json",
+      "target": "src/games/importedGame/upstream/updates/horse-client-9oct2026.json"
+    },
+    {
+      "source": "updates/hud-canvas-6oct2026.json",
+      "target": "src/games/importedGame/upstream/updates/hud-canvas-6oct2026.json"
+    },
+    {
+      "source": "updates/map2-morning-quarter-8oct2026-aippy-prompt.txt",
+      "target": "src/games/importedGame/upstream/updates/map2-morning-quarter-8oct2026-aippy-prompt.txt"
+    },
+    {
+      "source": "updates/map2-morning-quarter-8oct2026-rollback.json",
+      "target": "src/games/importedGame/upstream/updates/map2-morning-quarter-8oct2026-rollback.json"
+    },
+    {
+      "source": "updates/map2-morning-quarter-8oct2026.json",
+      "target": "src/games/importedGame/upstream/updates/map2-morning-quarter-8oct2026.json"
+    },
+    {
+      "source": "updates/map2-night-polish-8oct2026-aippy-prompt.txt",
+      "target": "src/games/importedGame/upstream/updates/map2-night-polish-8oct2026-aippy-prompt.txt"
+    },
+    {
+      "source": "updates/map2-night-polish-8oct2026-rollback.json",
+      "target": "src/games/importedGame/upstream/updates/map2-night-polish-8oct2026-rollback.json"
+    },
+    {
+      "source": "updates/map2-night-polish-8oct2026.json",
+      "target": "src/games/importedGame/upstream/updates/map2-night-polish-8oct2026.json"
+    },
+    {
+      "source": "updates/map2-premium-8oct2026-aippy-prompt.txt",
+      "target": "src/games/importedGame/upstream/updates/map2-premium-8oct2026-aippy-prompt.txt"
+    },
+    {
+      "source": "updates/map2-premium-8oct2026-rollback.json",
+      "target": "src/games/importedGame/upstream/updates/map2-premium-8oct2026-rollback.json"
+    },
+    {
+      "source": "updates/map2-premium-8oct2026.json",
+      "target": "src/games/importedGame/upstream/updates/map2-premium-8oct2026.json"
+    },
+    {
+      "source": "updates/menu-background-6oct2026.json",
+      "target": "src/games/importedGame/upstream/updates/menu-background-6oct2026.json"
+    },
+    {
+      "source": "updates/mobile-ui-7oct2026.json",
+      "target": "src/games/importedGame/upstream/updates/mobile-ui-7oct2026.json"
+    },
+    {
+      "source": "updates/mobile-ui-9oct2026.json",
+      "target": "src/games/importedGame/upstream/updates/mobile-ui-9oct2026.json"
+    },
+    {
+      "source": "updates/mobile-ui-aippy-prompt-9oct2026.txt",
+      "target": "src/games/importedGame/upstream/updates/mobile-ui-aippy-prompt-9oct2026.txt"
+    },
+    {
+      "source": "updates/mobile-ui-host/GameHostScreen.tsx",
+      "target": "src/games/importedGame/upstream/updates/mobile-ui-host/GameHostScreen.tsx"
+    },
+    {
+      "source": "updates/mobile-ui-host/host-index.css",
+      "target": "src/games/importedGame/upstream/updates/mobile-ui-host/host-index.css"
+    },
+    {
+      "source": "updates/mobile-ui-host/ImportedGame.tsx",
+      "target": "src/games/importedGame/upstream/updates/mobile-ui-host/ImportedGame.tsx"
+    },
+    {
+      "source": "updates/multiplayer-adult-notice-9oct2026.json",
+      "target": "src/games/importedGame/upstream/updates/multiplayer-adult-notice-9oct2026.json"
+    },
+    {
+      "source": "updates/multiplayer-moderation-notice-9oct2026.json",
+      "target": "src/games/importedGame/upstream/updates/multiplayer-moderation-notice-9oct2026.json"
+    },
+    {
+      "source": "updates/multiplayer-notice-overlay-fix-9oct2026.json",
+      "target": "src/games/importedGame/upstream/updates/multiplayer-notice-overlay-fix-9oct2026.json"
+    },
+    {
+      "source": "updates/multiplayer-protocol-2.json",
+      "target": "src/games/importedGame/upstream/updates/multiplayer-protocol-2.json"
+    },
+    {
+      "source": "updates/multiplayer-v2-features.json",
+      "target": "src/games/importedGame/upstream/updates/multiplayer-v2-features.json"
+    },
+    {
+      "source": "updates/paint-canvas-admin-6oct2026.json",
+      "target": "src/games/importedGame/upstream/updates/paint-canvas-admin-6oct2026.json"
+    },
+    {
+      "source": "updates/paint-fixes-7oct2026.json",
+      "target": "src/games/importedGame/upstream/updates/paint-fixes-7oct2026.json"
+    },
+    {
+      "source": "updates/paint-fixes-rollback-7oct2026.json",
+      "target": "src/games/importedGame/upstream/updates/paint-fixes-rollback-7oct2026.json"
+    },
+    {
+      "source": "updates/paint-readback-fix-8oct2026-aippy-prompt.txt",
+      "target": "src/games/importedGame/upstream/updates/paint-readback-fix-8oct2026-aippy-prompt.txt"
+    },
+    {
+      "source": "updates/paint-readback-fix-8oct2026-rollback.json",
+      "target": "src/games/importedGame/upstream/updates/paint-readback-fix-8oct2026-rollback.json"
+    },
+    {
+      "source": "updates/paint-readback-fix-8oct2026.json",
+      "target": "src/games/importedGame/upstream/updates/paint-readback-fix-8oct2026.json"
+    },
+    {
+      "source": "updates/performance-logger-8oct2026-aippy-prompt.txt",
+      "target": "src/games/importedGame/upstream/updates/performance-logger-8oct2026-aippy-prompt.txt"
+    },
+    {
+      "source": "updates/performance-logger-8oct2026-rollback.json",
+      "target": "src/games/importedGame/upstream/updates/performance-logger-8oct2026-rollback.json"
+    },
+    {
+      "source": "updates/performance-logger-8oct2026.json",
+      "target": "src/games/importedGame/upstream/updates/performance-logger-8oct2026.json"
+    },
+    {
+      "source": "updates/production-client-6oct2026.json",
+      "target": "src/games/importedGame/upstream/updates/production-client-6oct2026.json"
+    },
+    {
+      "source": "updates/profile-credits-moderation-7oct2026.json",
+      "target": "src/games/importedGame/upstream/updates/profile-credits-moderation-7oct2026.json"
+    },
+    {
+      "source": "updates/reference-social-polish-7oct2026.json",
+      "target": "src/games/importedGame/upstream/updates/reference-social-polish-7oct2026.json"
+    },
+    {
+      "source": "updates/reference-url-7oct2026.json",
+      "target": "src/games/importedGame/upstream/updates/reference-url-7oct2026.json"
+    },
+    {
+      "source": "updates/remove-unused-ai-dependency-9oct2026.json",
+      "target": "src/games/importedGame/upstream/updates/remove-unused-ai-dependency-9oct2026.json"
+    },
+    {
+      "source": "updates/rollback-basketball-shared-client-9oct2026.json",
+      "target": "src/games/importedGame/upstream/updates/rollback-basketball-shared-client-9oct2026.json"
+    },
+    {
+      "source": "updates/rollback-horse-client-9oct2026.json",
+      "target": "src/games/importedGame/upstream/updates/rollback-horse-client-9oct2026.json"
+    },
+    {
+      "source": "updates/rollback-town-main-basketball-tidy-9oct2026.json",
+      "target": "src/games/importedGame/upstream/updates/rollback-town-main-basketball-tidy-9oct2026.json"
+    },
+    {
+      "source": "updates/skyline-handoff-8oct2026-aippy-prompt.txt",
+      "target": "src/games/importedGame/upstream/updates/skyline-handoff-8oct2026-aippy-prompt.txt"
+    },
+    {
+      "source": "updates/skyline-handoff-8oct2026-rollback.json",
+      "target": "src/games/importedGame/upstream/updates/skyline-handoff-8oct2026-rollback.json"
+    },
+    {
+      "source": "updates/skyline-handoff-8oct2026.json",
+      "target": "src/games/importedGame/upstream/updates/skyline-handoff-8oct2026.json"
+    },
+    {
+      "source": "updates/street-light-controls-8oct2026-aippy-prompt.txt",
+      "target": "src/games/importedGame/upstream/updates/street-light-controls-8oct2026-aippy-prompt.txt"
+    },
+    {
+      "source": "updates/street-light-controls-8oct2026-rollback.json",
+      "target": "src/games/importedGame/upstream/updates/street-light-controls-8oct2026-rollback.json"
+    },
+    {
+      "source": "updates/street-light-controls-8oct2026.json",
+      "target": "src/games/importedGame/upstream/updates/street-light-controls-8oct2026.json"
+    },
+    {
+      "source": "updates/sunny-label.json",
+      "target": "src/games/importedGame/upstream/updates/sunny-label.json"
+    },
+    {
+      "source": "updates/third-person-close-low-9oct2026.json",
+      "target": "src/games/importedGame/upstream/updates/third-person-close-low-9oct2026.json"
+    },
+    {
+      "source": "updates/town-main-basketball-tidy-9oct2026-aippy-prompt.md",
+      "target": "src/games/importedGame/upstream/updates/town-main-basketball-tidy-9oct2026-aippy-prompt.md"
+    },
+    {
+      "source": "updates/town-main-basketball-tidy-9oct2026.json",
+      "target": "src/games/importedGame/upstream/updates/town-main-basketball-tidy-9oct2026.json"
+    },
+    {
+      "source": "updates/tutorial-7oct2026.json",
+      "target": "src/games/importedGame/upstream/updates/tutorial-7oct2026.json"
+    },
+    {
+      "source": "updates/tutorial-fixes-7oct2026.json",
+      "target": "src/games/importedGame/upstream/updates/tutorial-fixes-7oct2026.json"
+    },
+    {
+      "source": "updates/unused-ai-react-test-9oct2026.md",
+      "target": "src/games/importedGame/upstream/updates/unused-ai-react-test-9oct2026.md"
+    },
+    {
+      "source": "vite.config.ts",
+      "target": "src/games/importedGame/upstream/vite.config.ts"
+    }
+  ],
+  "notes": [
+    "Use the existing Node 22 build-time downloader; do not attempt Node execution in Aippy chat.",
+    "Do not overwrite the Aippy host src/App.tsx, vite.config.ts, root package.json, root lockfile, host importer or wrapper.",
+    "This snapshot includes docs, tests and historical update manifests as well as runtime files. Do not execute historical update manifests.",
+    "File sources are pinned to the commit SHA and must be fetched as raw bytes, including binary assets.",
+    "Build only after all replacements complete; stop on any failed download or replacement."
+  ]
+}
