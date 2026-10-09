@@ -1,0 +1,21 @@
+{
+  "version": "chat-bubble-head-height-9oct2026",
+  "commit": "bf421a78e5a41781539e0d994a7e1ec65554e1f6",
+  "baseUrl": "https://raw.githubusercontent.com/benryaus-cmd/graf-game/bf421a78e5a41781539e0d994a7e1ec65554e1f6/",
+  "description": "Lower own third-person chat bubble to follow the newly closer camera framing; position other player bubbles nearer heads. Text size unchanged.",
+  "files": [
+    {
+      "source": "src/game/speechBubble.ts",
+      "target": "src/games/importedGame/upstream/src/game/speechBubble.ts"
+    },
+    {
+      "source": "src/multiplayer/worldSession.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/worldSession.ts"
+    }
+  ],
+  "notes": [
+    "Self chat height 2.0 above avatar feet; other player chat height 2.35; previous common height 3.05.",
+    "Does not affect chat protocol, message content, avatar positioning, font size, or server.",
+    "Apply with existing Node 22 incremental importer to exact mapped targets."
+  ]
+}
