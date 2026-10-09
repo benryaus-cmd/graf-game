@@ -1,12 +1,10 @@
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import { getRenderSettings, subscribeRenderSettings, setRenderSettings, resetRenderSettings, DEFAULT_RENDER_SETTINGS, MAX_STREET_LIGHTS, type RenderSettings } from '@/game/renderSettings';
 import { performanceLog, savePerformanceRun, copyRunReport } from '@/game/performanceLog';
-import { elementPointerPoint } from '@/game/pointerCoordinates';
 
 export default function DeveloperPanel({onClose,onFiles,onMorningPreset}:{onClose:()=>void;onFiles:()=>void;onMorningPreset?:()=>void}) {
-  const settings=useSyncExternalStore(subscribeRenderSettings,getRenderSettings);const panel=useRef<HTMLElement>(null);
+  const settings=useSyncExternalStore(subscribeRenderSettings,getRenderSettings);
   const [collapsed,setCollapsed]=useState(false),[label,setLabel]=useState('City walk'),[notice,setNotice]=useState(''),[,refresh]=useState(0),[report,setReport]=useState(''),[baseline,setBaseline]=useState(true);
-  const drag=useRef<{id:number;x:number;y:number;left:number;top:number}|null>(null);
   useEffect(()=>{performanceLog.showFps(true);const timer=setInterval(()=>refresh(v=>v+1),1000);return()=>{clearInterval(timer);performanceLog.showFps(false);};},[]);
   const change=(patch:Partial<RenderSettings>)=>setRenderSettings(patch);
   const number=(name:string,key:keyof RenderSettings,min:number,max:number,step:number)=> <NumberSetting key={key} name={name} field={key} value={settings[key] as number} min={min} max={max} step={step} onChange={change}/>;
@@ -14,12 +12,12 @@ export default function DeveloperPanel({onClose,onFiles,onMorningPreset}:{onClos
   const select=(name:string,key:'skyMode'|'fogStyle',options:string[])=><div className="developer-number"><label htmlFor={'dev-'+key}>{name}</label><div><select id={'dev-'+key} aria-label={name} value={settings[key]} onChange={e=>change({[key]:e.target.value})}>{options.map(option=><option key={option} value={option}>{option.toUpperCase()}</option>)}</select><button aria-label={'Reset '+name} onClick={()=>change({[key]:DEFAULT_RENDER_SETTINGS[key]})}>↺</button></div></div>;
   const color=(name:string,key:'fogColor'|'groundColor')=><div className="developer-number"><label>{name}</label><div><input type="color" aria-label={name} value={settings[key]} onChange={e=>change({[key]:e.target.value})}/><button aria-label={'Reset '+name} onClick={()=>change({[key]:DEFAULT_RENDER_SETTINGS[key]})}>↺</button></div></div>;
   const stop=()=>{const result=savePerformanceRun();setNotice(result.saved?'Test saved on this device.':'Test kept for this session; device storage unavailable.');refresh(v=>v+1);};
-  return <section ref={panel} className={'developer-live-panel'+(collapsed?' is-collapsed':'')} aria-label="Live game settings" onPointerDown={e=>e.stopPropagation()}>
-    <header onPointerDown={e=>{if((e.target as HTMLElement).closest('button'))return;const p=panel.current!,shell=p.closest<HTMLElement>('.game-shell')!;const point=elementPointerPoint(shell,e);drag.current={id:e.pointerId,x:point.x*shell.clientWidth,y:point.y*shell.clientHeight,left:p.offsetLeft,top:p.offsetTop};e.currentTarget.setPointerCapture(e.pointerId);}} onPointerMove={e=>{const d=drag.current,p=panel.current;if(!d||!p||d.id!==e.pointerId)return;const shell=p.closest<HTMLElement>('.game-shell')!,point=elementPointerPoint(shell,e);p.style.left=Math.max(0,Math.min(shell.clientWidth-p.offsetWidth,d.left+point.x*shell.clientWidth-d.x))+'px';p.style.top=Math.max(0,Math.min(shell.clientHeight-48,d.top+point.y*shell.clientHeight-d.y))+'px';p.style.maxHeight=`calc(100% - ${p.offsetTop}px)`;}} onPointerUp={()=>{drag.current=null;}} onPointerCancel={()=>{drag.current=null;}}>
+  return <section className={'developer-live-panel'+(collapsed?' is-collapsed':'')} aria-label="Live game settings" onPointerDown={e=>e.stopPropagation()} onPointerUp={e=>e.stopPropagation()} onClick={e=>e.stopPropagation()}>
+    <header>
       <strong>{performanceLog.active?(performanceLog.phase==='baseline'?`BASELINE ${performanceLog.baselineRemaining()}s`:'● RECORDING'):'LIVE SETTINGS'} · {performanceLog.liveFps} FPS</strong><button aria-label={collapsed?'Expand live settings':'Collapse live settings'} onClick={()=>setCollapsed(v=>!v)}>{collapsed?'▾':'−'}</button><button aria-label="Close live settings" onClick={onClose}>×</button>
     </header>
     {!collapsed&&<div className="developer-live-body">
-      <p className="ui-notice">Drag the header to move this panel. Changes apply immediately and stay on this device.</p>
+      <p className="ui-notice">Changes apply immediately and stay on this device.</p>
       <div className="developer-settings-grid">
       {number('RENDER SCALE','renderScale',.35,3,.05)}{number('HAZE','fogDensity',0,.2,.001)}
       {number('DETAIL RANGE (m)','detailDistance',4,144,4)}{number('3D BLOCKS (m)','horizonDistance',48,768,24)}
