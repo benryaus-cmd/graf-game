@@ -1,0 +1,18 @@
+{
+  "version": "third-person-close-low-9oct2026",
+  "commit": "d566ba7f55eeb1a82207eac661f85744a9128dd7",
+  "baseUrl": "https://raw.githubusercontent.com/benryaus-cmd/graf-game/d566ba7f55eeb1a82207eac661f85744a9128dd7/",
+  "description": "Move third-person camera to half its old distance, framing avatar lower while preserving movement/painting.",
+  "files": [
+    {
+      "source": "src/game/worldMovement.ts",
+      "target": "src/games/importedGame/upstream/src/game/worldMovement.ts"
+    }
+  ],
+  "notes": [
+    "Third-person camera distance 5.6 -> 2.8; look target Y offset -0.42 -> +0.25.",
+    "Player position, avatar geometry, physics, painting camera, multiplayer and server unchanged.",
+    "Import with existing Node 22 incremental downloader; replace only listed file.",
+    "Verify portrait third-person play, spray/paint mode, and camera look."
+  ]
+}
