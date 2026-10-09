@@ -575,11 +575,11 @@ const App = () => {
             <div role="presentation" style={{position:'absolute',inset:0,zIndex:200,background:'rgba(0,0,0,.78)',display:'flex',alignItems:'center',justifyContent:'center',padding:16}} onPointerDown={event=>event.stopPropagation()} onClick={event=>event.stopPropagation()}>
               <section role="dialog" aria-modal="true" aria-labelledby="multiplayer-consent-heading" style={{width:'min(400px,100%)',maxHeight:'100%',overflowY:'auto',background:'#20251f',color:'#f5f2e6',padding:20,border:'1px solid #899184',borderRadius:12,boxShadow:'0 12px 36px #000a',textAlign:'center'}}>
                 <h2 id="multiplayer-consent-heading" style={{fontSize:18,fontWeight:900,margin:'0 0 14px'}}>MULTIPLAYER NOTICE</h2>
-                <p style={{fontSize:14,lineHeight:1.5,margin:'0 0 14px'}}>Multiplayer includes other players and user-created content. Content is moderated, but some material or conversations may be inappropriate.</p>
-                <p style={{fontSize:14,fontWeight:800,margin:'0 0 18px'}}>I understand and confirm that I am an adult (18+).</p>
+                <p style={{fontSize:14,lineHeight:1.5,margin:'0 0 14px'}}>Multiplayer includes real players and user-created graffiti. We moderate content, but some artwork or conversations may be inappropriate or offensive.</p>
+                <p style={{fontSize:14,fontWeight:800,margin:'0 0 18px'}}>All content is flagged to the creator for moderation. Explicit images and swearing are not allowed. Violations may result in a ban. I understand that multiplayer content may not be suitable for all ages.</p>
                 <div style={{display:'flex',gap:10,justifyContent:'center',flexWrap:'wrap'}}>
                   <button type="button" onClick={()=>setMultiplayerConsentOpen(false)} style={{flex:'1 1 110px',minHeight:46,borderRadius:8,border:'1px solid #737a71',background:'#333b33',color:'#fff'}}>GO BACK</button>
-                  <button type="button" onClick={()=>{setMultiplayerConsentOpen(false);confirmedMultiplayerJoin.current=true;requestMultiplayer('join');}} style={{flex:'1 1 110px',minHeight:46,borderRadius:8,border:'1px solid #deb66f',background:'#b5853d',color:'#141611',fontWeight:900}}>I'M 18+ · CONTINUE</button>
+                  <button type="button" onClick={()=>{setMultiplayerConsentOpen(false);confirmedMultiplayerJoin.current=true;requestMultiplayer('join');}} style={{flex:'1 1 110px',minHeight:46,borderRadius:8,border:'1px solid #deb66f',background:'#b5853d',color:'#141611',fontWeight:900}}>I UNDERSTAND · CONTINUE</button>
                 </div>
               </section>
             </div>
