@@ -10,6 +10,54 @@ import type { Message } from '../src/multiplayer/protocol';
 const scope = { roomId: 'morning-quarter-v1', mapId: 'map2', courtId: 'map2-basketball', version: 1 as const };
 const gesture = { dx: .08, dy: .54, durationMs: 92 };
 const releaseOffset = { right: -.32, up: 1.48, forward: .81 };
+
+test('HORSE requires explicit support and authority allocates invitation and reserved turn mark', () => {
+  const { clients, drain } = serverHarness(3);
+  for (const client of clients) client.sync.enter(); drain();
+  assert.equal(clients[0].sync.inviteHorse('p1', 4), false);
+  for (const client of clients) { client.capabilities.push('basketball_horse_v1'); client.receive(null); }
+  assert.equal(clients[0].sync.inviteHorse('p0', 4), false);
+  assert.equal(clients[0].sync.inviteHorse('p1', 1), false);
+  assert.equal(clients[0].sync.inviteHorse('p1', 4), true);
+  assert.equal(clients[0].sync.state.court?.horse, null);
+  drain(); assert.equal(clients[0].sync.state.court?.horse?.phase, 'invited');
+  assert.equal(clients[0].sync.acceptHorse(), false);
+  assert.equal(clients[1].sync.acceptHorse(), true); drain();
+  assert.equal(clients[0].sync.state.shootingSpotId, 4);
+  assert.equal(clients[1].sync.state.shootingSpotId, 1);
+  assert.equal(clients[1].sync.shoot(gesture, releaseOffset), null);
+  for (const client of clients) client.sync.dispose();
+});
+
+test('HORSE shooter uses reserved release frame, bystander shoots freely, and only authority changes turns', () => {
+  const { clients, drain, shots, finish } = serverHarness(3);
+  for (const client of clients) { client.capabilities.push('basketball_horse_v1'); client.receive(null); client.sync.enter(); } drain();
+  clients[0].sync.inviteHorse('p1', 4); drain(); clients[1].sync.acceptHorse(); drain();
+  const before = clients[0].sync.state.court!.horse!;
+  const launch = clients[0].sync.shoot({ dx: 0, dy: 0, durationMs: 100 }, releaseOffset)!;
+  assert.equal(launch.spotId, 4); assert.deepEqual(launch.origin, releaseOriginFromOffset(4, releaseOffset));
+  assert.deepEqual(clients[0].sync.state.court!.horse, before);
+  drain(); assert.deepEqual(shots[0].reply.launch, launch);
+  assert.ok(clients[0].events.some(e => e.type === 'launch' && e.reconcile));
+  assert.ok(clients[2].sync.shoot(gesture, releaseOffset)); drain();
+  assert.equal(shots[1].reply.launch?.spotId, 2);
+  finish(0); assert.equal(clients[0].sync.state.court?.horse?.occupantId, 'p1');
+  assert.equal(clients[0].sync.state.shootingSpotId, 0); assert.equal(clients[1].sync.state.shootingSpotId, 4);
+  for (const client of clients) client.now += 3000;
+  assert.equal(clients[0].sync.shoot(gesture, releaseOffset), null);
+  assert.equal(clients[1].sync.shoot(gesture, releaseOffset)?.spotId, 4);
+  for (const client of clients) client.sync.dispose();
+});
+
+test('stale HORSE invitation reconciles and retries only if authority still permits its target and mark', () => {
+  const { clients, drain, server } = serverHarness();
+  for (const client of clients) { client.capabilities.push('basketball_horse_v1'); client.receive(null); client.sync.enter(); } drain();
+  server.join('late', server.snapshot().revision, clients[0].now);
+  assert.equal(clients[0].sync.inviteHorse('p1', 4), true); drain();
+  assert.equal(clients[0].sync.state.court?.horse?.inviteeId, 'p1');
+  assert.equal(clients[0].outgoing.filter(m => m.type === 'horse_invite').length, 2);
+  for (const client of clients) client.sync.dispose();
+});
 class Transport implements CourtTransport {
   now = 10000;
   connected = true;
@@ -27,6 +75,21 @@ class Transport implements CourtTransport {
   receive(message: Message | null) { for (const listener of this.listeners) listener(message, this.courtConnection); }
   state(state: CourtState, extras = {}) { this.receive({ ...scope, type: 'court_state', revision: state.revision, serverTime: this.now, state: { ...state, ...extras } }); }
 }
+test('late snapshot retains an authoritative free-shot flight accepted before HORSE starts', () => {
+  const server = new CourtSession(scope), now = 10000;
+  server.join('p0', 0, now); server.join('p1', server.snapshot().revision, now);
+  const seat = server.snapshot().seats[0];
+  const shot = server.handleRequest('p0', { ...scope, type: 'court_shot', revision: server.snapshot().revision,
+    seatEpoch: seat.epoch, sequence: 1, shotId: `s${seat.epoch}-1`, gesture, releaseOffset }, now);
+  assert.ok(shot.launch);
+  server.inviteHorse('p0', 'p1', 4, server.snapshot().revision, now);
+  server.acceptHorse('p1', server.snapshot().revision, now);
+  const client = new Transport('p1'); client.capabilities.push('basketball_horse_v1'); client.receive(null); client.sync.enter();
+  client.state(server.snapshot(), { liveShots: [{ playerId: 'p0', seatEpoch: seat.epoch, sequence: 1, launch: shot.launch, serverTime: now }] });
+  assert.ok(client.events.some(e => e.type === 'launch' && e.launch.spotId === seat.spotId));
+  assert.equal(client.sync.state.court?.horse?.spotId, 4);
+  client.sync.dispose();
+});
 function serverHarness(count = 2) {
   const server = new CourtSession(scope), queue: Array<{ client: Transport; request: Message }> = [], clients: Transport[] = [];
   const shots: Array<{ client: Transport; request: Message; reply: SessionReply<CourtState> }> = [];

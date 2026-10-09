@@ -74,6 +74,7 @@ const WorldScene = (props: WorldSceneProps) => {
   const basketballRef = useRef<BasketballGame | null>(null);
   const courtRef = useRef<BasketballSync | null>(null);
   const [courtView, setCourtView] = useState<BasketballSyncView | null>(null);
+  const [courtPlayerNames, setCourtPlayerNames] = useState<Record<string, string>>({});
   const leaveBasketball = () => {
     courtRef.current?.leave();
     basketballRef.current?.leave();
@@ -179,7 +180,10 @@ const WorldScene = (props: WorldSceneProps) => {
       workspaceCallbackRef.current({ selected: !!selection, active: !!workspace?.active, width: selection?.width ?? 0, height: selection?.height ?? 0, zoom: workspace?.camera.zoom ?? 1, sizeLinked: selection?.sizeLinked ?? true, started: !!selection?.started, moving: !!selection?.moving, hasPaint: !!selection?.hasPaint, editableUntil: workspace?.editableUntil, bounds });
     };
     world.onColorPick = colour => colorPickCallbackRef.current(colour);
-    const multiplayer = new WorldMultiplayerSession(world, status => { soloHistory.setAllowed(status.phase === 'solo'); multiplayerStatusRef.current(status); }, view => multiplayerViewRef.current(view));
+    const multiplayer = new WorldMultiplayerSession(world, status => { soloHistory.setAllowed(status.phase === 'solo'); multiplayerStatusRef.current(status); }, view => {
+      setCourtPlayerNames(Object.fromEntries((view.onlinePlayers ?? []).map(player => [player.playerId, player.nickName.trim() || (player.username ? '@' + player.username : 'Player')])));
+      multiplayerViewRef.current(view);
+    });
     multiplayerRef.current = multiplayer;
     const paintSample = world.onPaintSample, paintEnd = world.onPaintEnd;
     world.onBeforePaintSample = (wall, hit, settings) => soloHistory.begin(wall, hit, settings);
@@ -216,9 +220,9 @@ const WorldScene = (props: WorldSceneProps) => {
         if (view.available && view.entered && view.ownSeat) {
           if (seatEpoch !== view.ownSeat.epoch) {
             basketball.leave();
-            basketball.enterShared(view.ownSeat.spotId);
             seatEpoch = view.ownSeat.epoch;
           }
+          basketball.positionSharedPlayer(view.ownSeat, view.horseAvailable ? view.court?.horse ?? null : null);
           if (!view.pendingShotId) basketball.syncSharedCounters(view.ownSeat);
         } else if (seatEpoch !== null) {
           basketball.leave();
@@ -438,7 +442,7 @@ const WorldScene = (props: WorldSceneProps) => {
   }, [props.paused, props.viewMode, props.paintMode, props.eyedropperActive, props.posterPlacement, props.reference?.moving]);
 
   return <><div ref={mountRef} className="world-mount" />
-    <BasketballControls view={basketballView} shared={courtView} paused={!!props.paused}
+    <BasketballControls view={basketballView} shared={courtView} playerNames={courtPlayerNames} paused={!!props.paused}
       exploring={!props.paintMode && !props.eyedropperActive && !props.posterPlacement && !props.reference?.moving && !worldRef.current?.paintWorkspace?.active}
       onEnter={() => {
         const court = courtRef.current;
@@ -446,6 +450,8 @@ const WorldScene = (props: WorldSceneProps) => {
         else basketballRef.current?.enter();
       }}
       onLeave={leaveBasketball}
+      onInviteHorse={(playerId, spotId) => courtRef.current?.inviteHorse(playerId, spotId)}
+      onAcceptHorse={() => courtRef.current?.acceptHorse()}
       onSpot={id => { if (!(courtRef.current?.state.connected && courtRef.current.state.available)) basketballRef.current?.enter(id); }}
       onShoot={gesture => {
         const game = basketballRef.current, court = courtRef.current;

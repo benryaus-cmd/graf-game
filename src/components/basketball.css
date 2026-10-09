@@ -32,3 +32,12 @@
 .basketball-waiting button { background: transparent; color: inherit; border: 1px solid #b3c0a655; border-radius: 4px; padding: 4px 6px; }
 
 .basketball-entry-notice { position: absolute; z-index: 12; left: 50%; bottom: max(76px, calc(env(safe-area-inset-bottom) + 66px)); transform: translateX(-50%); margin: 0; color: #ffbe78; background: #151b19c9; padding: 4px 7px; border-radius: 5px; font-size: 10px; white-space: nowrap; pointer-events: none; }
+
+.basketball-horse { position: absolute; z-index: 12; top: max(64px, calc(env(safe-area-inset-top) + 60px)); right: max(12px, env(safe-area-inset-right)); width: min(220px, calc(100% - 24px)); padding: 7px 9px; border-radius: 7px; background: #151b19df; color: #eee9da; font-size: 10px; pointer-events: auto; }
+.basketball-horse small { display: block; margin-top: 4px; }
+.basketball-horse summary { cursor: pointer; padding: 4px 0; font-weight: 700; }
+.basketball-horse label { display: grid; gap: 4px; margin: 5px 0; }
+.basketball-horse select { width: 100%; min-height: 36px; color: #eee9da; background: #1b211b; border: 1px solid #b3c0a655; border-radius: 5px; padding: 4px; }
+.basketball-horse button { width: 100%; }
+.basketball-horse button:disabled { opacity: .5; }
+.basketball-horse-letters { display: flex; justify-content: space-between; gap: 8px; overflow-wrap: anywhere; }

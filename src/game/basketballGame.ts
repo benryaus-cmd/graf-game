@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { BASKETBALL_COURT } from './basketballCourt';
 import { createBall, launchFromFlick, stepBall } from './basketballPhysics';
+import type { HorseState } from './basketballSession';
 import type { BasketballBall, BasketballGesture, ShotLaunch, ShotResult } from './basketballPhysics';
 import { encodeReleaseOffset, type ReleaseOffset } from './basketballRelease';
 import { EYE_HEIGHT } from './playerPhysics';
@@ -207,6 +208,14 @@ export class BasketballGame {
     this.positionHeld();
     const releaseOffset = encodeReleaseOffset(this.view.spotId, this.held.position.toArray());
     return releaseOffset ? { gesture: { ...gesture }, releaseOffset } : null;
+  }
+
+  /** Move only from authoritative seat/turn state; retain scores and balls already in flight. */
+  positionSharedPlayer(seat: { playerId: string; spotId: number }, horse: HorseState | null): boolean {
+    const takingTurn = horse && (horse.phase === 'set' || horse.phase === 'match')
+      && (horse.inviterId === seat.playerId || horse.inviteeId === seat.playerId) && horse.occupantId === seat.playerId;
+    const spotId = takingTurn ? horse.spotId : seat.spotId;
+    return this.shared && this.view.active && this.view.spotId === spotId || this.enterShared(spotId);
   }
 
   /** Shared predictions animate immediately, without attempts, results, or coin callbacks. */

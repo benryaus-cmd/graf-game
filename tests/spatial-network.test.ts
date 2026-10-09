@@ -16,6 +16,30 @@ class Socket {
 const capabilities=['spatial_interest_v1','spatial_world_delta_v1','player_directory_v1'];
 const hello={type:'hello',protocol:2,playerId:'self',networkRevision:6,minimumNetworkRevision:6,requiredClientCapabilities:capabilities,capabilities};
 
+test('existing town court transport sends only supported invite and accept on its admitted socket', () => {
+  const old = globalThis.WebSocket, oldDocument = globalThis.document;
+  let socket: Socket;
+  globalThis.document = {getElementById:()=>null,createElement:()=>({width:1,height:1,getContext:()=>null})} as unknown as Document;
+  globalThis.WebSocket = class extends Socket { constructor(){super();socket=this;} } as unknown as typeof WebSocket;
+  try {
+    for (const horseEnabled of [false, true]) {
+      const world: any = {scene:new THREE.Scene(),walls:[],setPaintSession(){},playerPosition:new THREE.Vector3(0,1.72,0),playerYaw:0,playerPitch:0,paintRevision:0,renderer:{domElement:{}}};
+      const session = new WorldMultiplayerSession(world,()=>{});
+      const scope = {version:1,roomId:'morning-quarter-v1',mapId:'map2',courtId:'map2-basketball',revision:0};
+      const invite = {...scope,type:'horse_invite',inviteeId:'peer',spotId:4};
+      session.join('Self',scope.roomId,{},'map2-v1');
+      socket!.receive({type:'hello',protocol:2,playerId:'self',capabilities:['basketball_court_v1',...(horseEnabled?['basketball_horse_v1']:[])]});
+      assert.equal(session.sendCourt(invite),false);
+      socket!.receive({type:'world_snapshot',roomId:scope.roomId,worldId:'map2-v1',playerId:'self',revision:0,strokes:[],players:[]});
+      assert.equal(session.sendCourt(invite),horseEnabled);
+      assert.equal(session.sendCourt({...scope,type:'horse_accept'}),horseEnabled);
+      assert.equal(session.sendCourt({...scope,type:'horse_decline'}),false);
+      assert.equal(session.sendCourt({...scope,type:'horse_cancel'}),false);
+      session.dispose();
+    }
+  } finally { globalThis.WebSocket=old;globalThis.document=oldDocument; }
+});
+
 test('revision-6 join carries real initial position, spatial capabilities and optional basketball support',()=>{
   const socket=new Socket();const connection=new MultiplayerConnection('wss://test',()=>{},()=>{},()=>socket);
   try {

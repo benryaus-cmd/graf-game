@@ -9,7 +9,10 @@ import type { Message } from './protocol';
 export interface CourtConnection { connected: boolean; playerId: string | null; capabilities: readonly string[]; roomId: string | null; worldId: string | null; serverTime: number }
 export type CourtListener = (message: Message | null, connection: CourtConnection) => void;
 export interface CourtTransport { readonly courtConnection: CourtConnection; subscribeCourt(listener: CourtListener): () => void; sendCourt(message: Message): boolean }
-export interface BasketballSyncView { connected: boolean; available: boolean; entered: boolean; court: CourtState | null; ownSeat: CourtSeat | null; pendingShotId: string | null; notice: string | null }
+export const BASKETBALL_HORSE_CAPABILITY = 'basketball_horse_v1';
+export interface BasketballSyncView { connected: boolean; available: boolean; entered: boolean; court: CourtState | null; ownSeat: CourtSeat | null; pendingShotId: string | null; notice: string | null; horseAvailable: boolean; horsePending: boolean; shootingSpotId: number | null }
+type HorseIntent = { type: 'horse_invite'; inviteeId: string; spotId: number } | { type: 'horse_accept' };
+const horseMember = (horse: HorseState | null | undefined, playerId: string | null) => !!horse && (horse.inviterId === playerId || horse.inviteeId === playerId);
 export type BasketballSyncEvent =
   | { type: 'launch'; launch: ShotLaunch; elapsedSeconds: number; own: boolean; reconcile: boolean }
   | { type: 'result'; playerId: string; result: ShotResult }
@@ -53,29 +56,34 @@ export function readBasketballCourtState(value: unknown): CourtState | null {
   if (horse === undefined || (value.horseReadyAt as number) > (value.serverTime as number) + 3000) return null;
   return { ...scope, revision: value.revision as number, serverTime: value.serverTime as number, seats, horse, horseReadyAt: value.horseReadyAt };
 }
-function readLaunch(value: unknown, seat: CourtSeat, sequence: number): ShotLaunch | null {
-  if (!object(value) || value.version !== 1 || value.courtId !== scope.courtId || value.shotId !== canonical(seat.epoch, sequence) || value.spotId !== seat.spotId ||
+function readLaunch(value: unknown, seat: CourtSeat, sequence: number, allowedSpots: number[]): ShotLaunch | null {
+  if (!object(value) || value.version !== 1 || value.courtId !== scope.courtId || value.shotId !== canonical(seat.epoch, sequence) || !spot(value.spotId) || !allowedSpots.includes(value.spotId) ||
       !Array.isArray(value.origin) || value.origin.length !== 3 || !value.origin.every(n => typeof n === 'number' && Number.isFinite(n)) ||
       !Array.isArray(value.velocity) || value.velocity.length !== 3 || !value.velocity.every(n => typeof n === 'number' && Number.isFinite(n)) ||
       Math.hypot(...value.velocity) > BASKETBALL_MAX_FLICK_SPEED + .00001) return null;
   const [x, y, z] = value.origin;
   const bounds = BASKETBALL_COURT.bounds;
   if (x < bounds.minX - 2 || x > bounds.maxX + 2 || z < bounds.minZ - 2 || z > bounds.maxZ + 2 || y < .4 || y > 2.8) return null;
-  if (!isAuthoritativeReleaseOrigin(seat.spotId, [...value.origin] as ShotLaunch['origin'])) return null;
-  return { courtId: scope.courtId, version: 1, shotId: value.shotId as string, spotId: seat.spotId,
+  if (!isAuthoritativeReleaseOrigin(value.spotId, [...value.origin] as ShotLaunch['origin'])) return null;
+  return { courtId: scope.courtId, version: 1, shotId: value.shotId as string, spotId: value.spotId,
     origin: [...value.origin] as ShotLaunch['origin'], velocity: [...value.velocity] as ShotLaunch['velocity'] };
 }
 function readShot(value: Record<string, unknown>, state: CourtState): CourtLiveShot | null {
   if (!id(value.playerId) || !integer(value.seatEpoch) || !integer(value.sequence) || value.sequence === 0 || !integer(value.serverTime)) return null;
   const seat = state.seats.find(seat => seat.playerId === value.playerId && seat.epoch === value.seatEpoch);
   if (!seat || value.sequence < seat.sequence || value.sequence > seat.sequence + 1) return null;
-  const launch = readLaunch(value.launch, seat, value.sequence);
+  const horse = state.horse;
+  // Incoming authority may include a free shot still in flight when HORSE starts.
+  // Outgoing HORSE shots remain restricted to the current reserved turn mark.
+  const allowedSpots = horseMember(horse, seat.playerId) && horse!.phase !== 'invited'
+    ? [seat.spotId, horse!.spotId] : [seat.spotId];
+  const launch = readLaunch(value.launch, seat, value.sequence, allowedSpots);
   return launch ? { playerId: value.playerId, seatEpoch: seat.epoch, sequence: value.sequence, serverTime: value.serverTime, launch } : null;
 }
-function readResult(value: unknown, seat: CourtSeat, sequence: number): ShotResult | null {
-  if (!object(value) || value.version !== 1 || value.courtId !== scope.courtId || value.shotId !== canonical(seat.epoch, sequence) || value.spotId !== seat.spotId ||
+function readResult(value: unknown, seat: CourtSeat, sequence: number, shotSpot: number): ShotResult | null {
+  if (!object(value) || value.version !== 1 || value.courtId !== scope.courtId || value.shotId !== canonical(seat.epoch, sequence) || value.spotId !== shotSpot ||
       !['make', 'miss'].includes(String(value.outcome)) || typeof value.swish !== 'boolean' || value.outcome === 'miss' && value.swish) return null;
-  return { courtId: scope.courtId, version: 1, shotId: value.shotId as string, spotId: seat.spotId, outcome: value.outcome as 'make' | 'miss', swish: value.swish };
+  return { courtId: scope.courtId, version: 1, shotId: value.shotId as string, spotId: shotSpot, outcome: value.outcome as 'make' | 'miss', swish: value.swish };
 }
 
 /** One adapter on the admitted world's existing connection; no independent socket. */
@@ -85,6 +93,9 @@ export class BasketballSync {
   private requestRevision = 0;
   private entered = false;
   private pendingShotId: string | null = null;
+  private horseIntent: HorseIntent | null = null;
+  private horseRetries = 0;
+  private horseTimer: ReturnType<typeof setTimeout> | null = null;
   private notice: string | null = null;
   private joinRetries = 0;
   private leaving = false;
@@ -92,7 +103,7 @@ export class BasketballSync {
   private leaveRecoveryTimer: ReturnType<typeof setTimeout> | null = null;
   private disposed = false;
   private listeners = new Set<(view: BasketballSyncView, event?: BasketballSyncEvent) => void>();
-  private launches = new Map<string, { sequence: number; serverTime: number; revision: number | null }>();
+  private launches = new Map<string, { sequence: number; serverTime: number; revision: number | null; spotId: number }>();
   private results = new Set<string>();
   private scheduled = new Map<string, ReturnType<typeof setTimeout>>();
   private pendingTimer: ReturnType<typeof setTimeout> | null = null;
@@ -103,15 +114,37 @@ export class BasketballSync {
   }
   get state(): BasketballSyncView {
     return { connected: this.connection.connected, available: this.available(), entered: this.entered,
-      court: this.court ? structuredClone(this.court) : null, ownSeat: this.ownSeat() ? { ...this.ownSeat()! } : null, pendingShotId: this.pendingShotId, notice: this.notice };
+      court: this.court ? structuredClone(this.court) : null, ownSeat: this.ownSeat() ? { ...this.ownSeat()! } : null, pendingShotId: this.pendingShotId, notice: this.notice,
+      horseAvailable: this.horseAvailable(), horsePending: !!this.horseIntent, shootingSpotId: this.shootingSpot() };
   }
   subscribe(listener: (view: BasketballSyncView, event?: BasketballSyncEvent) => void): () => void {
     this.listeners.add(listener); listener(this.state); return () => this.listeners.delete(listener);
   }
   private available() { return !this.disposed && this.connection.connected && !!this.connection.playerId && this.connection.roomId === MAIN_ROOM_ID && this.connection.worldId === MAIN_WORLD_ID && this.connection.capabilities.includes(BASKETBALL_CAPABILITY); }
   private ownSeat() { return this.court?.seats.find(seat => seat.playerId === this.connection.playerId) ?? null; }
+  private horseAvailable() { return this.available() && this.connection.capabilities.includes(BASKETBALL_HORSE_CAPABILITY); }
+  private participating() { const horse = this.court?.horse; return horseMember(horse, this.connection.playerId) && horse!.phase !== 'invited' && horse!.phase !== 'ended'; }
+  private shootingSpot() { return this.horseAvailable() && this.participating() && this.court!.horse!.occupantId === this.connection.playerId ? this.court!.horse!.spotId : this.ownSeat()?.spotId ?? null; }
   private now() { return this.transport.courtConnection.serverTime; }
   private send(type: 'court_join' | 'court_leave' | 'court_state') { return this.available() && this.transport.sendCourt({ ...scope, type, revision: this.requestRevision }); }
+  private permitsHorse(intent: HorseIntent) {
+    if (!this.horseAvailable() || !this.entered || !this.ownSeat() || this.pendingShotId || !this.court) return false;
+    const horse = this.court.horse;
+    if (intent.type === 'horse_accept') return horse?.phase === 'invited' && horse.inviteeId === this.connection.playerId && !this.court.seats.some(s => s.spotId === horse.spotId);
+    return id(intent.inviteeId) && intent.inviteeId !== this.connection.playerId && spot(intent.spotId)
+      && (!horse || horse.phase === 'ended') && this.court.seats.some(s => s.playerId === intent.inviteeId)
+      && !this.court.seats.some(s => s.spotId === intent.spotId);
+  }
+  private clearHorseRequest() { if (this.horseTimer) clearTimeout(this.horseTimer); this.horseTimer = null; this.horseIntent = null; }
+  private requestHorse(intent: HorseIntent): boolean {
+    if (this.horseIntent || !this.permitsHorse(intent)) return false;
+    this.horseIntent = intent; this.horseRetries = 0; this.notice = null;
+    this.horseTimer = setTimeout(() => { this.clearHorseRequest(); this.notice = 'HORSE confirmation timed out'; this.send('court_state'); this.emit(); }, 6000);
+    if (!this.transport.sendCourt({ ...scope, ...intent, revision: this.requestRevision })) { this.clearHorseRequest(); this.emit(); return false; }
+    this.emit(); return true;
+  }
+  inviteHorse(inviteeId: string, spotId: number): boolean { return this.requestHorse({ type: 'horse_invite', inviteeId, spotId }); }
+  acceptHorse(): boolean { return this.requestHorse({ type: 'horse_accept' }); }
   enter(spotId?: number): boolean {
     if (!this.available() || this.leaving || spotId !== undefined && (!spot(spotId) || this.court?.seats.some(seat => seat.spotId === spotId && seat.playerId !== this.connection.playerId) || this.court?.horse && !['ended', 'invited'].includes(this.court.horse.phase) && this.court.horse.spotId === spotId)) return false;
     if (this.entered) return true;
@@ -120,14 +153,17 @@ export class BasketballSync {
     this.emit(); return true;
   }
   leave(): void {
+    this.clearHorseRequest();
     if (this.entered || this.ownSeat()) { this.leaving = true; this.leaveRetries = 0; this.send('court_leave'); }
     this.entered = false; this.pendingShotId = null; this.clearFlight(); this.emit({ type: 'reset' });
   }
   shoot(gesture: BasketballGesture, releaseOffset: ReleaseOffset): ShotLaunch | null {
     const seat = this.ownSeat(), offset = readReleaseOffset(releaseOffset);
-    if (!this.available() || !this.entered || !seat || !offset || this.pendingShotId || this.now() < seat.readyAt || this.court?.horse && this.court.horse.phase !== 'ended') return null;
-    const origin = releaseOriginFromOffset(seat.spotId, offset);
-    const launch = origin && launchFromFlick(seat.spotId, gesture, origin);
+    if (!this.available() || !this.entered || !seat || !offset || this.pendingShotId || this.now() < seat.readyAt) return null;
+    if (this.participating() && (!this.horseAvailable() || this.court!.horse!.occupantId !== this.connection.playerId || this.now() < this.court!.horseReadyAt)) return null;
+    const shotSpot = this.shootingSpot()!;
+    const origin = releaseOriginFromOffset(shotSpot, offset);
+    const launch = origin && launchFromFlick(shotSpot, gesture, origin);
     if (!launch) return null;
     const sequence = seat.sequence + 1; launch.shotId = canonical(seat.epoch, sequence);
     const request: CourtRequest = { ...scope, type: 'court_shot', revision: this.requestRevision, seatEpoch: seat.epoch, sequence, shotId: launch.shotId, gesture: { ...gesture }, releaseOffset: offset };
@@ -170,7 +206,7 @@ export class BasketballSync {
     this.connection = connection;
     if (changed || !this.available()) {
       const hadCourt = this.entered || this.leaving || !!this.court || !!this.pendingShotId;
-      this.entered = false; this.leaving = false; this.court = null; this.requestRevision = 0; this.pendingShotId = null; this.notice = null; this.clearLeaveRecovery(); this.clearFlight();
+      this.entered = false; this.leaving = false; this.court = null; this.requestRevision = 0; this.pendingShotId = null; this.notice = null; this.clearHorseRequest(); this.clearLeaveRecovery(); this.clearFlight();
       if (changed || wasConnected !== connection.connected || hadCourt) this.emit({ type: 'reset' }); return;
     }
     if (!message) { this.emit(); return; }
@@ -192,10 +228,15 @@ export class BasketballSync {
           liveIds.add(shot.launch.shotId); live.push(shot);
         }
       }
-      if (message.type === 'court_rejected' && (!['court_join', 'court_leave', 'court_state', 'court_shot'].includes(String(message.requestType)) || !['stale', 'invalid', 'full', 'seat', 'duplicate', 'sequence', 'gesture', 'turn', 'mark', 'invitation', 'ended', 'busy'].includes(String(message.reason)))) return;
+      if (message.type === 'court_rejected' && (!['court_join', 'court_leave', 'court_state', 'court_shot', 'horse_invite', 'horse_accept'].includes(String(message.requestType)) || !['stale', 'invalid', 'full', 'seat', 'duplicate', 'sequence', 'gesture', 'turn', 'mark', 'invitation', 'ended', 'busy'].includes(String(message.reason)))) return;
       if (!this.adopt(state)) return;
       if (message.type === 'court_rejected') {
         this.notice = String(message.reason);
+        if (this.horseIntent && message.requestType === this.horseIntent.type) {
+          if (message.reason === 'stale' && this.horseRetries++ < 5 && this.permitsHorse(this.horseIntent)) {
+            if (!this.transport.sendCourt({ ...scope, ...this.horseIntent, revision: this.requestRevision })) this.clearHorseRequest();
+          } else this.clearHorseRequest();
+        }
         if (message.requestType === 'court_shot' && this.pendingShotId) { const shotId = this.pendingShotId; this.pendingShotId = null; this.clearPendingTimer(); this.launches.delete(shotId); this.emit({ type: 'reset', shotId }); }
         if (message.requestType === 'court_join') {
           if (message.reason === 'stale' && this.entered && !this.ownSeat() && this.joinRetries++ < 5) this.send('court_join');
@@ -206,6 +247,10 @@ export class BasketballSync {
           else { this.notice = 'Leaving court…'; this.recoverLeave(); }
         }
       }
+      const horse = this.court?.horse, intent = this.horseIntent;
+      if (intent && horse && (intent.type === 'horse_invite'
+        ? horse.inviterId === this.connection.playerId && horse.inviteeId === intent.inviteeId && horse.spotId === intent.spotId
+        : horse.inviteeId === this.connection.playerId && horse.phase !== 'invited')) this.clearHorseRequest();
       if (this.entered) for (const shot of live) this.launch(shot, null);
       this.emit(); return;
     }
@@ -219,8 +264,8 @@ export class BasketballSync {
       if (!state || state.revision !== message.revision || state.serverTime > (message.serverTime as number) || !id(message.playerId) || !integer(message.sequence) || !integer(message.seatEpoch)) return;
       const seat = this.court.seats.find(seat => seat.playerId === message.playerId && seat.epoch === message.seatEpoch);
       const resultSeat = state.seats.find(seat => seat.playerId === message.playerId && seat.epoch === message.seatEpoch);
-      const result = seat && readResult(message.result, seat, message.sequence);
-      const accepted = result && this.launches.get(result.shotId);
+      const accepted = this.launches.get(canonical(message.seatEpoch, message.sequence));
+      const result = seat && accepted && readResult(message.result, seat, message.sequence, accepted.spotId);
       if (!seat || !resultSeat || resultSeat.sequence !== message.sequence || !result || !accepted || accepted.sequence !== message.sequence || accepted.revision !== null && accepted.revision !== message.revision || this.results.has(result.shotId) || this.scheduled.has(result.shotId)) return;
       const delay = (message.serverTime as number) - connection.serverTime;
       if (delay < 0 && (message.serverTime as number) < accepted.serverTime || delay > 3000) return;
@@ -238,7 +283,7 @@ export class BasketballSync {
     const elapsedSeconds = Math.max(0, (this.now() - shot.serverTime) / 1000);
     if (this.launches.has(shot.launch.shotId) || this.results.has(shot.launch.shotId)) return;
     if (revision !== null) this.requestRevision = Math.max(this.requestRevision, revision);
-    this.launches.set(shot.launch.shotId, { sequence: shot.sequence, serverTime: shot.serverTime, revision });
+    this.launches.set(shot.launch.shotId, { sequence: shot.sequence, serverTime: shot.serverTime, revision, spotId: shot.launch.spotId });
     while (this.launches.size > 256) { const oldest = this.launches.keys().next().value!; this.launches.delete(oldest); this.results.delete(oldest); }
     if (elapsedSeconds >= 3) return;
     this.emit({ type: 'launch', launch: shot.launch, elapsedSeconds, own: shot.playerId === this.connection.playerId,

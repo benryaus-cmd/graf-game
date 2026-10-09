@@ -194,6 +194,7 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { BasketballControls } from '../src/components/BasketballControls';
 import type { BasketballSyncView } from '../src/multiplayer/basketballSync';
+import { CourtSession } from '../src/game/basketballSession';
 const controlView = { nearby: true, active: false, spotId: null, attempts: 0, makes: 0, streak: 0, recentResult: null };
 function renderControls(shared?: BasketballSyncView, active = false) {
   return renderToStaticMarkup(createElement(BasketballControls, {
@@ -201,7 +202,31 @@ function renderControls(shared?: BasketballSyncView, active = false) {
     onEnter: () => {}, onLeave: () => {}, onSpot: () => {}, onShoot: () => {}, onBallTarget: () => null, onBallMove: () => {},
   }));
 }
-const sharedView: BasketballSyncView = { connected: true, available: true, entered: false, ownSeat: null, pendingShotId: null, court: null, notice: null };
+test('HORSE controls require server support, a peer and an unused mark', () => {
+  const server = new CourtSession({ roomId: 'morning-quarter-v1', mapId: 'map2', courtId: 'map2-basketball' });
+  server.join('me', 0, 0); server.join('peer', 1, 0);
+  const court = server.snapshot();
+  const shared = { ...sharedView, entered: true, ownSeat: court.seats[0], court };
+  assert.doesNotMatch(renderControls(shared, true), /CHALLENGE TO HORSE|ACCEPT HORSE/);
+  const enabled = { ...shared, horseAvailable: true };
+  assert.match(renderControls(enabled, true), /CHALLENGE TO HORSE/);
+  assert.match(renderControls(enabled, true), /value="peer"/);
+  for (let i = 2; i < 5; i++) server.join('p' + i, server.snapshot().revision, 0);
+  assert.match(renderControls({ ...enabled, court: server.snapshot() }, true), /Need an unused shooting mark/);
+});
+test('invited player sees accept and authoritative match letters turn and winner are displayed', () => {
+  const server = new CourtSession({ roomId: 'morning-quarter-v1', mapId: 'map2', courtId: 'map2-basketball' });
+  server.join('me', 0, 0); server.join('peer', 1, 0); server.inviteHorse('me', 'peer', 4, 2, 0);
+  let court = server.snapshot();
+  const shared = { ...sharedView, entered: true, horseAvailable: true, ownSeat: court.seats[1], court };
+  assert.match(renderControls(shared, true), /ACCEPT HORSE/);
+  server.acceptHorse('peer', court.revision, 0); court = server.snapshot();
+  const active = { ...shared, court: { ...court, horse: { ...court.horse!, phase: 'match' as const, occupantId: 'peer', letters: { me: 'HO', peer: 'H' } } } };
+  assert.match(renderControls(active, true), /MATCH/); assert.match(renderControls(active, true), /Your turn/);
+  assert.match(renderControls(active, true), /HO/);
+  assert.match(renderControls({ ...active, court: { ...active.court, horse: { ...active.court.horse, phase: 'ended', winnerId: 'peer', occupantId: null } } }, true), /Winner: You/);
+});
+const sharedView: BasketballSyncView = { connected: true, available: true, entered: false, ownSeat: null, pendingShotId: null, court: null, notice: null, horseAvailable: false, horsePending: false, shootingSpotId: null };
 test('shared controls require admitted capability while unsupported town retains solo practice', () => {
   assert.match(renderControls(), /PLAY BASKETBALL/);
   const unavailable = renderControls({ ...sharedView, available: false });

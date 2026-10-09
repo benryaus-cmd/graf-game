@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { BASKETBALL_MAX_FLICK_SPEED, basketballFlickSpeed, type BasketballGesture } from '@/game/basketballPhysics';
 import type { BasketballView } from '@/game/basketballGame';
 import type { BasketballSyncView } from '@/multiplayer/basketballSync';
@@ -87,6 +87,9 @@ export function attachBasketballFlickPad(pad: HTMLElement, shoot: (gesture: Bask
 interface BasketballControlsProps {
   view: BasketballView | null;
   shared?: BasketballSyncView | null;
+  playerNames?: Record<string, string>;
+  onInviteHorse?: (playerId: string, spotId: number) => void;
+  onAcceptHorse?: () => void;
   exploring: boolean;
   paused: boolean;
   onEnter: () => void;
@@ -96,14 +99,23 @@ interface BasketballControlsProps {
   onBallTarget:()=>BasketballBallTarget|null;
   onBallMove:(point:BasketballScreenPoint|null)=>void;
 }
-export function BasketballControls({view,shared,exploring,paused,onEnter,onLeave,onSpot,onShoot,onBallTarget,onBallMove}:BasketballControlsProps) {
+export function BasketballControls({view,shared,playerNames = {},onInviteHorse,onAcceptHorse,exploring,paused,onEnter,onLeave,onSpot,onShoot,onBallTarget,onBallMove}:BasketballControlsProps) {
   const sharedMode = !!shared?.connected && shared.available;
+  const [selectedOpponent, setSelectedOpponent] = useState('');
+  const horse = sharedMode && shared.horseAvailable ? shared.court?.horse : null;
+  const ownId = shared?.ownSeat?.playerId;
+  const participating = !!horse && (horse.phase === 'set' || horse.phase === 'match') && (horse.inviterId === ownId || horse.inviteeId === ownId);
+  const waitingTurn = participating && horse.occupantId !== ownId;
+  const peers = (shared?.court?.seats ?? []).filter(seat => seat.playerId !== ownId);
+  const opponent = peers.some(seat => seat.playerId === selectedOpponent) ? selectedOpponent : peers[0]?.playerId ?? '';
+  const freeMark = BASKETBALL_COURT.spots.find(mark => !shared?.court?.seats.some(seat => seat.spotId === mark.id));
+  const playerLabel = (playerId: string | null) => playerId === ownId ? 'You' : playerId && playerNames[playerId] || `Player ${(shared?.court?.seats.find(seat => seat.playerId === playerId)?.spotId ?? 0) + 1}`;
   const pad=useRef<HTMLDivElement>(null),shoot=useRef(onShoot),ballTarget=useRef(onBallTarget),ballMove=useRef(onBallMove);
   shoot.current=onShoot;ballTarget.current=onBallTarget;ballMove.current=onBallMove;
   useEffect(()=>{
-    if(!pad.current || !view?.active || paused || (sharedMode && (!shared.ownSeat || !!shared.pendingShotId))) return;
+    if(!pad.current || !view?.active || paused || waitingTurn || (sharedMode && (!shared.ownSeat || !!shared.pendingShotId))) return;
     return attachBasketballFlickPad(pad.current,gesture=>shoot.current(gesture),{target:()=>ballTarget.current(),move:point=>ballMove.current(point)});
-  },[view?.active,view?.spotId,paused,sharedMode,shared?.ownSeat?.epoch,shared?.pendingShotId]);
+  },[view?.active,view?.spotId,paused,waitingTurn,sharedMode,shared?.ownSeat?.epoch,shared?.pendingShotId]);
   if(!view || paused) return null;
   if(!view.active) {
     if (!view.nearby || !exploring) return null;
@@ -112,7 +124,7 @@ export function BasketballControls({view,shared,exploring,paused,onEnter,onLeave
     return <div className="basketball-entry"><button className="basketball-enter" onClick={onEnter}>{sharedMode ? 'JOIN SHARED COURT' : shared?.connected ? 'SOLO PRACTICE' : 'PLAY BASKETBALL'}</button>{sharedMode && shared.notice && <p className="basketball-entry-notice" role="status">Court: {shared.notice}</p>}</div>;
   }
   const outcome=view.recentResult?.outcome;
-  const status=sharedMode && shared.pendingShotId ? 'Waiting for court…' : (sharedMode ? shared.notice : null) ?? (outcome==='make' ? 'BUCKET!' : outcome==='miss' ? 'Try again' : 'Grab ball, flick up');
+  const status=sharedMode && shared.pendingShotId ? 'Waiting for court…' : waitingTurn ? `Waiting for ${playerLabel(horse!.occupantId)}` : (sharedMode ? shared.notice : null) ?? (outcome==='make' ? 'BUCKET!' : outcome==='miss' ? 'Try again' : 'Grab ball, flick up');
   return <section className="basketball-controls" aria-label="Basketball shooting controls">
     <div className="basketball-screen" ref={pad} role="group" aria-label="Grab the ball, flick upward and release">
       <div className="basketball-feedback" aria-hidden="true">
@@ -124,5 +136,20 @@ export function BasketballControls({view,shared,exploring,paused,onEnter,onLeave
     <p className={`basketball-result ${outcome==='make'?'is-make':''}`} aria-live="polite">{status}</p>
     <button className="basketball-leave" data-basketball-ui onClick={onLeave}>LEAVE</button>
     <div className="basketball-spots" data-basketball-ui aria-label={sharedMode ? "Server assigned shooting spot" : "Choose shooting spot"}>{BASKETBALL_COURT.spots.map((spot,index)=><button key={spot.id} disabled={sharedMode} aria-label={`Spot ${index+1}`} aria-pressed={view.spotId===spot.id} onClick={()=>onSpot(spot.id)}>{index+1}</button>)}</div>
+    {sharedMode && shared.horseAvailable && <aside className="basketball-horse" data-basketball-ui aria-label="HORSE challenge">
+      {horse && <>
+        <div className="basketball-horse-letters"><span>{playerLabel(horse.inviterId)} <b>{horse.letters[horse.inviterId] || '—'}</b></span><span>{playerLabel(horse.inviteeId)} <b>{horse.letters[horse.inviteeId] || '—'}</b></span></div>
+        {horse.phase === 'invited' ? <>
+          <small>{horse.inviteeId === ownId ? `${playerLabel(horse.inviterId)} challenged you` : `Invitation to ${playerLabel(horse.inviteeId)}`}</small>
+          {horse.inviteeId === ownId && <button disabled={shared.horsePending || !!shared.pendingShotId || !freeMark || shared.court?.seats.some(seat => seat.spotId === horse.spotId)} onClick={onAcceptHorse}>ACCEPT HORSE</button>}
+        </> : horse.phase === 'ended' ? <small>Winner: {playerLabel(horse.winnerId)}</small> : <small><b>{horse.phase.toUpperCase()}</b> · {horse.occupantId === ownId ? 'Your turn' : `${playerLabel(horse.occupantId)} shooting`}</small>}
+      </>}
+      {(!horse || horse.phase === 'ended') && <details><summary>CHALLENGE TO HORSE</summary>
+        <label>Seated players<select aria-label="HORSE opponent" value={opponent} onChange={event => setSelectedOpponent(event.target.value)} disabled={!peers.length || shared.horsePending}>{peers.length ? peers.map(seat => <option key={seat.playerId} value={seat.playerId}>{playerLabel(seat.playerId)}</option>) : <option value="">No other seated players</option>}</select></label>
+        <button disabled={!opponent || !freeMark || shared.horsePending || !!shared.pendingShotId} onClick={() => { if (opponent && freeMark) onInviteHorse?.(opponent, freeMark.id); }}>CHALLENGE TO HORSE</button>
+        {!freeMark && <small>Need an unused shooting mark</small>}
+      </details>}
+      {shared.horsePending && <small role="status">Waiting for HORSE confirmation…</small>}
+    </aside>}
   </section>;
 }

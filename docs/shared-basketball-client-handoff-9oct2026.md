@@ -6,11 +6,11 @@ The town remains `roomId: morning-quarter-v1`, `worldId: map2-v1`, canonical map
 
 `src/multiplayer/basketballSync.ts` uses the admitted `WorldSession` connection. The client advertises optional `basketball_court_v1`; shared controls appear only after the server advertises it and admits the correct town world. Without it, connected players can still use SOLO PRACTICE. World protocol remains 2 and client network revision remains 6.
 
-The server assigns one of five marks and an allocation epoch. Grabbing and releasing the visible ball predicts its flight immediately. Shared scores and feedback wait for a valid authoritative result; predictions cannot grant coins. Echoes reconcile the same canonical ball. Rejections remove it without scoring. Seats are released on leaving or disconnect; stale leave responses retry with pacing, without disconnecting painting. HORSE invitations and controls remain disabled.
+The server assigns one of five marks and an allocation epoch. Grabbing and releasing the visible ball predicts its flight immediately. Shared scores and feedback wait for a valid authoritative result; predictions cannot grant coins. Echoes reconcile the same canonical ball. Rejections remove it without scoring. Seats are released on leaving or disconnect; stale leave responses retry with pacing, without disconnecting painting. HORSE client invitations, acceptance and turns are implemented behind the optional server capability `basketball_horse_v1`; see [horse-client-handoff-9oct2026.md](horse-client-handoff-9oct2026.md). They remain disabled until the server advertises support.
 
 ## Required shot contract
 
-Adopt current `basketballCourt.ts`, `basketballPhysics.ts`, `basketballRelease.ts`, `basketballHorse.ts` and `basketballSession.ts` together. Keep court version 1 because this extension has never been deployed. The exact full request/response contract is in [basketball-server-handoff.md](basketball-server-handoff.md).
+Adopt current `basketballCourt.ts`, `basketballPhysics.ts`, `basketballRelease.ts` and `basketballSession.ts` together. HorseState/HorseSession are in basketballSession.ts. Keep court version 1. The exact full request/response contract is in [basketball-server-handoff.md](basketball-server-handoff.md).
 
 Example shot (IDs/revision come from the assigned seat and latest authority):
 
@@ -45,6 +45,6 @@ Here `serverTime` is launch time, and `launch` has the same validated shape as `
 2. Integrate the updated pure court contract into the same authenticated room service; implement join, leave, state, shot, rejection and timed result broadcasts. Clear seats on disconnect/room change.
 3. Confirm or revise `liveShots`, and advertise `basketball_court_v1` only for clients/services that support the complete contract.
 4. Run actual two-client make/drop/rejection/echo/late-arrival equivalence and five-client seat allocation/full/disconnect checks. Mocked frontend tests are not proof of backend deployment.
-5. Leave HORSE disabled until the adapter, invitation/turn/departure flows and real two-client checks are complete. If your preferred backend scheduling/schema differs, provide updated schemas before enabling it.
+5. Leave the optional `basketball_horse_v1` server capability disabled until the adapter, invitation/turn/departure flows and real two-client checks are complete. Follow the new HORSE handover for the existing invite/accept messages and proposed decline/cancel schemas. If your preferred backend scheduling/schema differs, provide updated schemas before enabling it.
 
 No server deployment was performed by this frontend update. Existing account permissions, credits, town painting IDs and separate original-map art remain unchanged.

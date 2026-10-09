@@ -6,6 +6,7 @@ import { createBall, launchFromFlick, stepBall } from '../src/game/basketballPhy
 import { BASKETBALL_COURT } from '../src/game/basketballCourt';
 import { flickDy } from './basketball-calibration';
 import { BasketballFlickTracker } from '../src/game/basketballGesture';
+import { HorseSession } from '../src/game/basketballSession';
 
 function setup() {
   let now = 0;
@@ -28,6 +29,23 @@ function resources(scene: THREE.Scene) {
   return { geometries, materials, objects };
 }
 const gesture = { dx: 0, dy: .5, durationMs: 300 };
+
+test('shared HORSE reposition preserves score and flight, then restores assigned seat when waiting', () => {
+  const { game, world } = setup();
+  const horseSession = new HorseSession({ roomId: 'morning-quarter-v1', mapId: 'map2', courtId: 'map2-basketball' }, 'me', 'peer', 4);
+  const horse = horseSession.accept('peer', 0, 0).state;
+  const seat = { playerId: 'me', spotId: 0, attempts: 2, makes: 1 };
+  game.positionSharedPlayer(seat, null); game.syncSharedCounters(seat);
+  const launch = launchFromFlick(0, gesture)!; launch.shotId = 's1-1'; game.predictSharedShot(launch);
+  game.positionSharedPlayer(seat, horse);
+  assert.equal(game.getSnapshot().spotId, 4); assert.equal(game.getSnapshot().makes, 1);
+  assert.equal(world.scene.getObjectByName('basketball-flight-0')!.visible, true);
+  assert.deepEqual(world.playerPosition.toArray().slice(0, 1), [BASKETBALL_COURT.spots[4].position[0]]);
+  game.positionSharedPlayer(seat, { ...horse, occupantId: 'peer' });
+  assert.equal(game.getSnapshot().spotId, 0);
+  game.positionSharedPlayer(seat, { ...horse, phase: 'ended', occupantId: null });
+  assert.equal(game.getSnapshot().spotId, 0); game.dispose();
+});
 
 test('overlapping miss then make keeps the newest result and chronological streak when the older miss resolves', () => {
   const { game, setNow } = setup();
