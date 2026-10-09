@@ -1,0 +1,26 @@
+{
+  "version": "hubside-branding-9oct2026",
+  "commit": "9f339d4dc4ba154879f8ba1b87be001ded8773ea",
+  "baseUrl": "https://raw.githubusercontent.com/benryaus-cmd/graf-game/9f339d4dc4ba154879f8ba1b87be001ded8773ea/",
+  "files": [
+    {
+      "source": "src/App.tsx",
+      "target": "src/games/importedGame/upstream/src/App.tsx"
+    },
+    {
+      "source": "src/index.css",
+      "target": "src/games/importedGame/upstream/src/index.css"
+    }
+  ],
+  "assetRequirement": {
+    "target": "src/games/importedGame/upstream/src/assets/hubside-cover.avif",
+    "source": "attached HubSide cover AVIF provided alongside Aippy prompt",
+    "note": "Image is not a GitHub raw download. Place the attached binary asset in this exact target BEFORE Vite builds."
+  },
+  "notes": [
+    "GitHub source and standalone index.html now use HubSide branding.",
+    "The upstream app shows the new cover asset when present and falls back to the original cover while absent.",
+    "Preserve host root package.json, index.html, vite.config.ts and existing importer.",
+    "Download GitHub files as raw bytes at pinned commit; do not run Node directly in Aippy chat."
+  ]
+}
