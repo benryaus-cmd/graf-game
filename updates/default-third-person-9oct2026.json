@@ -1,0 +1,17 @@
+{
+  "version": "default-third-person-9oct2026",
+  "commit": "88101d3594db2853c47272db1005e70dab93bf75",
+  "baseUrl": "https://raw.githubusercontent.com/benryaus-cmd/graf-game/88101d3594db2853c47272db1005e70dab93bf75/",
+  "description": "Default player camera to third person on launch and map switching.",
+  "files": [
+    {
+      "source": "src/App.tsx",
+      "target": "src/games/importedGame/upstream/src/App.tsx"
+    }
+  ],
+  "notes": [
+    "View toggle still allows first person and map mode.",
+    "Existing paint/inspect camera behavior is unchanged.",
+    "Import exactly this file into upstream via Node 22."
+  ]
+}
