@@ -4,6 +4,7 @@ import { SheetCollapseContext } from '@/components/GameSheet';
 import PlayersSheet from '@/components/PlayersSheet';
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import menuBackground from '@/assets/graffciti-menu.webp';
+import { createPortal } from 'react-dom';
 import { aippyTweaks } from '@aippy/runtime/tweaks';
 import GameHud, { type HudMenu } from '@/components/GameHud';
 import WorldScene, { type MultiplayerRequest } from '@/components/WorldScene';
@@ -571,8 +572,8 @@ const App = () => {
               <section className="tool-section"><h3>RADIO</h3>{radioController && <RadioControl controller={radioController} url={RADIO_STREAM_URL} initialVolume={musicVolume} onInteraction={() => { if (!tutorialReview && tutorialStep === 'radio') setTutorialStep('multiplayer'); }} />}</section>
             </SettingsModal>
           )}
-          {multiplayerConsentOpen && (
-            <div role="presentation" style={{position:'absolute',inset:0,zIndex:200,background:'rgba(0,0,0,.78)',display:'flex',alignItems:'center',justifyContent:'center',padding:16}} onPointerDown={event=>event.stopPropagation()} onClick={event=>event.stopPropagation()}>
+          {multiplayerConsentOpen && createPortal(
+            <div role="presentation" style={{position:'fixed',inset:0,zIndex:2147483647,background:'rgba(0,0,0,.78)',display:'flex',alignItems:'center',justifyContent:'center',padding:16}} onPointerDown={event=>event.stopPropagation()} onClick={event=>event.stopPropagation()}>
               <section role="dialog" aria-modal="true" aria-labelledby="multiplayer-consent-heading" style={{width:'min(400px,100%)',maxHeight:'100%',overflowY:'auto',background:'#20251f',color:'#f5f2e6',padding:20,border:'1px solid #899184',borderRadius:12,boxShadow:'0 12px 36px #000a',textAlign:'center'}}>
                 <h2 id="multiplayer-consent-heading" style={{fontSize:18,fontWeight:900,margin:'0 0 14px'}}>MULTIPLAYER NOTICE</h2>
                 <p style={{fontSize:14,lineHeight:1.5,margin:'0 0 14px'}}>Multiplayer includes real players and user-created graffiti. We moderate content, but some artwork or conversations may be inappropriate or offensive.</p>
@@ -582,7 +583,7 @@ const App = () => {
                   <button type="button" onClick={()=>{setMultiplayerConsentOpen(false);confirmedMultiplayerJoin.current=true;requestMultiplayer('join');}} style={{flex:'1 1 110px',minHeight:46,borderRadius:8,border:'1px solid #deb66f',background:'#b5853d',color:'#141611',fontWeight:900}}>I UNDERSTAND · CONTINUE</button>
                 </div>
               </section>
-            </div>
+            </div>, document.body
           )}
           {developerChoice && <GameSheet title="DEVELOPER TOOLS" onClose={() => setDeveloperChoice(false)}><div className="menu-grid"><button onClick={() => { setDeveloperChoice(false); setDevViewerOpen(true); }}>PROJECT FILE VIEWER</button><button onClick={() => { setDeveloperChoice(false); setLiveSettingsOpen(true); }}>LIVE GAME SETTINGS</button></div></GameSheet>}
           {liveSettingsOpen && <DeveloperPanel onClose={() => setLiveSettingsOpen(false)} onFiles={() => { setLiveSettingsOpen(false); setDevViewerOpen(true); }} onMorningPreset={()=>{setSky('pastel');saveMapSky(mapId,'pastel');setRenderSettings({...MORNING_PRESET});}} />}
