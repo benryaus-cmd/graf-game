@@ -11,6 +11,8 @@ test('persisted flattened artwork mounts on canonical wall with detached blank p
   const target = new THREE.Mesh(new THREE.PlaneGeometry(8, 5), new THREE.MeshBasicMaterial());
   const blankLayer = new THREE.Mesh(new THREE.PlaneGeometry(8, 5), new THREE.MeshBasicMaterial());
   const wallId = 'ss1:0:0:quarter-fixture';
+  target.scale.set(3, 2, 0.5);
+  target.rotation.z = Math.PI / 6;
   scene.add(target);
   const wall = { surfaceId: wallId, mesh: target, layers: [{ mesh: blankLayer }], faceDimensions: [{width:8,height:5}] } as unknown as PaintWall;
   assert.equal(blankLayer.parent, null);
@@ -19,13 +21,22 @@ test('persisted flattened artwork mounts on canonical wall with detached blank p
     id, surfaceId: encodeSurface(wallId, 0, 0), face: '0',
     assetRef: 'https://example.com/persisted.webp',
     image: 'https://example.com/persisted.webp',
-    position: [0, 0, 0], quaternion: [0, 0, 0, 1], width: 2, height: 1
+    position: [0, 0, 0], quaternion: [0, 0, 0, 1], width: 2, height: 2
   };
   const direct = addPosterOverlay(wall, record, {} as HTMLImageElement);
   assert.equal(direct.parent, wall.mesh);
   assert.equal(direct.parent?.parent, scene);
   assert.equal(blankLayer.parent, null);
-  assert.equal(direct.position.z, 0.006);
+  const assertWorldDimensions = (object: THREE.Object3D) => {
+    object.updateWorldMatrix(true, false);
+    const vertices = (object as THREE.Mesh).geometry as THREE.PlaneGeometry;
+    const position = vertices.getAttribute('position');
+    const corners = [0, 1, 2].map(i => new THREE.Vector3().fromBufferAttribute(position, i).applyMatrix4(object.matrixWorld));
+    assert.ok(Math.abs(corners[0].distanceTo(corners[1]) - 2) < 1e-6, 'world width exactly 2m');
+    assert.ok(Math.abs(corners[0].distanceTo(corners[2]) - 2) < 1e-6, 'world height exactly 2m');
+  };
+  assertWorldDimensions(direct);
+  assert.ok(Math.abs(direct.position.z * target.scale.z - 0.006) < 1e-6, 'world outward offset is 6mm');
   assert.equal((direct.material as THREE.MeshBasicMaterial).depthTest, true);
   assert.equal((direct.material as THREE.MeshBasicMaterial).depthWrite, false);
   direct.removeFromParent();
@@ -56,6 +67,7 @@ test('persisted flattened artwork mounts on canonical wall with detached blank p
       const mounted = sync.meshFor(id);
       assert.ok(mounted, 'existing persisted piece reconstructed from snapshot without strokes');
       assert.equal(mounted.parent, wall.mesh);
+      assertWorldDimensions(mounted);
       assert.equal(mounted.parent?.parent, scene);
       assert.equal(blankLayer.parent, null, 'ensureFace was never called');
       sync.clear();
