@@ -1,0 +1,47 @@
+{
+  "version": "mobile-ui-9oct2026",
+  "commit": "08c1b260515e85f0800a3c413d008d2c6c72baf3",
+  "baseUrl": "https://raw.githubusercontent.com/benryaus-cmd/graf-game/08c1b260515e85f0800a3c413d008d2c6c72baf3/",
+  "description": "Compact mobile paint controls, smaller translucent HUD and movable game panels with device position memory and safe phone/landscape bounds.",
+  "files": [
+    {
+      "source": "src/components/BrushTuning.tsx",
+      "target": "src/games/importedGame/upstream/src/components/BrushTuning.tsx"
+    },
+    {
+      "source": "src/components/GameSheet.tsx",
+      "target": "src/games/importedGame/upstream/src/components/GameSheet.tsx"
+    },
+    {
+      "source": "src/components/PaintDock.tsx",
+      "target": "src/games/importedGame/upstream/src/components/PaintDock.tsx"
+    },
+    {
+      "source": "src/index.css",
+      "target": "src/games/importedGame/upstream/src/index.css"
+    },
+    {
+      "source": "src/components/movableSheet.css",
+      "target": "src/games/importedGame/upstream/src/components/movableSheet.css"
+    },
+    {
+      "source": "src/components/movableSheetLayout.ts",
+      "target": "src/games/importedGame/upstream/src/components/movableSheetLayout.ts"
+    },
+    {
+      "source": "src/components/paintDock.css",
+      "target": "src/games/importedGame/upstream/src/components/paintDock.css"
+    },
+    {
+      "source": "src/components/useMovableSheet.ts",
+      "target": "src/games/importedGame/upstream/src/components/useMovableSheet.ts"
+    }
+  ],
+  "notes": [
+    "Use Node 22 and the existing incremental downloader. Download all eight listed files as raw bytes, then replace each exact target path; create listed new source files where needed.",
+    "Preserve settings, saves, artwork, all unlisted files, importer, aliases, host wrapper and dependencies. No full re-import or server changes.",
+    "Move game panels by dragging their title bars. Positions stay on this device; collapse controls and focus/scroll behavior remain available.",
+    "Paint tools use one brush strip, smaller colour swatches, compact Size/Opacity controls and expandable Layers/Saved palettes. Existing paint actions, tutorials, tags, palettes and world/basketball systems are preserved.",
+    "Verified: 457 tests, application TypeScript, lint, upstream build and incremental Aippy host build. Chromium integration tested 384x606 portrait, 606x384 and 760x360 landscape, rotated shell gestures, keyboard bounds and panel position restoration. Software rendering; no phone FPS claim."
+  ]
+}
