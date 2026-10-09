@@ -102,6 +102,8 @@ interface BasketballControlsProps {
 export function BasketballControls({view,shared,playerNames = {},onInviteHorse,onAcceptHorse,exploring,paused,onEnter,onLeave,onSpot,onShoot,onBallTarget,onBallMove}:BasketballControlsProps) {
   const sharedMode = !!shared?.connected && shared.available;
   const [selectedOpponent, setSelectedOpponent] = useState('');
+  const [horseNotice, setHorseNotice] = useState('');
+  const lastHorseFeedback = useRef<number | null>(null);
   const horse = sharedMode && shared.horseAvailable ? shared.court?.horse : null;
   const ownId = shared?.ownSeat?.playerId;
   const participating = !!horse && (horse.phase === 'set' || horse.phase === 'match') && (horse.inviterId === ownId || horse.inviteeId === ownId);
@@ -112,6 +114,22 @@ export function BasketballControls({view,shared,playerNames = {},onInviteHorse,o
   const playerLabel = (playerId: string | null) => playerId === ownId ? 'You' : playerId && playerNames[playerId] || `Player ${(shared?.court?.seats.find(seat => seat.playerId === playerId)?.spotId ?? 0) + 1}`;
   const pad=useRef<HTMLDivElement>(null),shoot=useRef(onShoot),ballTarget=useRef(onBallTarget),ballMove=useRef(onBallMove);
   shoot.current=onShoot;ballTarget.current=onBallTarget;ballMove.current=onBallMove;
+  useEffect(() => {
+    const feedback = shared?.horseFeedback;
+    if (!feedback || feedback.revision === lastHorseFeedback.current) return;
+    lastHorseFeedback.current = feedback.revision;
+    const notices = feedback.letters.map(({playerId,value}) =>
+      playerId === ownId
+        ? `YOU GOT ${value.at(-1)}${value.length > 1 ? ' · '+value : ''}`
+        : `${(playerNames[playerId] || 'Opponent').toUpperCase()} GOT ${value.at(-1)}`);
+    if (feedback.winnerId && ownId) notices.push(feedback.winnerId === ownId ? 'HORSE — YOU WIN' : 'HORSE — YOU LOSE');
+    if (!notices.length) return;
+    setHorseNotice(notices[0]);
+    const timers = notices.slice(1).map((text,index) => setTimeout(() => setHorseNotice(text), (index+1)*1800));
+    timers.push(setTimeout(() => setHorseNotice(''), notices.length*1800));
+    return () => timers.forEach(clearTimeout);
+  }, [shared?.horseFeedback, ownId, playerNames]);
+
   useEffect(()=>{
     if(!pad.current || !view?.active || paused || waitingTurn || (sharedMode && (!shared.ownSeat || !!shared.pendingShotId))) return;
     return attachBasketballFlickPad(pad.current,gesture=>shoot.current(gesture),{target:()=>ballTarget.current(),move:point=>ballMove.current(point)});
@@ -133,6 +151,7 @@ export function BasketballControls({view,shared,playerNames = {},onInviteHorse,o
       </div>
     </div>
     <div className="basketball-score"><span><b>{view.makes}</b>/{view.attempts} made</span><span>{sharedMode ? "Shared court" : <><b>{view.streak}</b> streak</>}</span></div>
+    {horseNotice && <p className="basketball-horse-notice" role="status" aria-live="assertive">{horseNotice}</p>}
     <p className={`basketball-result ${outcome==='make'?'is-make':''}`} aria-live="polite">{status}</p>
     <button className="basketball-leave" data-basketball-ui onClick={onLeave}>LEAVE</button>
     <div className="basketball-spots" data-basketball-ui aria-label={sharedMode ? "Server assigned shooting spot" : "Choose shooting spot"}>{BASKETBALL_COURT.spots.map((spot,index)=><button key={spot.id} disabled={sharedMode} aria-label={`Spot ${index+1}`} aria-pressed={view.spotId===spot.id} onClick={()=>onSpot(spot.id)}>{index+1}</button>)}</div>
