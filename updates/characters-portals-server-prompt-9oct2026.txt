@@ -1,0 +1,8 @@
+Read this exact frontend handover on GitHub:
+https://raw.githubusercontent.com/benryaus-cmd/graf-game/b25778b769784ddd2469b42d3b50ef3ab653221b/docs/characters-portals-server-handoff-9oct2026.md
+
+Wire the optional allowlisted player_state.state.cosmetics.characterModel into the CURRENT GraffCiti server's existing appearance validation, state storage, player_state relay, player_join and world_snapshot.players. Preserve current protocol 2/network revision 6, endpoints, authentication, town identity, artwork, clothing permissions and basketball/HORSE contracts. No new message type or capability is needed.
+
+Validate the twelve IDs from the handover; absent/unknown values fall back to original. Models are free and do not grant inventory or permissions. If current movement validation prevents the fixed courtyard-to-court transition, propose an agreed alternative schema before changing the contract.
+
+Verify two real clients, appearance changes during a session, late joins and reconnects. Report the exact deployed behavior or any proposed schema changes for the frontend AI.

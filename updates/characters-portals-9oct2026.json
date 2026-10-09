@@ -1,0 +1,80 @@
+{
+  "version": "characters-portals-9oct2026",
+  "commit": "b25778b769784ddd2469b42d3b50ef3ab653221b",
+  "baseUrl": "https://raw.githubusercontent.com/benryaus-cmd/graf-game/b25778b769784ddd2469b42d3b50ef3ab653221b/",
+  "description": "Twelve selectable characters with multiplayer appearance support, animated Quaternius models and three town courtyard portals.",
+  "files": [
+    {
+      "source": "src/App.tsx",
+      "target": "src/games/importedGame/upstream/src/App.tsx"
+    },
+    {
+      "source": "src/components/AvatarMenu.tsx",
+      "target": "src/games/importedGame/upstream/src/components/AvatarMenu.tsx"
+    },
+    {
+      "source": "src/components/GameHud.tsx",
+      "target": "src/games/importedGame/upstream/src/components/GameHud.tsx"
+    },
+    {
+      "source": "src/components/WorldScene.tsx",
+      "target": "src/games/importedGame/upstream/src/components/WorldScene.tsx"
+    },
+    {
+      "source": "src/game/assetPreview.ts",
+      "target": "src/games/importedGame/upstream/src/game/assetPreview.ts"
+    },
+    {
+      "source": "src/game/assetPreviewPreference.ts",
+      "target": "src/games/importedGame/upstream/src/game/assetPreviewPreference.ts"
+    },
+    {
+      "source": "src/index.css",
+      "target": "src/games/importedGame/upstream/src/index.css"
+    },
+    {
+      "source": "src/multiplayer/protocol.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/protocol.ts"
+    },
+    {
+      "source": "src/multiplayer/remotePlayers.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/remotePlayers.ts"
+    },
+    {
+      "source": "src/game/characterCatalog.ts",
+      "target": "src/games/importedGame/upstream/src/game/characterCatalog.ts"
+    },
+    {
+      "source": "src/game/characterModelPool.ts",
+      "target": "src/games/importedGame/upstream/src/game/characterModelPool.ts"
+    },
+    {
+      "source": "src/game/courtyardPortals.ts",
+      "target": "src/games/importedGame/upstream/src/game/courtyardPortals.ts"
+    },
+    {
+      "source": "src/game/worldMovement.ts",
+      "target": "src/games/importedGame/upstream/src/game/worldMovement.ts"
+    },
+    {
+      "source": "src/game/worldControls.ts",
+      "target": "src/games/importedGame/upstream/src/game/worldControls.ts"
+    },
+    {
+      "source": "src/game/worldKeyboard.ts",
+      "target": "src/games/importedGame/upstream/src/game/worldKeyboard.ts"
+    },
+    {
+      "source": "src/game/worldTypes.ts",
+      "target": "src/games/importedGame/upstream/src/game/worldTypes.ts"
+    }
+  ],
+  "notes": [
+    "Use Node 22 and the existing incremental downloader. Download all 16 listed files as raw bytes before replacing their exact target paths.",
+    "Preserve settings, saves, artwork, all unlisted files, importer, aliases, host wrapper, dependencies and server. No full re-import.",
+    "Ten new GLBs and actual preview images load on demand from immutable GitHub URLs in characterCatalog; they are not embedded into the host HTML.",
+    "Server must validate and preserve the optional existing player_state.state.cosmetics.characterModel field in relays and snapshots. No new endpoint, wire message or capability.",
+    "Courtyard portals open Characters, land beside Basketball, and use the existing multiplayer join from solo. Original local world remains separate.",
+    "Current shared basketball/HORSE contracts and free-shooting physics remain unchanged."
+  ]
+}

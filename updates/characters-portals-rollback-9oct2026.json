@@ -1,0 +1,63 @@
+{
+  "version": "characters-portals-rollback-9oct2026",
+  "commit": "cc9b7bf0ac3537e4933d2081a105dfa4c3c92e0f",
+  "baseUrl": "https://raw.githubusercontent.com/benryaus-cmd/graf-game/cc9b7bf0ac3537e4933d2081a105dfa4c3c92e0f/",
+  "files": [
+    {
+      "source": "src/App.tsx",
+      "target": "src/games/importedGame/upstream/src/App.tsx"
+    },
+    {
+      "source": "src/components/AvatarMenu.tsx",
+      "target": "src/games/importedGame/upstream/src/components/AvatarMenu.tsx"
+    },
+    {
+      "source": "src/components/GameHud.tsx",
+      "target": "src/games/importedGame/upstream/src/components/GameHud.tsx"
+    },
+    {
+      "source": "src/components/WorldScene.tsx",
+      "target": "src/games/importedGame/upstream/src/components/WorldScene.tsx"
+    },
+    {
+      "source": "src/game/assetPreview.ts",
+      "target": "src/games/importedGame/upstream/src/game/assetPreview.ts"
+    },
+    {
+      "source": "src/game/assetPreviewPreference.ts",
+      "target": "src/games/importedGame/upstream/src/game/assetPreviewPreference.ts"
+    },
+    {
+      "source": "src/index.css",
+      "target": "src/games/importedGame/upstream/src/index.css"
+    },
+    {
+      "source": "src/multiplayer/protocol.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/protocol.ts"
+    },
+    {
+      "source": "src/multiplayer/remotePlayers.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/remotePlayers.ts"
+    },
+    {
+      "source": "src/game/worldMovement.ts",
+      "target": "src/games/importedGame/upstream/src/game/worldMovement.ts"
+    },
+    {
+      "source": "src/game/worldControls.ts",
+      "target": "src/games/importedGame/upstream/src/game/worldControls.ts"
+    },
+    {
+      "source": "src/game/worldKeyboard.ts",
+      "target": "src/games/importedGame/upstream/src/game/worldKeyboard.ts"
+    },
+    {
+      "source": "src/game/worldTypes.ts",
+      "target": "src/games/importedGame/upstream/src/game/worldTypes.ts"
+    }
+  ],
+  "notes": [
+    "Replace these 13 pre-existing files to restore the prior runtime. Preserve saves/settings and all other files.",
+    "The three new source modules may remain unused. Do not delete artwork, preferences, dependency or host files."
+  ]
+}
