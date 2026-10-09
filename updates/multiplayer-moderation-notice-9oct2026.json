@@ -1,0 +1,17 @@
+{
+  "version": "multiplayer-moderation-notice-9oct2026",
+  "commit": "71d2eb389a62ae734a148565fad902aa8dbf6039",
+  "baseUrl": "https://raw.githubusercontent.com/benryaus-cmd/graf-game/71d2eb389a62ae734a148565fad902aa8dbf6039/",
+  "description": "Update multiplayer consent popup to acknowledge UGC moderation and prohibited explicit content/swearing without 18+ framing.",
+  "files": [
+    {
+      "source": "src/App.tsx",
+      "target": "src/games/importedGame/upstream/src/App.tsx"
+    }
+  ],
+  "notes": [
+    "Notice copy only; preserves existing pre-join confirmation and Go Back behavior.",
+    "Content reporting statement is display copy, not a new reporting implementation.",
+    "No server, chat moderation, content filtering or ban logic changed."
+  ]
+}
