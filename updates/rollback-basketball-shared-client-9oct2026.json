@@ -1,0 +1,43 @@
+{
+  "version": "rollback-basketball-shared-client-9oct2026",
+  "commit": "ccf86b6ecbd246b1e734e2fed6c5820ce836a796",
+  "baseUrl": "https://raw.githubusercontent.com/benryaus-cmd/graf-game/ccf86b6ecbd246b1e734e2fed6c5820ce836a796/",
+  "description": "Restore the previous town/basketball client. Unreferenced new helpers may remain.",
+  "files": [
+    {
+      "source": "src/App.tsx",
+      "target": "src/games/importedGame/upstream/src/App.tsx"
+    },
+    {
+      "source": "src/components/BasketballControls.tsx",
+      "target": "src/games/importedGame/upstream/src/components/BasketballControls.tsx"
+    },
+    {
+      "source": "src/components/WorldScene.tsx",
+      "target": "src/games/importedGame/upstream/src/components/WorldScene.tsx"
+    },
+    {
+      "source": "src/components/basketball.css",
+      "target": "src/games/importedGame/upstream/src/components/basketball.css"
+    },
+    {
+      "source": "src/game/basketballGame.ts",
+      "target": "src/games/importedGame/upstream/src/game/basketballGame.ts"
+    },
+    {
+      "source": "src/game/basketballSession.ts",
+      "target": "src/games/importedGame/upstream/src/game/basketballSession.ts"
+    },
+    {
+      "source": "src/multiplayer/connection.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/connection.ts"
+    },
+    {
+      "source": "src/multiplayer/worldSession.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/worldSession.ts"
+    }
+  ],
+  "notes": [
+    "Download and replace these 8 existing files using the existing incremental downloader. Preserve all unlisted files, saves, artwork and settings. The two added helper files become unreferenced and can remain. No full re-import or server change."
+  ]
+}

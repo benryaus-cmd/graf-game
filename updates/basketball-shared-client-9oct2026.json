@@ -1,0 +1,55 @@
+{
+  "version": "basketball-shared-client-9oct2026",
+  "commit": "066c285ce95393faf0f2c3b5c008be07f769534d",
+  "baseUrl": "https://raw.githubusercontent.com/benryaus-cmd/graf-game/066c285ce95393faf0f2c3b5c008be07f769534d/",
+  "description": "Shared basketball client with actual ball release position, server-assigned marks and authority-only scores; every-entry invitation from the original world to the town.",
+  "files": [
+    {
+      "source": "src/App.tsx",
+      "target": "src/games/importedGame/upstream/src/App.tsx"
+    },
+    {
+      "source": "src/components/BasketballControls.tsx",
+      "target": "src/games/importedGame/upstream/src/components/BasketballControls.tsx"
+    },
+    {
+      "source": "src/components/WorldScene.tsx",
+      "target": "src/games/importedGame/upstream/src/components/WorldScene.tsx"
+    },
+    {
+      "source": "src/components/basketball.css",
+      "target": "src/games/importedGame/upstream/src/components/basketball.css"
+    },
+    {
+      "source": "src/game/basketballGame.ts",
+      "target": "src/games/importedGame/upstream/src/game/basketballGame.ts"
+    },
+    {
+      "source": "src/game/basketballSession.ts",
+      "target": "src/games/importedGame/upstream/src/game/basketballSession.ts"
+    },
+    {
+      "source": "src/multiplayer/connection.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/connection.ts"
+    },
+    {
+      "source": "src/multiplayer/worldSession.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/worldSession.ts"
+    },
+    {
+      "source": "src/game/basketballRelease.ts",
+      "target": "src/games/importedGame/upstream/src/game/basketballRelease.ts"
+    },
+    {
+      "source": "src/multiplayer/basketballSync.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/basketballSync.ts"
+    }
+  ],
+  "notes": [
+    "Use the existing Node 22 incremental downloader. Download all 10 listed files as raw bytes before replacing their exact target paths; create the two new source paths if absent.",
+    "Preserve settings, saves, artwork, all unlisted files, importer, aliases, host wrapper, dependencies and server. No full re-import.",
+    "Shared free shooting requires the existing server to admit the town and advertise basketball_court_v1 after adopting the updated contract. Unsupported servers still offer solo practice. HORSE remains disabled.",
+    "Keep existing basketball physics/gesture files from the town-basketball tidy update; this update preserves its softer 8.1 maximum speed and normal-release drops.",
+    "The old-world prompt appears on each entry, including saved original choice. Yes selects town; No stays in original. No saved artwork migration."
+  ]
+}
