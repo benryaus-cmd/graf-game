@@ -1,0 +1,19 @@
+{
+  "version": "flatten-world-size-9oct2026",
+  "commit": "54b33bb916677ef5ad0f18ee9adcebaa04f2c962",
+  "baseUrl": "https://raw.githubusercontent.com/benryaus-cmd/graf-game/54b33bb916677ef5ad0f18ee9adcebaa04f2c962/",
+  "description": "Render flattened graffiti at saved world-space width and height on scaled or rotated Map 2 paint surfaces.",
+  "files": [
+    {
+      "source": "src/game/posterOverlay.ts",
+      "target": "src/games/importedGame/upstream/src/game/posterOverlay.ts"
+    }
+  ],
+  "notes": [
+    "Do not change server, saved dimensions, surfaceId or flatten protocol.",
+    "Preserve canonical wall.mesh parent and existing material settings.",
+    "Compensate parent world scale for plane X/Y size and 0.006 world-space outward offset.",
+    "GitHub regression test: tests/flattenCanonicalParent.test.ts. Not an Aippy runtime import file.",
+    "Refresh existing flattened artwork through reconnect/resync after import."
+  ]
+}
