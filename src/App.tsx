@@ -3,7 +3,7 @@ import { setRenderSettings } from '@/game/renderSettings';
 import { SheetCollapseContext } from '@/components/GameSheet';
 import PlayersSheet from '@/components/PlayersSheet';
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
-import fallbackCover from '@/assets/graffciti-menu.webp';
+import hubsideCover from '@/assets/hubside-cover.avif';
 import { createPortal } from 'react-dom';
 import { aippyTweaks } from '@aippy/runtime/tweaks';
 import GameHud, { type HudMenu } from '@/components/GameHud';
@@ -44,7 +44,7 @@ import { TUTORIAL_ORDER, nextTutorialStep, tutorialStartStep, tutorialObservedSt
 const ProjectFileViewer = lazy(() => import('@/components/ProjectFileViewer'));
 
 const tweaks = aippyTweaks(tweaksConfig);
-const COVER_IMAGE_URL = `${import.meta.env.BASE_URL}hubside-cover.avif`;
+const COVER_IMAGE_URL = hubsideCover;
 const COLORS = ['#ff4d43', '#ff65a5', '#45d7df', '#ffd34e', '#b9e84e', '#f7f2dc'];
 const CAMERA_LABELS: Record<CameraMode, string> = {
   first: 'FIRST PERSON', third: 'THIRD PERSON', map: 'MAP VIEW',
@@ -450,7 +450,7 @@ const App = () => {
     >
       {!hasJoined ? (
         <section className="cover-screen" aria-label="Welcome to HubSide">
-          <img className="cover-art" src={COVER_IMAGE_URL} onError={event => { if (event.currentTarget.src !== fallbackCover) event.currentTarget.src = fallbackCover; }} alt="HubSide game cover showing graffiti and basketball in an urban world" />
+          <img className="cover-art" src={COVER_IMAGE_URL} alt="HubSide game cover showing graffiti and basketball in an urban world" />
           <div className="cover-shade" />
           <div className="cover-content">
             <span className="cover-kicker">AN OPEN CREATIVE WORLD</span>
