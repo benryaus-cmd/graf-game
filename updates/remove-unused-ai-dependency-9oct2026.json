@@ -1,0 +1,28 @@
+{
+  "version": "remove-unused-ai-dependency-9oct2026",
+  "mode": "explicit-host-file-override",
+  "commit": "5d9566b8b694872e4a811d49c454380ee2c0036d",
+  "baseUrl": "https://raw.githubusercontent.com/benryaus-cmd/graf-game/5d9566b8b694872e4a811d49c454380ee2c0036d/",
+  "description": "One-time explicitly authorised Aippy host dependency update: remove unused direct AI SDK dependency without replacing the Aippy runtime.",
+  "files": [
+    {
+      "source": "package.json",
+      "target": "package.json"
+    },
+    {
+      "source": "pnpm-lock.yaml",
+      "target": "pnpm-lock.yaml"
+    }
+  ],
+  "overridePreservedPaths": [
+    "package.json",
+    "pnpm-lock.yaml"
+  ],
+  "notes": [
+    "For THIS import only, allow replacement of the two named root host files even if normally excluded by the GitHub importer.",
+    "Do not import entire upstream tree or rewrite any other file.",
+    "Keep existing @aippy/runtime and @aippy/vite-plugins intact.",
+    "Aippy runtime declares ai as a peer dependency; transitive lock entries can remain. Removing direct ai does not guarantee the platform warning disappears.",
+    "Stage both exact files before replacement, backup both, replace, verify, build; rollback on failure."
+  ]
+}
