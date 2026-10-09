@@ -49,7 +49,7 @@ export class ArtworkSync {
     const record: SharedArtwork = { ...artwork, id, assetRef: artwork.image, surfaceId: encodeSurface(wall.surfaceId, face, 0), face: String(face) };
     this.records.set(id, record); this.local.set(id, record); this.index(record);
     // The existing placement has already drawn it. Keep its mesh instead of drawing the server echo.
-    const parent = wall.layers[0]?.mesh ?? wall.mesh;
+    const parent = wall.mesh;
     const mesh = [...parent.children].reverse().find(child => child.userData.posterArtwork && ![...this.mounted.values()].some(m => m.mesh === child));
     if (mesh) this.mounted.set(id, { wall, mesh });
     this.applyOrder();
@@ -146,10 +146,8 @@ export class ArtworkSync {
           this.updateLoadingIndicator();
           const current = this.records.get(record.id);
           if (!current || current.assetRef !== load.assetRef) return;
-          addPosterOverlay(wall, current, image);
-          const parent = wall.layers[0]?.mesh ?? wall.mesh;
-          const mesh = parent.children[parent.children.length - 1];
-          if (mesh) this.mounted.set(record.id, { wall, mesh });
+          const mesh = addPosterOverlay(wall, current, image);
+          this.mounted.set(record.id, { wall, mesh });
           this.applyOrder();
           this.updateLoadingIndicator();
         };
