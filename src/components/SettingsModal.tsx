@@ -9,7 +9,7 @@ interface SettingsModalProps {
   children?: ReactNode;
 }
 
-export default function SettingsModal({ onClose, onUnlock, radioVolume = .32, onRadioVolume, children }: SettingsModalProps) {
+export default function SettingsModal({ onClose, onUnlock, radioVolume = .10, onRadioVolume, children }: SettingsModalProps) {
   const taps = useRef<number[]>([]);
   const [passwordOpen, setPasswordOpen] = useState(false);
   const [password, setPassword] = useState('');
