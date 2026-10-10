@@ -1,0 +1,18 @@
+{
+  "version": "hubside-flatten-7mm-10oct2026",
+  "commit": "c2ed81e3cd0d2de1aff28246da9d24dc44c4cb1e",
+  "baseUrl": "https://raw.githubusercontent.com/benryaus-cmd/graf-game/c2ed81e3cd0d2de1aff28246da9d24dc44c4cb1e/",
+  "fileCount": 1,
+  "description": "Reduce persisted and flattened artwork plane clearance from 7cm to 7mm, retaining canonical wall parent, existing saved transforms and world-scale compensation.",
+  "files": [
+    {
+      "source": "src/game/posterOverlay.ts",
+      "target": "src/games/importedGame/upstream/src/game/posterOverlay.ts"
+    }
+  ],
+  "notes": [
+    "Client rendering-only change. No server, snapshots, assets or persistence modifications.",
+    "Source regression tests have been updated to expect the 7mm clearance but are not needed for the Aippy runtime import.",
+    "This does not claim to fix artwork absent after reconnect; separate investigation of artwork loading/visibility and parent visibility is still required."
+  ]
+}
