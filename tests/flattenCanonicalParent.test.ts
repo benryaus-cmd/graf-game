@@ -36,7 +36,7 @@ test('persisted flattened artwork mounts on canonical wall with detached blank p
     assert.ok(Math.abs(corners[0].distanceTo(corners[2]) - 2) < 1e-6, 'world height exactly 2m');
   };
   assertWorldDimensions(direct);
-  assert.ok(Math.abs(direct.position.z * target.scale.z - 0.07) < 1e-6, 'world outward offset is 6mm');
+  assert.ok(Math.abs(direct.position.z * target.scale.z - 0.007) < 1e-6, 'world outward offset is 7mm');
   assert.equal((direct.material as THREE.MeshBasicMaterial).depthTest, true);
   assert.equal((direct.material as THREE.MeshBasicMaterial).depthWrite, false);
   direct.removeFromParent();
