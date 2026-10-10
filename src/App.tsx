@@ -26,6 +26,7 @@ import SettingsModal from '@/components/SettingsModal';
 import DeveloperPanel from '@/components/DeveloperPanel';
 import GameSheet from '@/components/GameSheet';
 import RadioControl from '@/components/RadioControl';
+import RadioQuickControl from '@/components/RadioQuickControl';
 import { useSprayAudio } from '@/components/useSprayAudio';
 import { usePosterPlacement } from '@/game/usePosterPlacement';
 import { getAvatarAppearance, loadGameProgress, saveGameProgress, type GameProgress, type ShopItem } from '@/game/progression';
@@ -525,6 +526,7 @@ const App = () => {
                   onJoin={() => requestMultiplayer('join')} onLeave={() => requestMultiplayer('leave')}
                   messages={multiplayerView.chat} onChat={text => requestMultiplayer('chat', text)} onResync={() => requestMultiplayer('resync')} />}
               </div>
+              <RadioQuickControl controller={radioController} />
             </>}
           />
           {!basketballActive && !menuBlocking && !reference?.moving && <LookJoystick onLook={setLookInput} canvasMode={workspaceView.active} />}
