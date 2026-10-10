@@ -45,6 +45,7 @@ const ProjectFileViewer = lazy(() => import('@/components/ProjectFileViewer'));
 
 const tweaks = aippyTweaks(tweaksConfig);
 const COVER_IMAGE_URL = hubsideCover;
+const ZOMBIES_GAME_URL = 'https://preview--bcbfd409-fd14-4729-a64e-a34f33efe018.aippy.live?';
 const COLORS = ['#ff4d43', '#ff65a5', '#45d7df', '#ffd34e', '#b9e84e', '#f7f2dc'];
 const CAMERA_LABELS: Record<CameraMode, string> = {
   first: 'FIRST PERSON', third: 'THIRD PERSON', map: 'MAP VIEW',
@@ -74,6 +75,7 @@ const App = () => {
   const [multiplayerView, setMultiplayerView] = useState<MultiplayerView>({ chat: [], revision: 0, accountFeaturesAvailable: false, worldItemCount: 0 });
   const [multiplayerRequest, setMultiplayerRequest] = useState<MultiplayerRequest | null>(null);
   const [multiplayerConsentOpen, setMultiplayerConsentOpen] = useState(false);
+  const [zombiesPortalOpen, setZombiesPortalOpen] = useState(false);
   const confirmedMultiplayerJoin = useRef(false);
   const requestMultiplayer = (action: MultiplayerRequest['action'], text?: string, role?: ServerRole, colour?: string, protectionEnabled?: boolean, creator?: MultiplayerRequest['creator']) => {
     if(action==='join'&&!canJoinMultiplayer(mapId))return;
@@ -173,7 +175,7 @@ const App = () => {
   const [eyedropperNotice, setEyedropperNotice] = useState('');
   const [activeMenu, setActiveMenu] = useState<HudMenu>(null);
   const [sheetCollapsed, setSheetCollapsed] = useState(false);
-  const menuBlocking = newMapPrompt || multiplayerConsentOpen || (!!activeMenu && !sheetCollapsed);
+  const menuBlocking = newMapPrompt || multiplayerConsentOpen || zombiesPortalOpen || (!!activeMenu && !sheetCollapsed);
   const [movement, setMovement] = useState<MovementInput>({ x: 0, y: 0 });
   const [lookInput, setLookInput] = useState<MovementInput>({ x: 0, y: 0 });
   const [jumpSignal, setJumpSignal] = useState(0);
@@ -470,6 +472,7 @@ const App = () => {
             onCharacterModelState={setCharacterState}
             onCharacterPortal={() => { setMovement({ x: 0, y: 0 }); setLookInput({ x: 0, y: 0 }); setViewMode('third'); setSheetCollapsed(false); setActiveMenu('avatar'); }}
             onMultiplayerPortal={() => { setMovement({ x: 0, y: 0 }); setLookInput({ x: 0, y: 0 }); if (aippyUser.isLoading) { setSheetCollapsed(false); setActiveMenu('settings'); } else requestMultiplayer('join'); }}
+             onZombiesPortal={() => { setMovement({ x: 0, y: 0 }); setLookInput({ x: 0, y: 0 }); setActiveMenu(null); setZombiesPortalOpen(true); }}
             onBasketballActiveChange={active => { if (active) emoteViewReturn.current.cancel(); setBasketballActive(active); }} onBasketballScore={() => playBasketSwish(radioVolume)}
             onSoloHistoryChange={setSoloHistory}
             reference={reference} onReferenceMove={(x, y) => setReference(current => current ? { ...current, x, y } : null)}
@@ -581,6 +584,17 @@ const App = () => {
                 <div style={{display:'flex',gap:10,justifyContent:'center',flexWrap:'wrap'}}>
                   <button type="button" onClick={()=>setMultiplayerConsentOpen(false)} style={{flex:'1 1 110px',minHeight:46,borderRadius:8,border:'1px solid #737a71',background:'#333b33',color:'#fff'}}>GO BACK</button>
                   <button type="button" onClick={()=>{setMultiplayerConsentOpen(false);confirmedMultiplayerJoin.current=true;requestMultiplayer('join');}} style={{flex:'1 1 110px',minHeight:46,borderRadius:8,border:'1px solid #deb66f',background:'#b5853d',color:'#141611',fontWeight:900}}>I UNDERSTAND · CONTINUE</button>
+                </div>
+              </section>
+            </div>, document.body
+          )}
+          {zombiesPortalOpen && createPortal(
+            <div role="presentation" style={{position:'fixed',inset:0,zIndex:2147483647,background:'rgba(0,0,0,.78)',display:'flex',alignItems:'center',justifyContent:'center',padding:16}} onPointerDown={event=>event.stopPropagation()} onClick={event=>event.stopPropagation()}>
+              <section role="dialog" aria-modal="true" aria-labelledby="zombies-portal-heading" style={{width:'min(360px,100%)',background:'#20251f',color:'#f5f2e6',padding:20,border:'1px solid #8fe06d',borderRadius:12,boxShadow:'0 12px 36px #000a',textAlign:'center'}}>
+                <h2 id="zombies-portal-heading" style={{fontSize:20,fontWeight:900,margin:'0 0 20px'}}>Play Zombies?</h2>
+                <div style={{display:'flex',gap:10,justifyContent:'center'}}>
+                  <button type="button" onClick={()=>setZombiesPortalOpen(false)} style={{flex:1,minHeight:46,borderRadius:8,border:'1px solid #737a71',background:'#333b33',color:'#fff',fontWeight:800}}>NO</button>
+                  <button type="button" onClick={()=>window.location.assign(ZOMBIES_GAME_URL)} style={{flex:1,minHeight:46,borderRadius:8,border:'1px solid #8fe06d',background:'#8fe06d',color:'#141611',fontWeight:900}}>YES</button>
                 </div>
               </section>
             </div>, document.body
