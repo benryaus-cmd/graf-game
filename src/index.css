@@ -30,6 +30,12 @@ button { color: inherit; -webkit-tap-highlight-color: transparent; }
 .top-network-controls { display: contents; }
 .top-actions button, .paint-quick-controls button, .canvas-credit-status { pointer-events: auto; min-height: 38px; border: 1px solid var(--edge); border-radius: 7px; background: #171816bd; padding: 0 8px; font-size: 11px; font-weight: 700; letter-spacing: .02em; white-space: nowrap; }
 .hud-menu-button { margin-left: auto; min-width: 38px; font-size: 18px !important; }
+.hud-radio { display: flex; align-items: center; gap: 2px; min-width: 74px; flex: 0 0 auto; pointer-events: auto; }
+.top-actions .hud-radio-channel, .top-actions .hud-radio-speaker { min-height: 38px; padding: 0; border-radius: 7px; text-align: center; }
+.top-actions .hud-radio-channel { width: 36px; min-width: 36px; background: var(--hud-radio-color, #7ee1aa); color: #122018; font-size: 15px; font-weight: 900; }
+.top-actions .hud-radio-speaker { width: 36px; min-width: 36px; display: grid; place-items: center; color: #fff; }
+.top-actions .hud-radio[data-muted='true'] .hud-radio-channel { background: #454a49; color: #e1e3de; }
+.top-actions .hud-radio-speaker svg { width: 18px; height: 18px; }
 .canvas-credit-status { display: inline-flex; align-items: center; position: relative; color: #d8d1a1; font-variant-numeric: tabular-nums; }
 .canvas-credit-gain { position: absolute; right: 0; top: 100%; color: #9fffaa; font-size: 12px; pointer-events: none; }
 .connection-pill { display: flex; align-items: center; gap: 5px; }
