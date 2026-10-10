@@ -47,6 +47,7 @@ interface WorldSceneProps {
   paused?: boolean;
   onCharacterPortal?: () => void;
   onMultiplayerPortal?: () => void;
+  onZombiesPortal?: () => void;
   onCharacterModelState?: (state: CharacterModelState) => void;
   onBasketballActiveChange?: (active: boolean) => void;
   onBasketballScore?: () => void;
@@ -253,6 +254,7 @@ const WorldScene = (props: WorldSceneProps) => {
     const portals = props.mapId === 'map2' ? new CourtyardPortals(world.scene, action => {
       if (action === 'characters') portalProps.current.onCharacterPortal?.();
       else if (action === 'multiplayer') portalProps.current.onMultiplayerPortal?.();
+      else if (action === 'zombies') portalProps.current.onZombiesPortal?.();
       else {
         world.playerPosition.fromArray(BASKETBALL_PORTAL_LANDING);
         world.playerYaw = BASKETBALL_PORTAL_YAW;
