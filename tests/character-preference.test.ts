@@ -20,10 +20,13 @@ test('fresh devices receive each imported Quaternius model and save it before re
   }
 });
 
-test('every valid saved choice including Original and Hoodie survives startup without rerolling', () => {
+test('real saved choices persist; retired Original and Hoodie migrate to Casual Male', () => {
   for (const model of CHARACTER_MODELS) {
     const saved = { model: model.id, building: false };
-    assert.deepEqual(loadAssetPreviewPreference(memoryStorage(JSON.stringify(saved)), () => { throw new Error('Do not replace a chosen character'); }), saved);
+    const storage = memoryStorage(JSON.stringify(saved));
+    const choice = loadAssetPreviewPreference(storage, () => { throw new Error('Do not reroll'); });
+    assert.deepEqual(choice, { model: model.id === 'original' || model.id === 'hoodie' ? 'casual-male' : model.id, building: false });
+    assert.deepEqual(JSON.parse(storage.getItem(key)!), choice);
   }
 });
 
