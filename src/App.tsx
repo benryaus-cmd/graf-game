@@ -46,7 +46,7 @@ const ProjectFileViewer = lazy(() => import('@/components/ProjectFileViewer'));
 
 const tweaks = aippyTweaks(tweaksConfig);
 const COVER_IMAGE_URL = hubsideCover;
-const ZOMBIES_GAME_URL = 'https://preview--bcbfd409-fd14-4729-a64e-a34f33efe018.aippy.live?';
+const ZOMBIES_GAME_URL = 'https://preview--bcbfd409-fd14-4729-a64e-a34f33efe018.aippy.live';
 const COLORS = ['#ff4d43', '#ff65a5', '#45d7df', '#ffd34e', '#b9e84e', '#f7f2dc'];
 const CAMERA_LABELS: Record<CameraMode, string> = {
   first: 'FIRST PERSON', third: 'THIRD PERSON', map: 'MAP VIEW',
