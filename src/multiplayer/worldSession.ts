@@ -138,8 +138,8 @@ export class WorldMultiplayerSession {
   constructor(private world: WorldEngine, private report: (status: MultiplayerStatus) => void,
     private reportView: (view: MultiplayerView) => void = () => {}) {
     this.lastPosition = world.playerPosition.toArray();
-    this.players = new RemotePlayers(world.scene, () => world.playerPosition);
-    this.ownSpeech = new SpeechBubble(world.playerAvatar, () => world.playerPosition, undefined, 2.0);
+    this.players = new RemotePlayers(world.scene, () => world.playerPosition, () => world.cameraMode === 'map' ? world.mapCamera : world.camera);
+    this.ownSpeech = new SpeechBubble(world.playerAvatar, () => world.playerPosition, undefined, 2.0, { scale: 0.6, backgroundAlpha: 0.47 });
     this.replay = new PaintReplay(() => this.visibility);
     this.connection = new MultiplayerConnection(MULTIPLAYER_URL, status => {
       if (status.phase === 'disconnected' || status.phase === 'connecting') {
