@@ -11,7 +11,7 @@ test('persisted artwork offsets outward along its rotated normal without mutatin
     const saved=JSON.stringify(artwork), parent=new THREE.Group();
     addPosterOverlay({mesh:parent,layers:[]} as unknown as PaintWall,artwork,{} as HTMLImageElement);
     const mesh=parent.children[0] as THREE.Mesh<THREE.PlaneGeometry,THREE.MeshBasicMaterial>;
-    const expected=new THREE.Vector3().fromArray(artwork.position).addScaledVector(normal,0.006);
+    const expected=new THREE.Vector3().fromArray(artwork.position).addScaledVector(normal,0.07);
     assert.ok(mesh.position.distanceTo(expected)<1e-10);
     assert.equal(JSON.stringify(artwork),saved);
     assert.equal(mesh.material.depthTest,true);
