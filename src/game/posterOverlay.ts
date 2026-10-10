@@ -39,9 +39,9 @@ export function addPosterOverlay(
   mesh.quaternion.fromArray(artwork.quaternion);
   // Render clear of the wall along the plane normal; keep persisted placement unchanged.
   const worldNormalUnits = worldUnitsPerLocal(new THREE.Vector3(0, 0, 1));
-  // Prevent persisted flats from clipping behind nearby facade/floor render geometry.
-  // Keep the saved surface transform and dimensions unchanged.
-  mesh.translateZ(0.07 / Math.max(worldNormalUnits, 1e-6));
+  // Keep saved placements untouched. A small world-space 7mm clearance avoids the
+  // visibly floating art caused by the previous 7cm offset.
+  mesh.translateZ(0.007 / Math.max(worldNormalUnits, 1e-6));
   mesh.renderOrder = 90;
   mesh.userData.posterArtwork = true;
   wall.mesh.add(mesh);
