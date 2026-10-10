@@ -1,0 +1,27 @@
+{
+  "version": "hubside-zombies-portal-10oct2026",
+  "commit": "ef7df53a0288f84a06ec86b114b61c88ad85049c",
+  "baseUrl": "https://raw.githubusercontent.com/benryaus-cmd/graf-game/ef7df53a0288f84a06ec86b114b61c88ad85049c/",
+  "description": "Add a fourth neon ZOMBIES courtyard portal next to the existing portals. Entering shows Play Zombies? YES / NO and YES navigates to the supplied Dead City preview.",
+  "files": [
+    {
+      "source": "src/game/courtyardPortals.ts",
+      "target": "src/games/importedGame/upstream/src/game/courtyardPortals.ts"
+    },
+    {
+      "source": "src/components/WorldScene.tsx",
+      "target": "src/games/importedGame/upstream/src/components/WorldScene.tsx"
+    },
+    {
+      "source": "src/App.tsx",
+      "target": "src/games/importedGame/upstream/src/App.tsx"
+    }
+  ],
+  "notes": [
+    "Uses existing courtyard portal entry and occupancy logic; existing three positions and basketball/multiplayer behaviours stay unchanged.",
+    "Adds O/Z to the existing lightweight portal label glyph atlas.",
+    "YES navigates the current view to https://preview--bcbfd409-fd14-4729-a64e-a34f33efe018.aippy.live?; NO dismisses with no navigation.",
+    "React confirmation mounts in a document.body portal above the game and pauses gameplay while open.",
+    "No multiplayer backend changes, new dependencies or asset downloads; tests/courtyard-portals.test.ts was updated in GitHub but is not necessary for the Aippy runtime import."
+  ]
+}
