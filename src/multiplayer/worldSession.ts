@@ -534,14 +534,20 @@ export class WorldMultiplayerSession {
   private artworkWorldMatrix(artwork: import('./artworkSync').SharedArtwork): THREE.Matrix4 | null {
     const surface = decodeSurface(artwork.surfaceId), wall = surface && this.walls.get(surface.wallId);
     if (!wall) return null;
-    const parent = wall.layers[0]?.mesh ?? wall.mesh; parent.updateWorldMatrix(true, false);
-    return parent.matrixWorld.clone().multiply(new THREE.Matrix4().compose(new THREE.Vector3(...artwork.position), new THREE.Quaternion(...artwork.quaternion), new THREE.Vector3(1,1,1)));
+    const mounted = this.artworks.meshFor(artwork.id);
+    if (mounted) { mounted.updateWorldMatrix(true, false); return mounted.matrixWorld.clone(); }
+    // Artwork is parented to the canonical wall, not a sometimes-detached layer.
+    wall.mesh.updateWorldMatrix(true, false);
+    return wall.mesh.matrixWorld.clone().multiply(new THREE.Matrix4().compose(new THREE.Vector3(...artwork.position), new THREE.Quaternion(...artwork.quaternion), new THREE.Vector3(1,1,1)));
   }
   private pulseArtwork(artworkId: string): void {
     const artwork = this.artworks.entries().find(value => value.id === artworkId); if (!artwork) return;
     const matrix = this.artworkWorldMatrix(artwork); if (!matrix) return;
-    const corners = [[-1,-1],[-1,1],[1,-1],[1,1]].map(([x,y]) => new THREE.Vector3(x * artwork.width / 2, y * artwork.height / 2, 0).applyMatrix4(matrix));
-    const box = new THREE.Box3().setFromPoints(corners).expandByScalar(.025);
+    const mounted = this.artworks.meshFor(artworkId);
+    const box = mounted ? new THREE.Box3().setFromObject(mounted) : new THREE.Box3().setFromPoints(
+      [[-1,-1],[-1,1],[1,-1],[1,1]].map(([x,y]) => new THREE.Vector3(x * artwork.width / 2, y * artwork.height / 2, 0).applyMatrix4(matrix)),
+    );
+    box.expandByScalar(.025);
     this.piecePulseStop?.(); this.piecePulseStop = pulsePieceBounds(this.world.scene, { min: box.min.toArray(), max: box.max.toArray() }, 3400, () => { const mesh = this.artworks.meshFor(artworkId); return mesh ? [mesh] : []; }, this.world.renderer);
   }
   inspectArtwork(artworkId: string): boolean {
