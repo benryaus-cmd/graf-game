@@ -1,0 +1,18 @@
+{
+  "version": "hubside-zombies-portal-url-11oct2026",
+  "commit": "78ee533a6706c65fe768f11a1ef3f19c07d4ebf6",
+  "baseUrl": "https://raw.githubusercontent.com/benryaus-cmd/graf-game/78ee533a6706c65fe768f11a1ef3f19c07d4ebf6/",
+  "fileCount": 1,
+  "description": "Set Zombies portal YES action to exact Aippy preview URL with no trailing question mark.",
+  "files": [
+    {
+      "source": "src/App.tsx",
+      "target": "src/games/importedGame/upstream/src/App.tsx"
+    }
+  ],
+  "notes": [
+    "Only changes the ZOMBIES_GAME_URL constant.",
+    "Existing Play Zombies? YES/NO popup and portal behavior remain unchanged.",
+    "Preserves gameplay, multiplayer, artwork, settings, Aippy host and importer."
+  ]
+}
