@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react';
-import { CHARACTER_MODELS, isCharacterModelId, normalizeCharacterModelId, type CharacterModelId } from './characterCatalog';
+import { SELECTABLE_CHARACTER_MODELS, isCharacterModelId, normalizeCharacterModelId, type CharacterModelId } from './characterCatalog';
 
 export interface AssetPreviewPreference { model: CharacterModelId; building: boolean }
 const KEY = 'graffciti.asset-preview.v1';
@@ -14,8 +14,14 @@ export function loadAssetPreviewPreference(storage?: Pick<Storage, 'getItem' | '
     saved = JSON.parse(storage.getItem(KEY) ?? 'null');
   } catch { /* Missing or blocked storage still allows a character this session. */ }
   const input = saved as Partial<AssetPreviewPreference> | null;
-  if (isCharacterModelId(input?.model)) return normalizeAssetPreviewPreference(saved);
-  const models = CHARACTER_MODELS.filter(model => model.id !== 'original' && model.id !== 'hoodie');
+  if (isCharacterModelId(input?.model)) {
+    const normalized = normalizeAssetPreviewPreference(saved);
+    if (normalized.model !== input.model) {
+      try { storage?.setItem(KEY, JSON.stringify(normalized)); } catch { /* Still works this session. */ }
+    }
+    return normalized;
+  }
+  const models = SELECTABLE_CHARACTER_MODELS;
   const choice = { ...normalizeAssetPreviewPreference(saved), model: models[Math.floor(random() * models.length)].id };
   try { storage?.setItem(KEY, JSON.stringify(choice)); } catch { /* Keep the session choice if storage is unavailable. */ }
   return choice;
