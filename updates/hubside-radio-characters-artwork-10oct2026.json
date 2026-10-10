@@ -1,0 +1,53 @@
+{
+  "version": "hubside-radio-characters-artwork-10oct2026",
+  "commit": "3babaacdaeaae2671b60620903997365023aa149",
+  "baseUrl": "https://raw.githubusercontent.com/benryaus-cmd/graf-game/3babaacdaeaae2671b60620903997365023aa149/",
+  "fileCount": 9,
+  "description": "Compact C/A/M top HUD radio and mute; retire Original/Hoodie and prevent legacy avatar flash; offset persisted artwork away from wall/floor surfaces and correct artwork inspection matrix.",
+  "files": [
+    {
+      "source": "src/App.tsx",
+      "target": "src/games/importedGame/upstream/src/App.tsx"
+    },
+    {
+      "source": "src/components/RadioQuickControl.tsx",
+      "target": "src/games/importedGame/upstream/src/components/RadioQuickControl.tsx"
+    },
+    {
+      "source": "src/game/characterCatalog.ts",
+      "target": "src/games/importedGame/upstream/src/game/characterCatalog.ts"
+    },
+    {
+      "source": "src/game/assetPreviewPreference.ts",
+      "target": "src/games/importedGame/upstream/src/game/assetPreviewPreference.ts"
+    },
+    {
+      "source": "src/game/assetPreview.ts",
+      "target": "src/games/importedGame/upstream/src/game/assetPreview.ts"
+    },
+    {
+      "source": "src/components/AvatarMenu.tsx",
+      "target": "src/games/importedGame/upstream/src/components/AvatarMenu.tsx"
+    },
+    {
+      "source": "src/index.css",
+      "target": "src/games/importedGame/upstream/src/index.css"
+    },
+    {
+      "source": "src/game/posterOverlay.ts",
+      "target": "src/games/importedGame/upstream/src/game/posterOverlay.ts"
+    },
+    {
+      "source": "src/multiplayer/worldSession.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/worldSession.ts"
+    }
+  ],
+  "notes": [
+    "Radio reuses the existing LiveRadioController. C/A/M are Chillhop/Alternative/Metal; paused or unavailable shows a grey dash; speaker resumes last station.",
+    "Original and Hoodie remain accepted legacy IDs in types/old data but are removed from player selection. Previously saved Original/Hoodie selections migrate to Casual Male; other choices and saves remain.",
+    "Previous imported character remains visible while a newly selected GLB loads; the old procedural avatar is never shown as a placeholder.",
+    "Persisted artwork remains parented to canonical wall. Overlay world-normal gap increased to 7cm without changing server transforms or stored data. This is a clipping mitigation pending on-device validation.",
+    "Regression tests updated in GitHub, not included in the Aippy runtime manifest.",
+    "No server modifications, no package changes, no changes to Aippy host or importer."
+  ]
+}
