@@ -6,6 +6,15 @@ const LINE_HEIGHT = 34;
 const PADDING = 32;
 const PIXELS_PER_METRE = 128;
 
+export interface SpeechBubbleStyle {
+  /** World-space size multiplier. Normal speech stays at 1. */
+  scale?: number;
+  /** Canvas background alpha; text stays fully legible. */
+  backgroundAlpha?: number;
+  /** Optional avatar visibility/frustum check for remote players. */
+  isVisible?: () => boolean;
+}
+
 /** One temporary world sprite per speaker. No HTML interpretation or frame allocations. */
 export class SpeechBubble {
   private sprite: THREE.Sprite | null = null;
@@ -16,6 +25,7 @@ export class SpeechBubble {
     private listenerPosition?: () => THREE.Vector3,
     private distance = SPEECH_BUBBLE_DISTANCE,
     private heightAboveFeet = 2.35,
+    private style: SpeechBubbleStyle = {},
   ) {}
   show(value: string): void {
     this.dispose();
@@ -44,15 +54,17 @@ export class SpeechBubble {
     canvas.height = lines.length * LINE_HEIGHT + PADDING;
     context = canvas.getContext('2d');
     if (!context) return;
-    context.fillStyle = 'rgba(18,22,19,.94)'; context.fillRect(0, 0, canvas.width, canvas.height);
+    const backgroundAlpha = THREE.MathUtils.clamp(this.style.backgroundAlpha ?? .94, 0, 1);
+    context.fillStyle = `rgba(18,22,19,${backgroundAlpha})`; context.fillRect(0, 0, canvas.width, canvas.height);
     context.font = '26px sans-serif'; context.fillStyle = '#fff9ed'; context.textAlign = 'center'; context.textBaseline = 'middle';
     lines.forEach((line, index) => context!.fillText(line, canvas.width / 2, 32 + index * LINE_HEIGHT));
     const texture = new THREE.CanvasTexture(canvas); texture.colorSpace = THREE.SRGBColorSpace;
     // Writing depth prevents later transparent posters/paint behind the speaker from
     // covering speech. Real nearer walls still occlude it through the usual depth test.
     const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, depthTest: true, depthWrite: true, alphaTest: .05, toneMapped: false }));
-    const height = canvas.height / PIXELS_PER_METRE;
-    sprite.scale.set(canvas.width / PIXELS_PER_METRE, height, 1); sprite.position.set(0, this.heightAboveFeet + height / 2, 0);
+    const scale = Math.max(.1, Math.min(1, this.style.scale ?? 1));
+    const height = canvas.height / PIXELS_PER_METRE * scale;
+    sprite.scale.set(canvas.width / PIXELS_PER_METRE * scale, height, 1); sprite.position.set(0, this.heightAboveFeet + height / 2, 0);
     sprite.raycast = () => {};
     this.avatar.add(sprite); this.sprite = sprite;
     this.update();
@@ -62,7 +74,8 @@ export class SpeechBubble {
     if (!this.sprite || !this.avatar || !this.listenerPosition) return;
     this.avatar.getWorldPosition(this.speakerPosition);
     this.speakerPosition.y += EYE_HEIGHT;
-    this.sprite.visible = this.speakerPosition.distanceToSquared(this.listenerPosition()) <= this.distance * this.distance;
+    const nearEnough = this.speakerPosition.distanceToSquared(this.listenerPosition()) <= this.distance * this.distance;
+    this.sprite.visible = nearEnough && (this.style.isVisible?.() ?? true);
   }
   dispose(): void {
     if (this.timer !== null) clearTimeout(this.timer);
