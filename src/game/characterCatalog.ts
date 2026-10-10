@@ -38,12 +38,16 @@ export const CHARACTER_MODELS: readonly CharacterModel[] = [
     : QUATERNIUS_ANIMATIONS })),
 ];
 
+// Retired character IDs remain recognisable in old saved/server data, but are not selectable.
+export const DEFAULT_CHARACTER_MODEL: CharacterModelId = 'casual-male';
+export const SELECTABLE_CHARACTER_MODELS = CHARACTER_MODELS.filter(model => model.id !== 'original' && model.id !== 'hoodie');
+
 export function isCharacterModelId(value: unknown): value is CharacterModelId {
   return typeof value === 'string' && CHARACTER_MODELS.some((model) => model.id === value);
 }
 
 export function normalizeCharacterModelId(value: unknown): CharacterModelId {
-  return isCharacterModelId(value) ? value : 'original';
+  return isCharacterModelId(value) && value !== 'original' && value !== 'hoodie' ? value : DEFAULT_CHARACTER_MODEL;
 }
 
 export function getCharacterModel(id: unknown): CharacterModel {
