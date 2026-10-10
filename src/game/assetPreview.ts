@@ -64,6 +64,8 @@ export class AssetPreview {
   constructor(private readonly scene: THREE.Scene, private readonly avatar: THREE.Group, private readonly load: Load = loadModel) {
     this.base.name = 'existing-avatar';
     this.base.add(...avatar.children); avatar.add(this.base);
+    // Never show the retired original character between GLB loads.
+    this.base.visible = false;
     controllers.set(avatar, this);
   }
 
@@ -73,11 +75,7 @@ export class AssetPreview {
     if (this.request && this.requestModel === wanted) { await this.pending; return; }
     if (this.character && this.currentModel === wanted && !this.request) return;
     this.request?.abort(); this.request = null;
-    this.clearCharacter();
-    if (wanted === 'original') {
-      this.onModelState?.({ model: wanted, phase: 'ready' });
-      return;
-    }
+    // Keep the previous real model visible until the new one is ready.
     const controller = new AbortController();
     this.request = controller; this.requestModel = wanted;
     this.onModelState?.({ model: wanted, phase: 'loading' });
@@ -98,6 +96,7 @@ export class AssetPreview {
       if (this.closed || controller.signal.aborted || this.request !== controller) { lease.release(); return; }
       const model = lease.model;
       fit(model.scene, 'y', 1.9); model.scene.name = `quaternius-${id}`;
+      this.clearCharacter();
       this.characterLease = lease; this.currentModel = id;
       this.character = model.scene; this.avatar.add(model.scene);
       this.mixer = new THREE.AnimationMixer(model.scene);
@@ -109,7 +108,6 @@ export class AssetPreview {
       if (this.characterLease === lease) this.clearCharacter();
       else lease?.release();
       if (!this.closed && !controller.signal.aborted && this.request === controller) {
-        this.base.visible = true;
         this.onModelState?.({ model: id, phase: 'error' });
       }
     } finally {
@@ -123,7 +121,7 @@ export class AssetPreview {
     this.characterLease?.release();
     this.characterLease = null; this.character = null; this.mixer = null;
     this.actions.clear(); this.currentAction = ''; this.currentModel = 'original';
-    this.base.visible = true;
+    this.base.visible = false;
   }
 
   animate(delta: number, walking: boolean, airborne: boolean): void {
