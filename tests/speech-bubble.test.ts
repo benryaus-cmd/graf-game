@@ -6,9 +6,10 @@ import { RemotePlayers } from '../src/multiplayer/remotePlayers';
 
 function canvasFixture() {
   const old = globalThis.document;
-  const canvases: Array<{ width: number; height: number; lines: string[] }> = [];
+  const canvases: Array<{ width: number; height: number; lines: string[]; backgrounds: string[] }> = [];
   globalThis.document = { createElement: () => {
-    const canvas = { width: 0, height: 0, lines: [] as string[], getContext: () => ({ measureText: (s: string) => ({ width: s.length * 12 }), fillRect() {}, fillText: (s: string) => canvas.lines.push(s) }) };
+    const canvas = { width: 0, height: 0, lines: [] as string[], backgrounds: [] as string[], getContext: () => context };
+    const context = { fillStyle: '', measureText: (s: string) => ({ width: s.length * 12 }), fillRect: () => canvas.backgrounds.push(context.fillStyle), fillText: (s: string) => canvas.lines.push(s) };
     canvases.push(canvas); return canvas;
   } } as unknown as Document;
   return { canvases, restore: () => { globalThis.document = old; } };
@@ -30,6 +31,22 @@ test('speech width fits short text and long speech wraps into a compact block', 
     assert.equal(sprite.scale.x / sprite.scale.y, long.width / long.height);
     assert.equal(sprite.material.sizeAttenuation, true);
   } finally { bubble.dispose(); fixture.restore(); }
+});
+
+test('own bubble is 60% size with half-opacity background; other players keep normal size', () => {
+  const fixture = canvasFixture(), ownAvatar = new THREE.Group(), otherAvatar = new THREE.Group();
+  const own = new SpeechBubble(ownAvatar, undefined, undefined, 2.0, { scale: .6, backgroundAlpha: .47 });
+  const other = new SpeechBubble(otherAvatar);
+  try {
+    own.show('Hello'); other.show('Hello');
+    const ownSprite = ownAvatar.children[0] as THREE.Sprite;
+    const otherSprite = otherAvatar.children[0] as THREE.Sprite;
+    assert.ok(Math.abs(ownSprite.scale.x / otherSprite.scale.x - .6) < 1e-8);
+    assert.ok(Math.abs(ownSprite.scale.y / otherSprite.scale.y - .6) < 1e-8);
+    assert.equal(fixture.canvases[0].backgrounds[0], 'rgba(18,22,19,0.47)');
+    assert.equal(fixture.canvases[1].backgrounds[0], 'rgba(18,22,19,0.94)');
+    assert.equal(ownSprite.material.transparent, true);
+  } finally { own.dispose(); other.dispose(); fixture.restore(); }
 });
 
 test('speech participates in world depth before later transparent artwork', () => {
