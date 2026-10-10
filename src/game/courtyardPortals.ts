@@ -1,10 +1,11 @@
 import * as THREE from 'three';
 
-export type CourtyardPortalAction = 'characters' | 'basketball' | 'multiplayer';
+export type CourtyardPortalAction = 'characters' | 'basketball' | 'multiplayer' | 'zombies';
 export const COURTYARD_PORTALS = Object.freeze([
   { action: 'characters' as const, label: 'CHARACTERS', position: [-6, 0, -3] as const, color: '#ad8aff' },
   { action: 'basketball' as const, label: 'BASKETBALL', position: [0, 0, -3] as const, color: '#ffb35c' },
   { action: 'multiplayer' as const, label: 'MULTIPLAYER', position: [6, 0, -3] as const, color: '#5de8d3' },
+  { action: 'zombies' as const, label: 'ZOMBIES', position: [9, 0, -3] as const, color: '#8fe06d' },
 ]);
 // Paved east approach: outside shooting seats, benches and the court's bounds.
 export const BASKETBALL_PORTAL_LANDING = [-42, 1.72, -32] as const;
@@ -20,12 +21,14 @@ const GLYPHS: Record<string, string[]> = {
   K: ['10001','10010','10100','11000','10100','10010','10001'],
   L: ['10000','10000','10000','10000','10000','10000','11111'],
   M: ['10001','11011','10101','10101','10001','10001','10001'],
+  O: ['01110','10001','10001','10001','10001','10001','01110'],
   P: ['11110','10001','10001','11110','10000','10000','10000'],
   R: ['11110','10001','10001','11110','10100','10010','10001'],
   S: ['01111','10000','10000','01110','00001','00001','11110'],
   T: ['11111','00100','00100','00100','00100','00100','00100'],
   U: ['10001','10001','10001','10001','10001','10001','01110'],
   Y: ['10001','10001','01010','00100','00100','00100','00100'],
+  Z: ['11111','00001','00010','00100','01000','10000','11111'],
 };
 
 // Tiny crisp text atlas works without a DOM or network and stays readable at distance.
