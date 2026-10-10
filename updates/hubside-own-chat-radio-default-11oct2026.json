@@ -1,0 +1,36 @@
+{
+  "version": "hubside-own-chat-radio-default-11oct2026",
+  "commit": "f03d2e0f1589afcedc07714a9fe28e057a9abd2d",
+  "baseUrl": "https://raw.githubusercontent.com/benryaus-cmd/graf-game/f03d2e0f1589afcedc07714a9fe28e057a9abd2d/",
+  "fileCount": 5,
+  "description": "Shrink only the local player's chat bubble to 60% size and halve its background opacity; preserve the original remote-player 15m speech range with no camera or frustum checks; default radio volume to 10%.",
+  "files": [
+    {
+      "source": "src/game/speechBubble.ts",
+      "target": "src/games/importedGame/upstream/src/game/speechBubble.ts"
+    },
+    {
+      "source": "src/multiplayer/worldSession.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/worldSession.ts"
+    },
+    {
+      "source": "src/multiplayer/remotePlayers.ts",
+      "target": "src/games/importedGame/upstream/src/multiplayer/remotePlayers.ts"
+    },
+    {
+      "source": "src/config/tweaksConfig.json",
+      "target": "src/games/importedGame/upstream/src/config/tweaksConfig.json"
+    },
+    {
+      "source": "src/components/SettingsModal.tsx",
+      "target": "src/games/importedGame/upstream/src/components/SettingsModal.tsx"
+    }
+  ],
+  "notes": [
+    "Own chat bubbles are scaled 0.6 and background alpha 0.47; remote bubble style and 15m visibility are unchanged.",
+    "RemotePlayers was restored to its pre-frustum version to retain the original distance-only behaviour.",
+    "New/default music volume is 0.10 in tweaksConfig.json, and SettingsModal's fallback is 0.10; existing saved or Aippy-customized volume preferences are not forcibly overwritten.",
+    "No server protocol, gameplay, character, portal, artwork placement or persistent saves modified.",
+    "Source regression test tests/speech-bubble.test.ts updated in GitHub and not required for Aippy runtime import."
+  ]
+}
