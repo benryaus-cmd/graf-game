@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { SpeechBubble } from '../game/speechBubble';
+import { SpeechBubble, SPEECH_BUBBLE_DISTANCE } from '../game/speechBubble';
 import { createPlayerAvatar } from '../game/playerAvatar';
 import { updatePlayerAvatar, applyAvatarAppearance, triggerAvatarEmote } from '../game/playerAvatarAppearance';
 import { SHOP_ITEMS } from '../game/shopCatalog';
@@ -21,7 +21,25 @@ export interface PickedPlayer { playerId: string; username: string; nickName: st
 export class RemotePlayers {
   private players = new Map<string, RemotePlayer>();
   private actions = new Set<string>();
-  constructor(private scene: THREE.Scene, private listenerPosition?: () => THREE.Vector3) {}
+  private readonly speechFrustum = new THREE.Frustum();
+  private readonly speechViewProjection = new THREE.Matrix4();
+  private readonly speechAvatarSphere = new THREE.Sphere(new THREE.Vector3(), 1.15);
+  constructor(
+    private scene: THREE.Scene,
+    private listenerPosition?: () => THREE.Vector3,
+    private viewCamera?: () => THREE.Camera,
+  ) {}
+  private avatarOnScreen(avatar: THREE.Group): boolean {
+    if (!avatar.visible) return false;
+    const camera = this.viewCamera?.();
+    if (!camera) return true;
+    camera.updateWorldMatrix(true, false);
+    this.speechViewProjection.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+    this.speechFrustum.setFromProjectionMatrix(this.speechViewProjection);
+    avatar.getWorldPosition(this.speechAvatarSphere.center);
+    this.speechAvatarSphere.center.y += 1.05;
+    return this.speechFrustum.intersectsSphere(this.speechAvatarSphere);
+  }
   get count(): number { return this.players.size; }
   roster(): PickedPlayer[] { return [...this.players.keys()].map(id => this.get(id)!); }
   joined(value: unknown, ownId: string | null): void {
@@ -132,8 +150,16 @@ export class RemotePlayers {
   }
   say(playerId: string, text: string): void {
     const remote = this.players.get(playerId);
-    if (!remote) return;
-    remote.bubble ??= new SpeechBubble(remote.avatar, this.listenerPosition);
+    if (!remote || !remote.current || !remote.avatar.visible) return;
+    // Do not allocate speech textures for players outside the 15m display range.
+    const listener = this.listenerPosition?.();
+    if (listener) {
+      const [x, y, z] = remote.current.position;
+      if ((x-listener.x)**2 + (y-listener.y)**2 + (z-listener.z)**2 > SPEECH_BUBBLE_DISTANCE ** 2) return;
+    }
+    remote.bubble ??= new SpeechBubble(remote.avatar, this.listenerPosition, undefined, undefined, {
+      isVisible: () => this.avatarOnScreen(remote.avatar),
+    });
     remote.bubble.show(text);
   }
   left(playerId: string): void {
