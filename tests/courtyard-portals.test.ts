@@ -5,8 +5,8 @@ import { CourtyardPortals, COURTYARD_PORTALS, BASKETBALL_PORTAL_LANDING } from '
 import { BASKETBALL_COURT } from '../src/game/basketballCourt';
 import { isInsideBuilding, QUARTER_TREES, QUARTER_LAMPS, QUARTER_SPAWN } from '../src/game/morningQuarterLayout';
 
-test('three courtyard destinations are on paving, clear of spawn, buildings, trees and poles', () => {
-  assert.deepEqual(COURTYARD_PORTALS.map(portal => portal.action), ['characters', 'basketball', 'multiplayer']);
+test('four courtyard destinations are on paving, clear of spawn, buildings, trees and poles', () => {
+  assert.deepEqual(COURTYARD_PORTALS.map(portal => portal.action), ['characters', 'basketball', 'multiplayer', 'zombies']);
   for (const portal of COURTYARD_PORTALS) {
     const [x, , z] = portal.position;
     assert.ok(Math.abs(x) + 1.7 < 12 && Math.abs(z) + 1.7 < 12);
@@ -74,6 +74,21 @@ test('multiplayer is hidden and inactive outside solo mode and does not launch o
   portals.update(new THREE.Vector3(0, 1.72, 5), { enabled: true, solo: true });
   portals.update(position, { enabled: true, solo: true });
   assert.deepEqual(actions, ['multiplayer']);
+  portals.dispose();
+});
+
+test('zombies portal prompts once per entry, remains visible in multiplayer, and has a label', () => {
+  const scene = new THREE.Scene(), actions: string[] = [];
+  const portals = new CourtyardPortals(scene, action => actions.push(action));
+  const position = new THREE.Vector3().fromArray(COURTYARD_PORTALS[3].position);
+  assert.equal(scene.getObjectByName('courtyard-label-zombies')!.userData.label, 'ZOMBIES');
+  portals.update(position, { enabled: true, solo: true });
+  portals.update(position, { enabled: true, solo: true });
+  assert.deepEqual(actions, ['zombies']);
+  portals.update(new THREE.Vector3(0, 1.72, 5), { enabled: true, solo: false });
+  portals.update(position, { enabled: true, solo: false });
+  assert.equal(scene.getObjectByName('courtyard-portal-zombies')!.visible, true);
+  assert.deepEqual(actions, ['zombies', 'zombies']);
   portals.dispose();
 });
 
