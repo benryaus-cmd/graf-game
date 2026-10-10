@@ -11,8 +11,6 @@ export interface SpeechBubbleStyle {
   scale?: number;
   /** Canvas background alpha; text stays fully legible. */
   backgroundAlpha?: number;
-  /** Optional avatar visibility/frustum check for remote players. */
-  isVisible?: () => boolean;
 }
 
 /** One temporary world sprite per speaker. No HTML interpretation or frame allocations. */
@@ -61,7 +59,9 @@ export class SpeechBubble {
     const texture = new THREE.CanvasTexture(canvas); texture.colorSpace = THREE.SRGBColorSpace;
     // Writing depth prevents later transparent posters/paint behind the speaker from
     // covering speech. Real nearer walls still occlude it through the usual depth test.
-    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, depthTest: true, depthWrite: true, alphaTest: .05, toneMapped: false }));
+    const material = new THREE.SpriteMaterial({ map: texture, depthTest: true, depthWrite: true, alphaTest: .05, toneMapped: false });
+    if (this.style.backgroundAlpha !== undefined) material.transparent = true;
+    const sprite = new THREE.Sprite(material);
     const scale = Math.max(.1, Math.min(1, this.style.scale ?? 1));
     const height = canvas.height / PIXELS_PER_METRE * scale;
     sprite.scale.set(canvas.width / PIXELS_PER_METRE * scale, height, 1); sprite.position.set(0, this.heightAboveFeet + height / 2, 0);
@@ -74,8 +74,7 @@ export class SpeechBubble {
     if (!this.sprite || !this.avatar || !this.listenerPosition) return;
     this.avatar.getWorldPosition(this.speakerPosition);
     this.speakerPosition.y += EYE_HEIGHT;
-    const nearEnough = this.speakerPosition.distanceToSquared(this.listenerPosition()) <= this.distance * this.distance;
-    this.sprite.visible = nearEnough && (this.style.isVisible?.() ?? true);
+    this.sprite.visible = this.speakerPosition.distanceToSquared(this.listenerPosition()) <= this.distance * this.distance;
   }
   dispose(): void {
     if (this.timer !== null) clearTimeout(this.timer);
